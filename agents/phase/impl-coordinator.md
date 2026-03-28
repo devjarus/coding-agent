@@ -181,6 +181,37 @@ When you start and `.coding-agent/progress.md` already exists, you are RESUMING 
 - If in doubt about whether a task is truly complete, dispatch the domain lead to review (not re-implement)
 - Log the recovery in progress.md: "Session recovered at [timestamp]. Resumed from task N."
 
+## Re-Planning Protocol
+
+Sometimes the plan turns out to be wrong mid-implementation — a task is underscoped, a new dependency is discovered, or an approach doesn't work. When this happens:
+
+### When to Re-Plan
+
+- A domain lead reports that a task is significantly larger than planned (> 2x the expected work)
+- A new task is discovered that wasn't in the original plan (e.g., "we need a migration before this API can work")
+- A technical approach from the plan doesn't work and an alternative is needed
+- Two tasks that were planned as independent turn out to have a dependency
+
+### How to Re-Plan
+
+1. **Don't stop everything** — other domains can continue their independent work
+2. **Document the change** in progress.md under a "## Plan Amendments" section:
+   ```
+   ### Amendment 1: [date]
+   - Original: Task 5 was "Build tasks API"
+   - Change: Split into Task 5a (data model) and Task 5b (API endpoints)
+   - Reason: Schema change required a separate migration step
+   - Impact: Task 9 (frontend) now depends on 5b, not 5
+   ```
+3. **Update dependencies** — if new tasks create new dependencies, adjust the dispatch order
+4. **Notify affected domain leads** — if a dependency changed, tell the leads waiting on it
+5. **Do NOT rewrite plan.md** — the original plan is the historical record. Amendments go in progress.md only.
+
+### Rules
+- Small adjustments (splitting a task, adding a sub-task) don't need human approval
+- Large scope changes (new domain needed, fundamental approach change) require escalating to the human
+- Always log amendments — the human should be able to see what changed and why
+
 ## Escalation Protocol
 
 When a domain lead reports a blocker, do not immediately escalate to the human. Work through this sequence:
