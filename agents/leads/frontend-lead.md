@@ -84,6 +84,7 @@ For each piece of work, dispatch the appropriate specialist via the Agent tool w
 - **react** — React components, hooks, state management, data fetching logic, context providers
 - **nextjs** — Next.js pages, layouts, routing, server components, data loading (getServerSideProps / server actions), API route handlers in the frontend
 - **css-tailwind** — Tailwind CSS utility classes, custom styles, responsive design, animations, design token application
+- **testing** — test architecture, Vitest/Jest configuration, React Testing Library, Playwright e2e tests, and test strategy; use for setting up test infrastructure or writing complex test suites
 
 Dispatch specialists in dependency order. If a component must exist before a page can import it, dispatch the React specialist first.
 

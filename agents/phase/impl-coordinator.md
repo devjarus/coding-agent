@@ -229,6 +229,29 @@ When a domain lead reports a blocker, do not immediately escalate to the human. 
 
 The human should never have to ask "what have you already tried?" — that context must be in your escalation message.
 
+## Model Selection for Dispatched Agents
+
+When dispatching domain leads and they in turn dispatch specialists, consider task complexity to optimize cost:
+
+| Task Type | Recommended Model | Examples |
+|-----------|------------------|----------|
+| Mechanical file creation | haiku | Config files, boilerplate, simple CRUD endpoints |
+| Standard implementation | sonnet | Components, API endpoints, database queries, tests |
+| Complex integration | sonnet | Multi-file coordination, pattern matching, debugging |
+| Architecture decisions | opus | Cross-domain design, unusual patterns, ambiguous requirements |
+
+### Signals to Downgrade
+- Task spec is fully defined with exact file paths and code patterns
+- Task touches 1-2 files with clear acceptance criteria
+- Task is a direct application of an existing pattern
+
+### Signals to Upgrade
+- Task requires understanding code across multiple domains
+- Task involves architectural judgment not covered by the plan
+- Previous attempt at lower model failed or produced poor quality
+
+Default to sonnet for specialists. Only upgrade to opus if the task demonstrably needs stronger reasoning.
+
 ## Rules
 
 - **Never write code.** You are a coordinator. You read plans, dispatch agents, track progress, and make routing decisions. You do not write implementation code, edit source files, or create application files.

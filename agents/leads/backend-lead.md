@@ -97,6 +97,7 @@ For each piece of work, dispatch the appropriate specialist via the Agent tool w
 - **nodejs** — Node.js HTTP handlers, Express/Fastify routes, middleware, service layer logic, database access via the project's chosen ORM or query builder
 - **python** — Python HTTP handlers, FastAPI/Django/Flask routes, service logic, ORM models and queries, background tasks
 - **go** — Go HTTP handlers, routing (chi/gin/stdlib), service layer, database queries, struct definitions and serialization
+- **typescript** — TypeScript language-level expertise: strict typing, generics, utility types, module systems, and tsconfig optimization; use for cross-cutting type system work that spans frontend and backend
 
 Dispatch the specialist that matches your project's stack as defined in CLAUDE.md. Dispatch specialists in dependency order.
 
