@@ -2,8 +2,13 @@
   "hooks": {
     "SubagentStart": [
       {
-        "type": "command",
-        "command": "echo \"[$(date '+%H:%M:%S')] Agent dispatched: $CLAUDE_SUBAGENT_NAME\" >> docs/agents/agent-log.txt"
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo \"[$(date '+%H:%M:%S')] Agent dispatched: $CLAUDE_SUBAGENT_NAME\" >> docs/agents/agent-log.txt"
+          }
+        ]
       }
     ]
   }

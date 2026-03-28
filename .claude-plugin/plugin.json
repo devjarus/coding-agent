@@ -1,10 +1,8 @@
 {
-  "name": "codingAgent",
+  "name": "coding-agent",
   "version": "0.1.0",
   "description": "Multi-agent software development system with layered hierarchy — phase agents, domain leads, specialist workers, and utility agents for building software end-to-end",
   "author": {
     "name": "suraj-devloper"
-  },
-  "agents": "./agents/",
-  "skills": "./skills/"
+  }
 }
