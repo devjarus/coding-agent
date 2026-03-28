@@ -35,10 +35,24 @@ Utility Agents (Sonnet) - Researcher | Debugger | Doc Writer
 
 ```bash
 # From a marketplace
-/plugin install codingAgent
+/plugin install coding-agent
 
 # Or load locally for development
 claude --plugin-dir /path/to/codingAgent
+
+# Install recommended external skills (React, shadcn, emulate, etc.)
+./scripts/setup-external-skills.sh
+```
+
+### External Skills
+
+The plugin works standalone, but is designed to complement these ecosystem skills:
+
+```bash
+npx skills add vercel-labs/agent-skills --all -g -y -a claude-code  # React, web design, deploy
+npx skills add shadcn/ui -g -y -a claude-code                       # shadcn/ui components
+npx skills add vercel-labs/emulate -g -y -a claude-code              # API emulators for testing
+npx skills add anthropics/skills -g -y -a claude-code                # Playwright testing, frontend design
 ```
 
 ## Usage

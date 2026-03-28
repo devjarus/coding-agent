@@ -224,3 +224,52 @@ Types: `feat`, `fix`, `refactor`, `docs`, `chore`, `test`
 Playwright and Chrome DevTools serve different purposes:
 - **Playwright** — testing flows, assertions (`browser_verify_*`), recording traces. Uses accessibility tree (token-efficient).
 - **Chrome DevTools** — Lighthouse audits, performance traces, memory snapshots, network inspection. Deep browser internals.
+
+## External Skills (Ecosystem)
+
+Our plugin provides orchestration agents and custom skills. External skills from the skills.sh ecosystem provide additional domain expertise and are installed alongside.
+
+### Setup
+
+```bash
+# Install all recommended external skills (run once)
+./scripts/setup-external-skills.sh
+```
+
+Or install individually:
+
+```bash
+npx skills add vercel-labs/agent-skills --all -g -y -a claude-code
+npx skills add shadcn/ui -g -y -a claude-code
+npx skills add vercel-labs/emulate -g -y -a claude-code
+npx skills add anthropics/skills -g -y -a claude-code
+```
+
+### What Gets Installed
+
+| Source | Skills | What They Do |
+|--------|--------|--------------|
+| **vercel-labs/agent-skills** | react-best-practices, composition-patterns, web-design-guidelines, deploy-to-vercel | React/Next.js performance rules (65 prioritized), component architecture, UI accessibility audit, Vercel deployment |
+| **shadcn/ui** | shadcn | Component library management — detects project config, adds/searches components, enforces composition patterns, theming |
+| **vercel-labs/emulate** | emulate, github, google, vercel | Local stateful API emulators for integration testing without network access |
+| **anthropics/skills** | claude-api, mcp-builder, webapp-testing, frontend-design | Claude API patterns, MCP server building, Playwright testing, production UI design |
+
+### How They Coexist
+
+- **Plugin skills** (bundled): `~/.claude/plugins/cache/coding-agent/.../skills/`
+- **External skills** (installed): `~/.claude/skills/`
+- Both are loaded by Claude Code and available simultaneously
+- Agents use whichever skill matches the context — no conflicts
+
+### Which Agents Benefit
+
+| External Skill | Agents That Use It |
+|---|---|
+| react-best-practices | React specialist, Frontend lead (review) |
+| composition-patterns | React specialist, Frontend lead |
+| web-design-guidelines | Reviewer (frontend pass), Frontend lead |
+| shadcn | React specialist, CSS/Tailwind specialist |
+| deploy-to-vercel | Infra lead, Scaffolder |
+| emulate | All specialists (integration tests), Debugger |
+| webapp-testing | Reviewer, Frontend lead |
+| frontend-design | Frontend specialists |
