@@ -1,35 +1,39 @@
 # coding-agent — Claude Code Plugin
 
-A multi-agent software development system distributed as a Claude Code plugin.
+A multi-agent software development system distributed as a Claude Code plugin. 23 agents, 20 skills, 4 MCP servers.
 
 ## Project Structure
 
 ```
 codingAgent/
-├── .claude-plugin/plugin.json     # Plugin manifest (name: coding-agent)
-├── agents/                        # Agent definitions (auto-discovered by Claude Code)
-│   ├── phase/                     # Lifecycle agents: brainstormer, planner, scaffolder, impl-coordinator, reviewer
-│   ├── leads/                     # Domain leads: frontend-lead, backend-lead, infra-lead, data-lead
-│   ├── specialists/               # Tech workers organized by domain/
-│   │   ├── frontend/              # react, nextjs, css-tailwind
-│   │   ├── backend/               # nodejs, python, go
-│   │   ├── infra/                 # aws, docker, terraform
-│   │   └── data/                  # postgres, redis
-│   └── utility/                   # Shared helpers: researcher, debugger, doc-writer
-├── skills/                        # Reusable skills (auto-discovered by Claude Code)
-│   ├── practices/                 # tdd, code-review, error-handling, security-checklist
-│   ├── frontend/                  # accessibility, react-patterns, performance
-│   ├── backend/                   # api-design, auth-patterns
-│   ├── infra/                     # docker-best-practices, ci-cd-patterns
-│   └── general/                   # git-workflow, debugging, documentation
-├── scripts/                       # Validation and testing scripts
-│   ├── validate.sh                # Full validation suite (run after any change)
-│   └── post-edit-validate.sh      # PostToolUse hook for auto-validation
-├── hooks/hooks.json               # Plugin lifecycle hooks
-├── .mcp.json                      # MCP server config (Context7, Exa)
-├── settings.json                  # Plugin default settings
-├── .gitignore                     # Ignores .coding-agent/ and .superpowers/
-└── README.md                      # User-facing documentation
+├── .claude-plugin/plugin.json        # Plugin manifest (name: coding-agent)
+├── agents/                           # Agent definitions (auto-discovered by Claude Code)
+│   ├── phase/                        # brainstormer, planner, scaffolder, impl-coordinator, reviewer
+│   ├── leads/                        # frontend-lead, backend-lead, infra-lead, data-lead
+│   ├── specialists/                  # Tech workers organized by domain/
+│   │   ├── frontend/                 # react, nextjs, css-tailwind
+│   │   ├── backend/                  # nodejs, python, go
+│   │   ├── infra/                    # aws, docker, terraform
+│   │   └── data/                     # postgres, redis
+│   └── utility/                      # researcher, debugger, doc-writer
+├── skills/                           # Reusable skills (auto-discovered by Claude Code)
+│   ├── practices/                    # tdd, code-review, error-handling, security-checklist,
+│   │                                 # config-management, e2e-testing, integration-testing,
+│   │                                 # release, project-detection
+│   ├── frontend/                     # react-patterns, composition-patterns, accessibility, performance
+│   ├── backend/                      # api-design, auth-patterns
+│   ├── infra/                        # docker-best-practices, ci-cd-patterns
+│   └── general/                      # git-workflow, debugging, documentation
+├── scripts/                          # Validation and setup
+│   ├── validate.sh                   # Full validation suite (9 checks)
+│   ├── post-edit-validate.sh         # PostToolUse hook for auto-validation
+│   └── setup-external-skills.sh      # Install ecosystem skills
+├── hooks/hooks.json                  # Plugin lifecycle hooks
+├── .mcp.json                         # MCP server config (Context7, Exa, Playwright, Chrome DevTools)
+├── settings.json                     # Plugin default settings
+├── .gitignore                        # Ignores .coding-agent/ and .superpowers/
+├── CLAUDE.md                         # Project conventions (this file)
+└── README.md                         # User-facing documentation
 ```
 
 ## Runtime Artifacts
@@ -99,6 +103,74 @@ Content...
 
 Required frontmatter fields: `name`, `description`
 
+### Skill Design Conventions
+
+- **SKILL.md stays under 500 lines** — use progressive disclosure (link to rules/ subdirectory for detailed content)
+- **Priority-ranked rules** with ID prefixes (e.g., DOC-01, CFG-01, RBP-01) — CRITICAL > HIGH > MEDIUM > LOW
+- **"When to Apply" section** — explicit trigger conditions so agents know when to activate
+- **Code examples** — concrete, not abstract. Show the pattern, not just describe it.
+- **Anti-patterns section** — what to avoid and why
+
+## MCP Servers
+
+| Server | Package | Purpose | Which Agents |
+|--------|---------|---------|--------------|
+| **Context7** | `@upstash/context7-mcp` | Current library/framework docs | Domain leads, specialists, researcher, scaffolder |
+| **Exa** | `exa-mcp-server` | Web search, code search | Brainstormer, researcher, planner |
+| **Playwright** | `@playwright/mcp` | Browser testing, assertions, tracing | Frontend lead, frontend specialists, reviewer |
+| **Chrome DevTools** | `chrome-devtools-mcp` | Lighthouse audits, performance profiling, network/memory inspection | Frontend lead, reviewer, debugger |
+
+- **Playwright** — testing flows, assertions (`browser_verify_*`), recording traces. Uses accessibility tree (token-efficient).
+- **Chrome DevTools** — Lighthouse audits, performance traces, memory snapshots, network inspection. Deep browser internals.
+
+## External Skills (Ecosystem)
+
+Our plugin provides orchestration agents and custom skills. External skills from the skills.sh ecosystem provide additional domain expertise and are installed alongside.
+
+### Setup
+
+```bash
+# Install all recommended external skills (run once)
+./scripts/setup-external-skills.sh
+```
+
+Or install individually:
+
+```bash
+npx skills add vercel-labs/agent-skills --all -g -y -a claude-code
+npx skills add shadcn/ui -g -y -a claude-code
+npx skills add vercel-labs/emulate -g -y -a claude-code
+npx skills add anthropics/skills -g -y -a claude-code
+```
+
+### What Gets Installed
+
+| Source | Skills | What They Do |
+|--------|--------|--------------|
+| **vercel-labs/agent-skills** | react-best-practices, composition-patterns, web-design-guidelines, deploy-to-vercel | React/Next.js performance rules, component architecture, UI accessibility audit, Vercel deployment |
+| **shadcn/ui** | shadcn | Component library management — detects project config, adds/searches components, enforces composition patterns, theming |
+| **vercel-labs/emulate** | emulate, github, google, vercel | Local stateful API emulators for integration testing without network access |
+| **anthropics/skills** | claude-api, mcp-builder, webapp-testing, frontend-design | Claude API patterns, MCP server building, Playwright testing, production UI design |
+
+### How They Coexist
+
+- **Plugin skills** (bundled): loaded from the plugin cache
+- **External skills** (installed): loaded from `~/.claude/skills/`
+- Both are available simultaneously — agents use whichever matches the context
+
+### Which Agents Benefit
+
+| External Skill | Agents That Use It |
+|---|---|
+| react-best-practices | React specialist, Frontend lead (review) |
+| composition-patterns | React specialist, Frontend lead |
+| web-design-guidelines | Reviewer (frontend pass), Frontend lead |
+| shadcn | React specialist, CSS/Tailwind specialist |
+| deploy-to-vercel | Infra lead, Scaffolder |
+| emulate | All specialists (integration tests), Debugger |
+| webapp-testing | Reviewer, Frontend lead |
+| frontend-design | Frontend specialists |
+
 ## Development Workflow
 
 ### After Any Change
@@ -117,7 +189,7 @@ Required frontmatter fields: `name`, `description`
 
 ### Auto-Validation
 
-The PostToolUse hook (`scripts/post-edit-validate.sh`) runs automatically after every Write/Edit/MultiEdit on agent or skill files. It checks frontmatter and stale artifact path references inline.
+The PostToolUse hook (`scripts/post-edit-validate.sh`) runs automatically after every Write/Edit/MultiEdit on agent or skill files. Checks frontmatter and stale artifact path references.
 
 ### Testing Locally
 
@@ -133,6 +205,9 @@ claude --plugin-dir /path/to/codingAgent
 
 # Verbose debug output
 claude --debug --plugin-dir /path/to/codingAgent
+
+# View hook configuration (in-session)
+/hooks
 ```
 
 ### What validate.sh Checks
@@ -174,7 +249,7 @@ Types: `feat`, `fix`, `refactor`, `docs`, `chore`, `test`
 - `.superpowers/` — brainstorming session files
 - `node_modules/`, `.env`, or any dependency/secret files
 
-## Adding New Agents
+## Adding New Components
 
 ### New Specialist
 
@@ -189,19 +264,20 @@ Types: `feat`, `fix`, `refactor`, `docs`, `chore`, `test`
 1. Create `agents/leads/<domain>-lead.md`
 2. Create the `agents/specialists/<domain>/` directory
 3. Add at least one specialist for the domain
-4. Update the impl-coordinator's documentation if needed
-5. Validate and commit
+4. Validate and commit
 
 ### New Skill
 
 1. Create `skills/<category>/<name>/SKILL.md` following the skill file format
-2. Run `./scripts/validate.sh`
-3. Commit with: `feat: add <name> skill`
+2. Include: frontmatter, "When to Apply", priority-ranked rules with ID prefixes, code examples
+3. Keep under 500 lines
+4. Run `./scripts/validate.sh`
+5. Commit with: `feat: add <name> skill`
 
 ### New Utility Agent
 
 1. Create `agents/utility/<name>.md`
-2. Utility agents should have narrow, clearly defined constraints (read-only, diagnosis-only, docs-only)
+2. Utility agents must have narrow, clearly defined constraints (read-only, diagnosis-only, docs-only)
 3. Validate and commit
 
 ## Key Design Decisions
@@ -210,66 +286,6 @@ Types: `feat`, `fix`, `refactor`, `docs`, `chore`, `test`
 - **Phase agents invoked by human** — human controls flow, approves at gates (spec, plan, final review)
 - **Domain leads between coordinator and specialists** — provides domain expertise and code review layer
 - **Plugin is self-contained** — no dependencies on other Claude Code plugins
-- **MCP servers for external data** — Context7 for docs, Exa for web search, Playwright for testing, Chrome DevTools for performance/debugging
-
-## MCP Servers
-
-| Server | Package | Purpose | Which Agents |
-|--------|---------|---------|--------------|
-| **Context7** | `@upstash/context7-mcp` | Current library/framework docs | Domain leads, specialists, researcher, scaffolder |
-| **Exa** | `exa-mcp-server` | Web search, code search | Brainstormer, researcher, planner |
-| **Playwright** | `@playwright/mcp` | Browser testing, assertions, tracing | Frontend lead, frontend specialists, reviewer |
-| **Chrome DevTools** | `chrome-devtools-mcp` | Lighthouse audits, performance profiling, network/memory inspection | Frontend lead, reviewer, debugger |
-
-Playwright and Chrome DevTools serve different purposes:
-- **Playwright** — testing flows, assertions (`browser_verify_*`), recording traces. Uses accessibility tree (token-efficient).
-- **Chrome DevTools** — Lighthouse audits, performance traces, memory snapshots, network inspection. Deep browser internals.
-
-## External Skills (Ecosystem)
-
-Our plugin provides orchestration agents and custom skills. External skills from the skills.sh ecosystem provide additional domain expertise and are installed alongside.
-
-### Setup
-
-```bash
-# Install all recommended external skills (run once)
-./scripts/setup-external-skills.sh
-```
-
-Or install individually:
-
-```bash
-npx skills add vercel-labs/agent-skills --all -g -y -a claude-code
-npx skills add shadcn/ui -g -y -a claude-code
-npx skills add vercel-labs/emulate -g -y -a claude-code
-npx skills add anthropics/skills -g -y -a claude-code
-```
-
-### What Gets Installed
-
-| Source | Skills | What They Do |
-|--------|--------|--------------|
-| **vercel-labs/agent-skills** | react-best-practices, composition-patterns, web-design-guidelines, deploy-to-vercel | React/Next.js performance rules (65 prioritized), component architecture, UI accessibility audit, Vercel deployment |
-| **shadcn/ui** | shadcn | Component library management — detects project config, adds/searches components, enforces composition patterns, theming |
-| **vercel-labs/emulate** | emulate, github, google, vercel | Local stateful API emulators for integration testing without network access |
-| **anthropics/skills** | claude-api, mcp-builder, webapp-testing, frontend-design | Claude API patterns, MCP server building, Playwright testing, production UI design |
-
-### How They Coexist
-
-- **Plugin skills** (bundled): `~/.claude/plugins/cache/coding-agent/.../skills/`
-- **External skills** (installed): `~/.claude/skills/`
-- Both are loaded by Claude Code and available simultaneously
-- Agents use whichever skill matches the context — no conflicts
-
-### Which Agents Benefit
-
-| External Skill | Agents That Use It |
-|---|---|
-| react-best-practices | React specialist, Frontend lead (review) |
-| composition-patterns | React specialist, Frontend lead |
-| web-design-guidelines | Reviewer (frontend pass), Frontend lead |
-| shadcn | React specialist, CSS/Tailwind specialist |
-| deploy-to-vercel | Infra lead, Scaffolder |
-| emulate | All specialists (integration tests), Debugger |
-| webapp-testing | Reviewer, Frontend lead |
-| frontend-design | Frontend specialists |
+- **External skills complement, don't replace** — ecosystem skills installed alongside, not bundled
+- **Priority-ranked rules** in skills — CRITICAL > HIGH > MEDIUM > LOW with ID prefixes for cross-referencing
+- **Validation on every change** — PostToolUse hook + validate.sh + claude plugin validate
