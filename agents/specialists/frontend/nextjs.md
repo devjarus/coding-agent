@@ -121,6 +121,14 @@ When the dev server is running, verify your work in the browser:
 - Use `browser_take_screenshot` to capture visual evidence
 - Use **Chrome DevTools MCP** `list_network_requests` to verify SSR payloads and API route responses
 
+## Skills
+
+Apply these skills during your work:
+- **react-patterns** — especially RBP-12 (Server Components by default); push `'use client'` boundaries as far leaf-ward as possible
+- **performance** — target Core Web Vitals (LCP, CLS, FID/INP); use `next/image`, `next/font`, and streaming to hit green scores
+- **tdd** — write failing tests before implementation; include route-level integration tests
+- **config-management** — enforce server/client config separation per CFG-06; never expose server secrets via `NEXT_PUBLIC_` variables
+
 ## When Stuck
 
 - Dispatch the **researcher** utility agent with a Context7 lookup to get current Next.js 14+ documentation for the specific API or pattern in question.

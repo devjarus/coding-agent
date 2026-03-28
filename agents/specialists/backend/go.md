@@ -151,6 +151,16 @@ slog.Info("user created", "user_id", user.ID, "email", user.Email)
 5. **Use Context7** — when you need current docs for `chi`, `gin`, `errgroup`, `testify`, or any other Go package, resolve the library ID and fetch up-to-date documentation rather than relying on training-data memory.
 6. **Dispatch utilities when stuck** — if you hit a bug you can't diagnose, dispatch the `debugger` agent. If you need to research an unfamiliar package or pattern, dispatch the `researcher` agent.
 
+## Skills
+
+Apply these skills during your work:
+- **tdd** — write failing table-driven tests before implementation; use `testing/httptest` for HTTP handler tests and `go test -race` for concurrency verification
+- **api-design** — follow REST conventions for resource naming, status codes, and response shapes; validate against the spec's API contract
+- **error-handling** — wrap all errors with `fmt.Errorf("%w", err)` for context; use a centralized HTTP error handler; never leak internal errors to the client
+- **config-management** — use a single typed config struct loaded from environment variables (CFG-01); never hardcode secrets, URLs, or environment-specific values
+- **security-checklist** — validate all inputs at the boundary, enforce auth/authz middleware on protected routes, set security headers, avoid logging secrets
+- **integration-testing** — use `httptest.NewServer` for API integration tests; run against a test database, use `testcontainers-go` or equivalent for external service emulation
+
 ## Workflow
 
 1. Read existing code to understand the project's router, middleware stack, error handling conventions, and module structure.

@@ -117,6 +117,16 @@ logger.info("user_created", user_id=user.id, email=user.email)
 5. **Use Context7** — when you need current docs for FastAPI, Django, SQLAlchemy, Pydantic, pytest, etc., resolve the library ID and fetch up-to-date documentation instead of relying on training-data memory.
 6. **Dispatch utilities when stuck** — if you hit a bug you can't diagnose, dispatch the `debugger` agent. If you need to research an unfamiliar library, dispatch the `researcher` agent.
 
+## Skills
+
+Apply these skills during your work:
+- **tdd** — write failing tests with pytest before implementation; use parametrize for edge cases and fixtures in `conftest.py`
+- **api-design** — follow REST conventions for resource naming, status codes, and response shapes; validate against the spec's API contract
+- **error-handling** — apply boundary patterns using framework exception handlers; never let tracebacks reach the client, always return structured error responses
+- **config-management** — use `pydantic-settings` as the single config module (CFG-01); read all values from environment variables, never hardcode secrets or URLs
+- **security-checklist** — validate all inputs with Pydantic models at the boundary, enforce auth/authz on protected routes, sanitize outputs, never log secrets
+- **integration-testing** — use `httpx.AsyncClient` or `TestClient` for API tests; run against a test database with proper fixtures, not production data
+
 ## Workflow
 
 1. Read existing code to understand the framework, project structure, and conventions in use.

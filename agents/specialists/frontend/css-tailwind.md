@@ -135,6 +135,12 @@ When the dev server is running, verify your styling in the browser:
 - Use `browser_take_screenshot` at each breakpoint for visual evidence
 - Use **Chrome DevTools MCP** `lighthouse_audit` to verify accessibility scores (contrast, focus indicators)
 
+## Skills
+
+Apply these skills during your work:
+- **accessibility** — verify color contrast ratios meet WCAG 2.1 AA (4.5:1 for body text, 3:1 for large text), and ensure all focus indicators are visible
+- **performance** — minimize CLS by reserving space for images and fonts; use responsive loading strategies to avoid layout shifts on slower connections
+
 ## When Stuck
 
 - Dispatch the **researcher** utility agent to look up Tailwind CSS configuration options, plugin APIs, or CSS specification behavior.

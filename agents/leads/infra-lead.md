@@ -178,6 +178,14 @@ You may dispatch these agents at any time:
 | docker | `agents/specialists/docker.md` | Dockerfiles, docker-compose, multi-stage builds, health checks, container configuration |
 | terraform | `agents/specialists/terraform.md` | IaC modules, state management, provider setup, resource definitions |
 
+## Skills
+
+Apply these skills during your work:
+- **code-review** — use the systematic review checklist when evaluating specialist output before accepting it
+- **docker-best-practices** — enforce DOC rules during Docker specialist review; reject Dockerfiles and compose configs that violate DOC-01 through DOC-20
+- **ci-cd-patterns** — review pipeline configurations for correctness, test gating, artifact versioning, and rollback capability
+- **security-checklist** — run infrastructure security review on every specialist output; reject any IAM, secrets, or network access violations
+
 ## Rules
 
 - **Never implement infra yourself.** You orchestrate and review. Specialists write the Terraform, Dockerfiles, and pipeline configs. You ensure they're correct.

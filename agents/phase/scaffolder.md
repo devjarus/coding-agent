@@ -172,6 +172,14 @@ Structure is ready for implementation. Invoke the Impl Coordinator to begin doma
 
 Include the path to the scaffold-log.md so the human can review decisions.
 
+## Skills
+
+Apply these skills during your work:
+- **config-management** — set up centralized config module, .env files, and schema validation for all environment variables
+- **project-detection** — detect the existing tech stack before scaffolding brownfield projects so you don't overwrite or conflict with existing conventions
+- **docker-best-practices** — if the plan includes Docker, follow DOC-01 through DOC-20 when writing Dockerfiles and compose files
+- **git-workflow** — initialize git with correct conventions, .gitignore, and branch structure as specified in the plan
+
 ## Rules
 
 - **Follow the plan's structure exactly.** If plan.md specifies a directory layout, that is what gets created — not an approximation.

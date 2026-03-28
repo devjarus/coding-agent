@@ -114,6 +114,15 @@ When a dev server is running, verify your work in the browser:
 - Use `browser_take_screenshot` to capture visual evidence of your work
 - Check `browser_console_messages` for any runtime errors
 
+## Skills
+
+Apply these skills during your work:
+- **react-patterns** — follow RBP-01 through RBP-40; especially RBP-01 (no data-fetching waterfalls) and RBP-12 (Server Components by default where applicable)
+- **composition-patterns** — follow COMP-01 through COMP-13 for component composition and prop design
+- **tdd** — write failing tests before implementation; do not write component code without a corresponding test
+- **accessibility** — verify WCAG 2.1 AA compliance on all interactive elements; semantic HTML and keyboard navigation are required
+- **e2e-testing** — when a dev server is running, use browser verification to confirm rendered behavior and run user flows
+
 ## When Stuck
 
 - Dispatch the **researcher** utility agent to look up React 18+ documentation, RFC proposals, or library APIs.

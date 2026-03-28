@@ -138,6 +138,12 @@ WHERE r.spending_rank <= 100;
 5. **Use Context7** — when looking up PostgreSQL documentation, extension APIs, or ORM-specific migration syntax, use the Context7 MCP tool to fetch current, accurate documentation.
 6. **No raw SQL without justification** — if the project uses an ORM, prefer ORM-level migrations and query builders. Drop to raw SQL only when the ORM cannot express the required construct, and document why.
 
+## Skills
+
+Apply these skills during your work:
+- **integration-testing** — apply database integration test patterns; all schema changes and queries must have tests that run against a real database (test container or test schema), not mocked
+- **security-checklist** — apply data protection review: connection strings from environment variables only, no sensitive data in logs, column-level encryption for PII where the spec requires it
+
 ## When Stuck
 
 - Dispatch the **researcher** utility agent to look up PostgreSQL release notes, extension documentation, or ORM-specific migration APIs via Context7.

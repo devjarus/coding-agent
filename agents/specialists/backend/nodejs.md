@@ -89,6 +89,16 @@ process.on('SIGTERM', async () => {
 5. **Use Context7** — when you need current docs for a library (Express, Fastify, Hono, zod, etc.), resolve the library ID and fetch up-to-date documentation rather than relying on training-data memory.
 6. **Dispatch utilities when stuck** — if you hit a bug you can't diagnose, dispatch the `debugger` agent. If you need to research an unfamiliar API, dispatch the `researcher` agent.
 
+## Skills
+
+Apply these skills during your work:
+- **tdd** — write failing tests before implementation; unit tests for business logic, integration tests for API routes
+- **api-design** — follow REST conventions for resource naming, status codes, and response shapes; validate against the spec's API contract
+- **error-handling** — apply boundary patterns; use a centralized error handler, never leak stack traces, always return structured error responses
+- **config-management** — use a single typed config module (CFG-01); read all values from environment variables, never hardcode secrets or URLs
+- **security-checklist** — apply input validation at the boundary, enforce auth/authz on all protected routes, set security headers, rate-limit sensitive endpoints
+- **integration-testing** — use API emulation or test doubles for external services; run integration tests against a test database, not production data
+
 ## Workflow
 
 1. Read existing code to understand the framework, patterns, and conventions in use.
