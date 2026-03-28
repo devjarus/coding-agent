@@ -1,0 +1,278 @@
+#!/bin/bash
+# coding-agent plugin validation script
+# Runs structural, frontmatter, cross-reference, and schema checks
+# Exit 0 = all pass, Exit 1 = failures found
+
+set -uo pipefail
+
+PLUGIN_ROOT="${1:-$(cd "$(dirname "$0")/.." && pwd)}"
+ERRORS=0
+WARNINGS=0
+
+red() { printf "\033[0;31m%s\033[0m\n" "$1"; }
+yellow() { printf "\033[0;33m%s\033[0m\n" "$1"; }
+green() { printf "\033[0;32m%s\033[0m\n" "$1"; }
+dim() { printf "\033[0;90m%s\033[0m\n" "$1"; }
+
+error() { red "  ✘ $1"; ERRORS=$((ERRORS + 1)); }
+warn() { yellow "  ⚠ $1"; WARNINGS=$((WARNINGS + 1)); }
+pass() { green "  ✔ $1"; }
+
+echo ""
+echo "═══════════════════════════════════════════"
+echo "  coding-agent plugin validation"
+echo "═══════════════════════════════════════════"
+echo ""
+
+# ─── 1. Structure checks ────────────────────────────────────────────
+echo "▸ Structure"
+
+for dir in .claude-plugin agents/phase agents/leads agents/utility skills; do
+  if [ -d "$PLUGIN_ROOT/$dir" ]; then
+    pass "$dir/ exists"
+  else
+    error "$dir/ missing"
+  fi
+done
+
+for file in .claude-plugin/plugin.json settings.json .mcp.json hooks/hooks.json; do
+  if [ -f "$PLUGIN_ROOT/$file" ]; then
+    pass "$file exists"
+  else
+    error "$file missing"
+  fi
+done
+
+echo ""
+
+# ─── 2. JSON validation ─────────────────────────────────────────────
+echo "▸ JSON validity"
+
+for file in .claude-plugin/plugin.json settings.json .mcp.json hooks/hooks.json; do
+  filepath="$PLUGIN_ROOT/$file"
+  if [ -f "$filepath" ]; then
+    if python3 -m json.tool "$filepath" > /dev/null 2>&1; then
+      pass "$file is valid JSON"
+    else
+      error "$file has invalid JSON"
+    fi
+  fi
+done
+
+echo ""
+
+# ─── 3. Agent frontmatter checks ────────────────────────────────────
+echo "▸ Agent frontmatter"
+
+while IFS= read -r agent_file; do
+  rel_path="${agent_file#$PLUGIN_ROOT/}"
+
+  first_line=$(head -1 "$agent_file")
+  if [ "$first_line" != "---" ]; then
+    error "$rel_path: missing frontmatter (no opening ---)"
+    continue
+  fi
+
+  name=$(sed -n '/^---$/,/^---$/p' "$agent_file" | grep "^name:" | head -1 | sed 's/name: *//')
+  description=$(sed -n '/^---$/,/^---$/p' "$agent_file" | grep "^description:" | head -1)
+  model=$(sed -n '/^---$/,/^---$/p' "$agent_file" | grep "^model:" | head -1 | sed 's/model: *//')
+
+  if [ -z "$name" ]; then
+    error "$rel_path: missing 'name' in frontmatter"
+  fi
+  if [ -z "$description" ]; then
+    error "$rel_path: missing 'description' in frontmatter"
+  fi
+  if [ -z "$model" ]; then
+    error "$rel_path: missing 'model' in frontmatter"
+  elif [[ "$model" != "opus" && "$model" != "sonnet" && "$model" != "haiku" && "$model" != "inherit" ]]; then
+    error "$rel_path: invalid model '$model' (must be opus, sonnet, haiku, or inherit)"
+  fi
+
+  if [ -n "$name" ] && [ -n "$model" ]; then
+    pass "$rel_path (name=$name, model=$model)"
+  fi
+done < <(find "$PLUGIN_ROOT/agents" -name "*.md" | sort)
+
+echo ""
+
+# ─── 4. Skill frontmatter checks ────────────────────────────────────
+echo "▸ Skill frontmatter"
+
+while IFS= read -r skill_file; do
+  rel_path="${skill_file#$PLUGIN_ROOT/}"
+
+  first_line=$(head -1 "$skill_file")
+  if [ "$first_line" != "---" ]; then
+    error "$rel_path: missing frontmatter (no opening ---)"
+    continue
+  fi
+
+  name=$(sed -n '/^---$/,/^---$/p' "$skill_file" | grep "^name:" | head -1 | sed 's/name: *//')
+  description=$(sed -n '/^---$/,/^---$/p' "$skill_file" | grep "^description:" | head -1)
+
+  if [ -z "$name" ]; then
+    error "$rel_path: missing 'name' in frontmatter"
+  fi
+  if [ -z "$description" ]; then
+    error "$rel_path: missing 'description' in frontmatter"
+  fi
+
+  if [ -n "$name" ]; then
+    pass "$rel_path (name=$name)"
+  fi
+done < <(find "$PLUGIN_ROOT/skills" -name "SKILL.md" | sort)
+
+echo ""
+
+# ─── 5. Cross-reference checks ──────────────────────────────────────
+echo "▸ Cross-references"
+
+# Check that specialists referenced in leads actually exist
+for lead_file in "$PLUGIN_ROOT"/agents/leads/*.md; do
+  [ -f "$lead_file" ] || continue
+  lead_name=$(basename "$lead_file" .md)
+
+  while IFS= read -r spec_ref; do
+    if [ -f "$PLUGIN_ROOT/$spec_ref" ]; then
+      pass "$lead_name references $spec_ref (exists)"
+    else
+      error "$lead_name references $spec_ref (NOT FOUND)"
+    fi
+  done < <(grep -oE 'agents/specialists/[a-z-]+/[a-z-]+\.md' "$lead_file" 2>/dev/null || true)
+done
+
+# Check that utility agents referenced exist
+while IFS= read -r agent_file; do
+  [ -f "$agent_file" ] || continue
+  rel_path="${agent_file#$PLUGIN_ROOT/}"
+
+  for utility in researcher debugger doc-writer; do
+    if grep -qi "$utility" "$agent_file" 2>/dev/null; then
+      if [ ! -f "$PLUGIN_ROOT/agents/utility/$utility.md" ]; then
+        error "$rel_path references utility '$utility' but agents/utility/$utility.md not found"
+      fi
+    fi
+  done
+done < <(find "$PLUGIN_ROOT/agents/leads" "$PLUGIN_ROOT/agents/specialists" -name "*.md" 2>/dev/null)
+
+pass "utility agent references checked"
+
+echo ""
+
+# ─── 6. Artifact path checks ────────────────────────────────────────
+echo "▸ Artifact paths"
+
+bad_refs=$(grep -rl "docs/agents/" "$PLUGIN_ROOT/agents/" "$PLUGIN_ROOT/hooks/" "$PLUGIN_ROOT/README.md" 2>/dev/null || true)
+if [ -z "$bad_refs" ]; then
+  pass "no stale docs/agents/ references found"
+else
+  for bad_file in $bad_refs; do
+    error "${bad_file#$PLUGIN_ROOT/} still references docs/agents/ (should be .coding-agent/)"
+  done
+fi
+
+coord_refs=$(grep -rl "\.coding-agent/" "$PLUGIN_ROOT/agents/phase/" 2>/dev/null | wc -l | tr -d ' ')
+if [ "$coord_refs" -gt 0 ]; then
+  pass "phase agents reference .coding-agent/ for artifact coordination"
+else
+  warn "no phase agents reference .coding-agent/ — coordination may be broken"
+fi
+
+echo ""
+
+# ─── 7. Model tier checks ───────────────────────────────────────────
+echo "▸ Model tier conventions"
+
+for phase_agent in "$PLUGIN_ROOT"/agents/phase/*.md; do
+  [ -f "$phase_agent" ] || continue
+  name=$(basename "$phase_agent" .md)
+  model=$(sed -n '/^---$/,/^---$/p' "$phase_agent" | grep "^model:" | head -1 | sed 's/model: *//')
+
+  case "$name" in
+    brainstormer|planner|impl-coordinator|reviewer)
+      if [ "$model" = "opus" ]; then
+        pass "$name uses opus (correct for decision-making agent)"
+      else
+        warn "$name uses $model (expected opus for decision-making agent)"
+      fi
+      ;;
+    scaffolder)
+      if [ "$model" = "sonnet" ]; then
+        pass "$name uses sonnet (correct for execution agent)"
+      else
+        warn "$name uses $model (expected sonnet for execution agent)"
+      fi
+      ;;
+  esac
+done
+
+for lead_agent in "$PLUGIN_ROOT"/agents/leads/*.md; do
+  [ -f "$lead_agent" ] || continue
+  name=$(basename "$lead_agent" .md)
+  model=$(sed -n '/^---$/,/^---$/p' "$lead_agent" | grep "^model:" | head -1 | sed 's/model: *//')
+
+  if [ "$model" = "sonnet" ]; then
+    pass "$name uses sonnet (correct for domain lead)"
+  else
+    warn "$name uses $model (expected sonnet for domain lead)"
+  fi
+done
+
+echo ""
+
+# ─── 8. Content quality checks ──────────────────────────────────────
+echo "▸ Content quality"
+
+while IFS= read -r agent_file; do
+  rel_path="${agent_file#$PLUGIN_ROOT/}"
+  line_count=$(wc -l < "$agent_file" | tr -d ' ')
+  if [ "$line_count" -lt 20 ]; then
+    warn "$rel_path has only $line_count lines (may be a stub)"
+  fi
+done < <(find "$PLUGIN_ROOT/agents" -name "*.md")
+
+while IFS= read -r skill_file; do
+  rel_path="${skill_file#$PLUGIN_ROOT/}"
+  line_count=$(wc -l < "$skill_file" | tr -d ' ')
+  if [ "$line_count" -lt 10 ]; then
+    warn "$rel_path has only $line_count lines (may be a stub)"
+  fi
+done < <(find "$PLUGIN_ROOT/skills" -name "SKILL.md")
+
+pass "content quality checked"
+
+echo ""
+
+# ─── 9. Inventory ───────────────────────────────────────────────────
+echo "▸ Inventory"
+
+agent_count=$(find "$PLUGIN_ROOT/agents" -name "*.md" | wc -l | tr -d ' ')
+skill_count=$(find "$PLUGIN_ROOT/skills" -name "SKILL.md" | wc -l | tr -d ' ')
+phase_count=$(find "$PLUGIN_ROOT/agents/phase" -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
+lead_count=$(find "$PLUGIN_ROOT/agents/leads" -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
+specialist_count=$(find "$PLUGIN_ROOT/agents/specialists" -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
+utility_count=$(find "$PLUGIN_ROOT/agents/utility" -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
+
+dim "  Agents:      $agent_count total ($phase_count phase, $lead_count leads, $specialist_count specialists, $utility_count utility)"
+dim "  Skills:      $skill_count"
+
+echo ""
+echo "═══════════════════════════════════════════"
+
+if [ "$ERRORS" -gt 0 ]; then
+  red "  FAILED: $ERRORS errors, $WARNINGS warnings"
+  echo "═══════════════════════════════════════════"
+  echo ""
+  exit 1
+elif [ "$WARNINGS" -gt 0 ]; then
+  yellow "  PASSED with $WARNINGS warnings"
+  echo "═══════════════════════════════════════════"
+  echo ""
+  exit 0
+else
+  green "  ALL CHECKS PASSED"
+  echo "═══════════════════════════════════════════"
+  echo ""
+  exit 0
+fi
