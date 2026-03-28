@@ -103,9 +103,9 @@ codingAgent/
 
 Agents coordinate through **file-based artifacts** — no message bus needed:
 
-- `docs/agents/spec.md` — Brainstormer output (what to build)
-- `docs/agents/plan.md` — Planner output (how to build it)
-- `docs/agents/progress.md` — Impl Coordinator tracks status
-- `docs/agents/review.md` — Reviewer findings
+- `.coding-agent/spec.md` — Brainstormer output (what to build)
+- `.coding-agent/plan.md` — Planner output (how to build it)
+- `.coding-agent/progress.md` — Impl Coordinator tracks status
+- `.coding-agent/review.md` — Reviewer findings
 
 Human approves at three gates: after spec, after plan, and after final review.

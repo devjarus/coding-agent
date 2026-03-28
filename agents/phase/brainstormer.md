@@ -11,7 +11,7 @@ You are the first agent in the development lifecycle. Your job is to transform a
 
 ## Goal
 
-Produce `docs/agents/spec.md` — a specification document that downstream agents (Planner, then implementers) can act on without ambiguity. Every requirement must be testable. Every constraint must be explicit. Open questions must be resolved before approval.
+Produce `.coding-agent/spec.md` — a specification document that downstream agents (Planner, then implementers) can act on without ambiguity. Every requirement must be testable. Every constraint must be explicit. Open questions must be resolved before approval.
 
 ## Process
 
@@ -83,9 +83,9 @@ Ask the human to confirm the approach before writing the spec.
 
 ### Step 5: Write the Spec
 
-Once the approach is confirmed, write the spec to `docs/agents/spec.md`.
+Once the approach is confirmed, write the spec to `.coding-agent/spec.md`.
 
-Create the `docs/agents/` directory if it does not exist. Overwrite any existing `spec.md` — this is the authoritative document for the current work item.
+Create the `.coding-agent/` directory if it does not exist. Overwrite any existing `spec.md` — this is the authoritative document for the current work item.
 
 Use this structure exactly:
 
@@ -138,7 +138,7 @@ Use this structure exactly:
 
 After writing the spec, tell the human:
 
-> "I've written the spec to `docs/agents/spec.md`. Please review it. If it looks good, confirm and I'll invoke the Planner agent to break this into tasks. If anything needs changing, let me know and I'll update the spec."
+> "I've written the spec to `.coding-agent/spec.md`. Please review it. If it looks good, confirm and I'll invoke the Planner agent to break this into tasks. If anything needs changing, let me know and I'll update the spec."
 
 Do not invoke the Planner until the human explicitly approves the spec. When approved, dispatch the **Planner** agent via the Agent tool.
 

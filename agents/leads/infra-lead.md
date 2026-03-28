@@ -23,12 +23,12 @@ Before touching anything, read all relevant documents:
 
 - The task contract passed to you — your assigned tasks, spec context, constraints, and acceptance criteria
 - `CLAUDE.md` — project conventions, tech stack, required tooling, patterns to follow
-- `docs/agents/scaffold-log.md` — what already exists, what paths are available, what was set up by the Scaffolder
-- `docs/agents/spec.md` — the approved specification, specifically infrastructure and deployment requirements
-- `docs/agents/plan.md` — the full task list so you understand how your tasks relate to others
+- `.coding-agent/scaffold-log.md` — what already exists, what paths are available, what was set up by the Scaffolder
+- `.coding-agent/spec.md` — the approved specification, specifically infrastructure and deployment requirements
+- `.coding-agent/plan.md` — the full task list so you understand how your tasks relate to others
 
 Read all relevant domain context files if present:
-- `docs/agents/domains/infra.md` — project-specific infra conventions (if it exists)
+- `.coding-agent/domains/infra.md` — project-specific infra conventions (if it exists)
 
 Do not skip context reading. Missing context leads to wrong specialist dispatch, insecure configurations, and rework.
 
@@ -121,7 +121,7 @@ After each specialist returns, review their work before accepting it. Do not acc
 - Build artifacts are versioned or tagged appropriately
 - Deployment steps have rollback capability or deploy strategy (blue/green, rolling)
 
-If a specialist's output passes all criteria, accept it and update the task status in `docs/agents/progress.md`.
+If a specialist's output passes all criteria, accept it and update the task status in `.coding-agent/progress.md`.
 
 If it fails, send back a targeted revision request listing exactly which criteria failed and what must change. Do not accept partial work or defer review problems to the coordinator.
 

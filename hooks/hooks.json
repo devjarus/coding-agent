@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo \"[$(date '+%H:%M:%S')] Agent dispatched: $CLAUDE_SUBAGENT_NAME\" >> docs/agents/agent-log.txt"
+            "command": "echo \"[$(date '+%H:%M:%S')] Agent dispatched: $CLAUDE_SUBAGENT_NAME\" >> .coding-agent/agent-log.txt"
           }
         ]
       }

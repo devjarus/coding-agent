@@ -80,7 +80,7 @@ When there is no existing codebase, perform these steps in order:
 - Document any decisions made during scaffolding and why
 
 **Create domain convention docs**
-- For each domain defined in plan.md, create `docs/agents/domains/<domain>.md`
+- For each domain defined in plan.md, create `.coding-agent/domains/<domain>.md`
 - Each doc must cover: the domain's responsibility, its directory location, its public interface, dependencies it may use, conventions specific to this domain, and what is out of scope
 - Keep these docs precise and short — they are instructions for agents, not tutorials
 
@@ -110,7 +110,7 @@ When there is an existing codebase, perform these steps in order:
 - Document the integration points identified above
 
 **Create domain convention docs if missing**
-- Check for `docs/agents/domains/<domain>.md` for each domain in plan.md
+- Check for `.coding-agent/domains/<domain>.md` for each domain in plan.md
 - Create any that are missing following the same format as greenfield
 - Do not overwrite existing domain docs — append a section if updates are needed
 
@@ -126,7 +126,7 @@ When there is an existing codebase, perform these steps in order:
 
 ### Step 3 — Write the Scaffold Log
 
-Write `docs/agents/scaffold-log.md` with the following sections:
+Write `.coding-agent/scaffold-log.md` with the following sections:
 
 ```
 # Scaffold Log

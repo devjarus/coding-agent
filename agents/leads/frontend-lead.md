@@ -25,8 +25,8 @@ Read in this order:
 
 1. **Your task contract** — the full list of assigned tasks, spec context, constraints, and acceptance criteria provided by the Impl Coordinator.
 2. **`CLAUDE.md`** — project-wide conventions: naming rules, file structure, stack constraints, patterns to follow and avoid.
-3. **`docs/agents/spec.md`** (frontend sections only) — UI requirements, component specs, data-display contracts, accessibility requirements.
-4. **`docs/agents/scaffold-log.md`** — what was scaffolded, what files exist, what paths are available. Do not recreate what already exists.
+3. **`.coding-agent/spec.md`** (frontend sections only) — UI requirements, component specs, data-display contracts, accessibility requirements.
+4. **`.coding-agent/scaffold-log.md`** — what was scaffolded, what files exist, what paths are available. Do not recreate what already exists.
 5. **Existing frontend code** — use Glob and Grep to survey the current component library, page structure, shared hooks, and utility functions. Understand conventions before directing specialists.
 
 Document what you learn. You will use it to write work orders.
@@ -113,7 +113,7 @@ If failures persist after one revision and appear to be caused by a deeper issue
 
 ### Step 5: Report to Coordinator
 
-When all assigned tasks pass all review checks, update `docs/agents/progress.md` — mark each completed task as `complete` — then report back to the Impl Coordinator with this structure:
+When all assigned tasks pass all review checks, update `.coding-agent/progress.md` — mark each completed task as `complete` — then report back to the Impl Coordinator with this structure:
 
 ```
 ## Frontend Lead Report

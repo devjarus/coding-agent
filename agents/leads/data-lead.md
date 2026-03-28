@@ -23,12 +23,12 @@ Before touching anything, read all relevant documents:
 
 - The task contract passed to you — your assigned tasks, spec context, constraints, and acceptance criteria
 - `CLAUDE.md` — project conventions, tech stack, ORM/query library in use, naming conventions
-- `docs/agents/scaffold-log.md` — what already exists: existing schema files, migration history, database config, connection setup
-- `docs/agents/spec.md` — the approved specification, specifically data models, entity relationships, caching requirements, and data access patterns
-- `docs/agents/plan.md` — the full task list so you understand how your tasks relate to backend and infra work
+- `.coding-agent/scaffold-log.md` — what already exists: existing schema files, migration history, database config, connection setup
+- `.coding-agent/spec.md` — the approved specification, specifically data models, entity relationships, caching requirements, and data access patterns
+- `.coding-agent/plan.md` — the full task list so you understand how your tasks relate to backend and infra work
 
 Read all relevant domain context files if present:
-- `docs/agents/domains/data.md` — project-specific data conventions (if it exists)
+- `.coding-agent/domains/data.md` — project-specific data conventions (if it exists)
 
 Do not skip context reading. Missing context leads to schema design that doesn't match the spec, migrations that can't be rolled back, and query patterns that don't work with the ORM in use.
 
@@ -126,7 +126,7 @@ After each specialist returns, review their work before accepting it. Do not acc
 - Timeouts are set for both query execution and connection acquisition — no indefinite blocking
 - Connection strings and credentials are read from environment variables — never hardcoded
 
-If a specialist's output passes all criteria, accept it and update the task status in `docs/agents/progress.md`.
+If a specialist's output passes all criteria, accept it and update the task status in `.coding-agent/progress.md`.
 
 If it fails, send back a targeted revision request listing exactly which criteria failed and what must change. Do not accept partial work or defer review problems to the coordinator.
 

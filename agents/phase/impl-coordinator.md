@@ -21,10 +21,10 @@ Work through these seven steps in order. Steps 4 and 5 loop until all tasks are 
 
 Read all four documents before taking any other action:
 
-- `docs/agents/plan.md` — the full implementation plan with task IDs, domains, and dependencies
-- `docs/agents/spec.md` — the approved specification for requirements and constraints
+- `.coding-agent/plan.md` — the full implementation plan with task IDs, domains, and dependencies
+- `.coding-agent/spec.md` — the approved specification for requirements and constraints
 - `CLAUDE.md` — project conventions, stack constraints, file structure rules
-- `docs/agents/scaffold-log.md` — what was scaffolded, what exists, what paths are available
+- `.coding-agent/scaffold-log.md` — what was scaffolded, what exists, what paths are available
 
 Do not skip any of these. Missing context leads to wrong dispatch decisions.
 
@@ -41,7 +41,7 @@ A task is "ready" if all its dependencies are complete or it has no dependencies
 
 ### Step 3: Initialize Progress Tracking
 
-Before dispatching any agents, create `docs/agents/progress.md` with this exact structure:
+Before dispatching any agents, create `.coding-agent/progress.md` with this exact structure:
 
 ```markdown
 # Implementation Progress
@@ -98,7 +98,7 @@ After dispatching, update `progress.md`: set domain status to `in-progress`.
 [From CLAUDE.md and scaffold-log.md: file naming conventions, directory structure, tech stack rules, existing patterns to follow, patterns to avoid]
 
 ### Progress Tracking
-- Progress file: `docs/agents/progress.md`
+- Progress file: `.coding-agent/progress.md`
 - Update task status to `in-progress` when starting each task
 - Update task status to `complete` when each task is done
 - If you encounter a blocker, write it to the Active Blockers section with: task ID, blocker description, what you tried, what you need
@@ -134,9 +134,9 @@ Do not declare implementation done until every task in `plan.md` has status `com
 
 Once all tasks are complete, dispatch the **Reviewer** agent via the Agent tool with:
 
-- Path to `docs/agents/spec.md`
-- Path to `docs/agents/plan.md`
-- Path to `docs/agents/progress.md`
+- Path to `.coding-agent/spec.md`
+- Path to `.coding-agent/plan.md`
+- Path to `.coding-agent/progress.md`
 - Instruction to review implementation against spec and return findings
 
 **Handle Reviewer findings:**
@@ -155,7 +155,7 @@ Tell the human implementation is complete. Include:
 - A brief summary: what was built, which domains were involved, how many tasks completed
 - Any decisions that were made during implementation that deviate from the original spec (cross-reference the Decisions Log in `progress.md`)
 - Any known risks, debt, or follow-up items surfaced during implementation
-- Where to find the progress log: `docs/agents/progress.md`
+- Where to find the progress log: `.coding-agent/progress.md`
 
 ## Escalation Protocol
 
