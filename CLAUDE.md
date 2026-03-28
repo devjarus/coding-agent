@@ -1,36 +1,38 @@
 # coding-agent — Claude Code Plugin
 
-A multi-agent software development system distributed as a Claude Code plugin. 23 agents, 20 skills, 4 MCP servers.
+A multi-agent software development system distributed as a Claude Code plugin. 26 agents, 25 skills, 4 MCP servers. The **dispatcher** agent is configured as the default entry point in `settings.json` — it reads project state and auto-routes to the correct phase.
 
 ## Project Structure
 
 ```
 codingAgent/
 ├── .claude-plugin/plugin.json        # Plugin manifest (name: coding-agent)
-├── agents/                           # Agent definitions (auto-discovered by Claude Code)
-│   ├── phase/                        # brainstormer, planner, scaffolder, impl-coordinator, reviewer
+├── agents/                           # 26 agent definitions (auto-discovered by Claude Code)
+│   ├── phase/                        # dispatcher, brainstormer, planner, scaffolder, impl-coordinator, reviewer
 │   ├── leads/                        # frontend-lead, backend-lead, infra-lead, data-lead
-│   ├── specialists/                  # Tech workers organized by domain/
-│   │   ├── frontend/                 # react, nextjs, css-tailwind
-│   │   ├── backend/                  # nodejs, python, go
+│   ├── specialists/                  # Tech workers organized by domain/ (13 total)
+│   │   ├── frontend/                 # react, nextjs, css-tailwind, testing
+│   │   ├── backend/                  # nodejs, python, go, typescript
 │   │   ├── infra/                    # aws, docker, terraform
 │   │   └── data/                     # postgres, redis
 │   └── utility/                      # researcher, debugger, doc-writer
-├── skills/                           # Reusable skills (auto-discovered by Claude Code)
+├── skills/                           # 25 reusable skills (auto-discovered by Claude Code)
 │   ├── practices/                    # tdd, code-review, error-handling, security-checklist,
 │   │                                 # config-management, e2e-testing, integration-testing,
-│   │                                 # release, project-detection
+│   │                                 # release, project-detection, parallel-git-strategy,
+│   │                                 # shared-contracts, dependency-evaluation, observability,
+│   │                                 # migration-safety
 │   ├── frontend/                     # react-patterns, composition-patterns, accessibility, performance
 │   ├── backend/                      # api-design, auth-patterns
 │   ├── infra/                        # docker-best-practices, ci-cd-patterns
 │   └── general/                      # git-workflow, debugging, documentation
-├── scripts/                          # Validation and setup
+├── scripts/                          # Validation and setup (3 scripts)
 │   ├── validate.sh                   # Full validation suite (9 checks)
 │   ├── post-edit-validate.sh         # PostToolUse hook for auto-validation
 │   └── setup-external-skills.sh      # Install ecosystem skills
 ├── hooks/hooks.json                  # Plugin lifecycle hooks
 ├── .mcp.json                         # MCP server config (Context7, Exa, Playwright, Chrome DevTools)
-├── settings.json                     # Plugin default settings
+├── settings.json                     # Default agent: dispatcher (auto-routes by project state)
 ├── .gitignore                        # Ignores .coding-agent/ and .superpowers/
 ├── CLAUDE.md                         # Project conventions (this file)
 └── README.md                         # User-facing documentation
@@ -80,6 +82,7 @@ Optional: `tools` (omit to inherit defaults), `color`
 
 | Role | Model | Rationale |
 |------|-------|-----------|
+| Dispatcher | sonnet | Routing logic only — reads state, dispatches to phase, no heavyweight reasoning needed |
 | Phase agents (brainstormer, planner, impl-coordinator, reviewer) | opus | High-stakes decisions — architecture, decomposition, quality judgment |
 | Scaffolder | sonnet | Execution-focused, follows the plan |
 | Domain leads | sonnet | Domain expertise, code review, specialist dispatch |
@@ -110,6 +113,18 @@ Required frontmatter fields: `name`, `description`
 - **"When to Apply" section** — explicit trigger conditions so agents know when to activate
 - **Code examples** — concrete, not abstract. Show the pattern, not just describe it.
 - **Anti-patterns section** — what to avoid and why
+
+### Skills Inventory (25 total)
+
+**Practices (14):** tdd, code-review, error-handling, security-checklist, config-management, e2e-testing, integration-testing, release, project-detection, parallel-git-strategy, shared-contracts, dependency-evaluation, observability, migration-safety
+
+**Frontend (4):** react-patterns, composition-patterns, accessibility, performance
+
+**Backend (2):** api-design, auth-patterns
+
+**Infra (2):** docker-best-practices, ci-cd-patterns
+
+**General (3):** git-workflow, debugging, documentation
 
 ## MCP Servers
 
@@ -282,9 +297,12 @@ Types: `feat`, `fix`, `refactor`, `docs`, `chore`, `test`
 
 ## Key Design Decisions
 
+- **Dispatcher as default entry point** — configured in `settings.json`; reads `.coding-agent/` state and routes to the right phase without human needing to know where they are
 - **File-based coordination** — agents share context via `.coding-agent/` artifacts, not message passing
 - **Phase agents invoked by human** — human controls flow, approves at gates (spec, plan, final review)
 - **Domain leads between coordinator and specialists** — provides domain expertise and code review layer
+- **Parallel-git-strategy** — branch-per-domain pattern allows concurrent agent work without conflicts; coordinator assigns branches, leads own their slice, coordinator merges at the end
+- **Shared contracts** — `shared-contracts` skill enforces a single source of truth for types/interfaces consumed by both frontend and backend, preventing drift
 - **Plugin is self-contained** — no dependencies on other Claude Code plugins
 - **External skills complement, don't replace** — ecosystem skills installed alongside, not bundled
 - **Priority-ranked rules** in skills — CRITICAL > HIGH > MEDIUM > LOW with ID prefixes for cross-referencing

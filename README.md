@@ -1,6 +1,6 @@
 # coding-agent
 
-A Claude Code plugin that provides a layered hierarchy of AI agents for building software applications end-to-end. Supports greenfield and brownfield projects.
+A Claude Code plugin that provides a layered hierarchy of AI agents for building software applications end-to-end. Supports greenfield and brownfield projects. The **dispatcher** agent is the default entry point — it auto-routes to the correct phase based on project state.
 
 ## What It Does
 
@@ -18,13 +18,17 @@ Takes a project from idea to shipped code through a structured agent pipeline:
 Human (approves at gates: spec, plan, final review)
   │
   ▼
+Dispatcher (Sonnet) ─── auto-routes to correct phase based on project state
+  │
+  ▼
 Phase Agents (Opus) ─── Brainstormer → Planner → Scaffolder → Impl Coordinator → Reviewer
   │
   ▼
 Domain Leads (Sonnet) ─ Frontend Lead │ Backend Lead │ Infra Lead │ Data Lead
   │
   ▼
-Specialists (Sonnet) ── React, Next.js, CSS/Tailwind, Node.js, Python, Go,
+Specialists (Sonnet) ── React, Next.js, CSS/Tailwind, TypeScript,
+                        Node.js, Python, Go, Testing,
                         AWS, Docker, Terraform, Postgres, Redis
 
 Utility Agents (Sonnet) ─ Researcher │ Debugger │ Doc Writer
@@ -70,15 +74,16 @@ claude "Scaffold the project"
 claude "Start implementation"
 ```
 
-## Agents (23)
+## Agents (26)
 
-### Phase Agents (5) — Lifecycle Orchestration
+### Phase Agents (6) — Lifecycle Orchestration
 | Agent | Model | Purpose |
 |-------|-------|---------|
+| dispatcher | sonnet | **Default entry point** — reads project state and auto-routes to the correct phase |
 | brainstormer | opus | Idea → spec through collaborative dialogue |
 | planner | opus | Spec → task plan with dependencies and domain assignments |
 | scaffolder | sonnet | Project setup, config, tooling, CLAUDE.md creation |
-| impl-coordinator | opus | Dispatches domain leads, manages parallelism (max 3-4), tracks progress |
+| impl-coordinator | opus | Dispatches domain leads, manages parallelism (max 3-4), tracks progress. Supports session recovery (resumes from progress.md), re-planning protocol (amends plan mid-implementation), and model selection guidance for cost optimization |
 | reviewer | opus | Cross-cutting review: security, integration, quality, browser validation |
 
 ### Domain Leads (4) — Domain Expertise & Review
@@ -89,13 +94,16 @@ claude "Start implementation"
 | infra-lead | sonnet | Cloud, CI/CD, containers | aws, docker, terraform |
 | data-lead | sonnet | Database, migrations, caching | postgres, redis |
 
-### Specialists (11) — Focused Implementation
+### Specialists (13) — Focused Implementation
 | Domain | Agents |
 |--------|--------|
-| Frontend | react, nextjs, css-tailwind |
-| Backend | nodejs, python, go |
+| Frontend | react, nextjs, css-tailwind, testing |
+| Backend | nodejs, python, go, typescript |
 | Infra | aws, docker, terraform |
 | Data | postgres, redis |
+
+- **typescript** (backend domain) — language-level typing, generics, utility types
+- **testing** (frontend domain) — test architecture, Vitest, RTL, Playwright
 
 ### Utility Agents (3) — Self-Service Support
 | Agent | Purpose | Constraint |
@@ -104,9 +112,9 @@ claude "Start implementation"
 | debugger | Error diagnosis, root cause analysis | Returns diagnosis, not fixes |
 | doc-writer | README, API docs, changelogs | Writes docs only, never app code |
 
-## Skills (20)
+## Skills (25)
 
-### Practices (8)
+### Practices (14)
 | Skill | What It Covers |
 |-------|---------------|
 | tdd | RED-GREEN-REFACTOR cycle, test design, when to break the rules |
@@ -118,6 +126,11 @@ claude "Start implementation"
 | integration-testing | API emulation, contract testing, service containers, network failure testing |
 | release | Automated release — version bump, changelog, tag, push from conventional commits |
 | project-detection | 7-step tech stack detection before starting work |
+| parallel-git-strategy | Branch-per-domain for concurrent agent work (5 GIT rules) |
+| shared-contracts | Prevent frontend/backend type drift (8 SHR rules) |
+| dependency-evaluation | Structured library selection framework (10 DEP rules) |
+| observability | Logging, health checks, error tracking, monitoring (11 OBS rules) |
+| migration-safety | Zero-downtime database migration patterns (9 MIG rules) |
 
 ### Frontend (4)
 | Skill | What It Covers |
@@ -234,15 +247,21 @@ claude --debug --plugin-dir .
 ```
 codingAgent/
 ├── .claude-plugin/plugin.json        # Plugin manifest (name: coding-agent)
-├── agents/                           # 23 agent definitions
-│   ├── phase/                        # brainstormer, planner, scaffolder, impl-coordinator, reviewer
+├── agents/                           # 26 agent definitions
+│   ├── phase/                        # dispatcher, brainstormer, planner, scaffolder, impl-coordinator, reviewer
 │   ├── leads/                        # frontend-lead, backend-lead, infra-lead, data-lead
-│   ├── specialists/                  # frontend/ backend/ infra/ data/ (11 total)
+│   ├── specialists/                  # frontend/ backend/ infra/ data/ (13 total)
+│   │   ├── frontend/                 # react, nextjs, css-tailwind, testing
+│   │   ├── backend/                  # nodejs, python, go, typescript
+│   │   ├── infra/                    # aws, docker, terraform
+│   │   └── data/                     # postgres, redis
 │   └── utility/                      # researcher, debugger, doc-writer
-├── skills/                           # 20 skill definitions
+├── skills/                           # 25 skill definitions
 │   ├── practices/                    # tdd, code-review, error-handling, security-checklist,
 │   │                                 # config-management, e2e-testing, integration-testing,
-│   │                                 # release, project-detection
+│   │                                 # release, project-detection, parallel-git-strategy,
+│   │                                 # shared-contracts, dependency-evaluation, observability,
+│   │                                 # migration-safety
 │   ├── frontend/                     # react-patterns, composition-patterns, accessibility, performance
 │   ├── backend/                      # api-design, auth-patterns
 │   ├── infra/                        # docker-best-practices, ci-cd-patterns
@@ -253,7 +272,7 @@ codingAgent/
 │   └── setup-external-skills.sh      # Install ecosystem skills
 ├── hooks/hooks.json                  # PostToolUse auto-validation, SubagentStart logging
 ├── .mcp.json                         # Context7, Exa, Playwright, Chrome DevTools
-├── settings.json                     # Default agent: impl-coordinator
+├── settings.json                     # Default agent: dispatcher
 ├── .gitignore                        # .coding-agent/, .superpowers/
 ├── CLAUDE.md                         # Project conventions (this file)
 └── README.md                         # User-facing documentation
