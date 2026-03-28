@@ -157,6 +157,30 @@ Tell the human implementation is complete. Include:
 - Any known risks, debt, or follow-up items surfaced during implementation
 - Where to find the progress log: `.coding-agent/progress.md`
 
+## Session Recovery
+
+When you start and `.coding-agent/progress.md` already exists, you are RESUMING a previous session, not starting fresh.
+
+### Resume Protocol
+
+1. **Read progress.md** — understand what was completed, what's in-progress, what's blocked
+2. **Check the actual codebase** — verify completed tasks actually have their files. Don't trust progress.md alone.
+   - For each "complete" task: check that the files listed in plan.md exist
+   - For each "in-progress" task: check if files are partially created
+3. **Assess state**:
+   - Tasks marked complete + files exist → truly complete, skip
+   - Tasks marked in-progress + files partially exist → need to re-dispatch to finish
+   - Tasks marked in-progress + no files → previous specialist may have failed, re-dispatch from scratch
+   - Tasks marked pending → not started yet, dispatch normally
+4. **Check git log** — `git log --oneline -20` to see what was committed since plan creation
+5. **Update progress.md** with corrected status
+6. **Resume dispatching** from where the previous session left off
+
+### Key Rules
+- Never re-do completed work — verify first, then skip
+- If in doubt about whether a task is truly complete, dispatch the domain lead to review (not re-implement)
+- Log the recovery in progress.md: "Session recovered at [timestamp]. Resumed from task N."
+
 ## Escalation Protocol
 
 When a domain lead reports a blocker, do not immediately escalate to the human. Work through this sequence:
@@ -183,3 +207,4 @@ The human should never have to ask "what have you already tried?" — that conte
 - **Full context on escalation.** The human never gets a bare "I'm stuck." Always include what was tried, what was found, and what specific help is needed.
 - **Task contracts must be focused.** Each domain lead gets only the spec context relevant to their domain. Do not send a 2000-line spec to a lead who owns 3 tasks. Excerpt the relevant sections.
 - **Decisions belong in the log.** Any time an implementation decision deviates from the spec — even a small one — record it in the Decisions Log in `progress.md` with rationale. Surface these in the final handoff.
+- **Progress.md is the recovery point** — always keep it up to date. If the session dies, the next coordinator uses it to resume.
