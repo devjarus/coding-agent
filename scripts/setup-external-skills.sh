@@ -36,13 +36,6 @@ npx skills add vercel-labs/emulate -g -y -a claude-code 2>&1 | tail -3
 green "  ✔ Emulate skills installed"
 echo ""
 
-# ─── Baoyu Release Skills ───────────────────────────────────────────
-bold "▸ Baoyu Release Skills"
-dim "  Automated release pipeline — version bump, changelog, tag, push"
-npx skills add jimliu/baoyu-skills --skill release-skills -g -y -a claude-code 2>&1 | tail -3
-green "  ✔ Release skills installed"
-echo ""
-
 # ─── Anthropic Official Skills ──────────────────────────────────────
 bold "▸ Anthropic Official Skills"
 dim "  Claude API, MCP builder, webapp testing, frontend design"

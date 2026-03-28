@@ -52,7 +52,6 @@ The plugin works standalone, but is designed to complement these ecosystem skill
 npx skills add vercel-labs/agent-skills --all -g -y -a claude-code  # React, web design, deploy
 npx skills add shadcn/ui -g -y -a claude-code                       # shadcn/ui components
 npx skills add vercel-labs/emulate -g -y -a claude-code              # API emulators for testing
-npx skills add jimliu/baoyu-skills --skill release-skills -g -y -a claude-code  # Automated releases
 npx skills add anthropics/skills -g -y -a claude-code                # Playwright testing, frontend design
 ```
 

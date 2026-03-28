@@ -242,7 +242,6 @@ Or install individually:
 npx skills add vercel-labs/agent-skills --all -g -y -a claude-code
 npx skills add shadcn/ui -g -y -a claude-code
 npx skills add vercel-labs/emulate -g -y -a claude-code
-npx skills add jimliu/baoyu-skills --skill release-skills -g -y -a claude-code
 npx skills add anthropics/skills -g -y -a claude-code
 ```
 
@@ -253,7 +252,6 @@ npx skills add anthropics/skills -g -y -a claude-code
 | **vercel-labs/agent-skills** | react-best-practices, composition-patterns, web-design-guidelines, deploy-to-vercel | React/Next.js performance rules (65 prioritized), component architecture, UI accessibility audit, Vercel deployment |
 | **shadcn/ui** | shadcn | Component library management — detects project config, adds/searches components, enforces composition patterns, theming |
 | **vercel-labs/emulate** | emulate, github, google, vercel | Local stateful API emulators for integration testing without network access |
-| **jimliu/baoyu-skills** | release-skills | Automated release pipeline — version bump from conventional commits, multi-language changelog, tagging, push with hooks |
 | **anthropics/skills** | claude-api, mcp-builder, webapp-testing, frontend-design | Claude API patterns, MCP server building, Playwright testing, production UI design |
 
 ### How They Coexist
@@ -275,4 +273,3 @@ npx skills add anthropics/skills -g -y -a claude-code
 | emulate | All specialists (integration tests), Debugger |
 | webapp-testing | Reviewer, Frontend lead |
 | frontend-design | Frontend specialists |
-| release-skills | Impl Coordinator (post-implementation), Infra lead |
