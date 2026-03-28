@@ -107,6 +107,14 @@ After each specialist returns, review their work before accepting it. Do not upd
 - [ ] **Tests passing** — Run `bash` to execute the test suite. All tests must pass. No console errors or warnings introduced.
 - [ ] **No regressions** — Run the full test suite, not just the new tests. Existing tests must still pass.
 
+**Browser validation (when a dev server is running):**
+
+- [ ] **Smoke test** — Use Playwright MCP: `browser_navigate` to the page, `browser_snapshot` to verify structure, `browser_verify_text_visible` for key content
+- [ ] **User flow** — Walk through the feature's happy path using `browser_click`, `browser_fill_form`, `browser_type`, then assert with `browser_verify_*` tools
+- [ ] **Visual check** — `browser_take_screenshot` for evidence and visual regression comparison
+- [ ] **Lighthouse audit** — Use Chrome DevTools MCP: `lighthouse_audit` to check performance, accessibility, best practices scores
+- [ ] **Console clean** — Use Chrome DevTools MCP: `list_console_messages` to verify no errors or warnings
+
 If any check fails, send the specialist a **revision work order** that identifies exactly which checks failed, what was found, and what must be fixed. Do not guess — quote the specific failing line or test output.
 
 If failures persist after one revision and appear to be caused by a deeper issue (wrong dependency version, misunderstood API, environment problem), dispatch the **debugger** before sending another revision.

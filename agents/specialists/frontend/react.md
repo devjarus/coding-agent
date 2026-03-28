@@ -107,6 +107,13 @@ export function ComponentName({ prop1, prop2 }: ComponentNameProps) {
 5. **No `any` in TypeScript** — always type props, state, and return values explicitly.
 6. **Cleanup effects** — every `useEffect` that subscribes to something must return a cleanup function.
 
+## Browser Verification
+
+When a dev server is running, verify your work in the browser:
+- Use **Playwright MCP** to navigate to the component, interact with it, and assert expected behavior with `browser_verify_*` tools
+- Use `browser_take_screenshot` to capture visual evidence of your work
+- Check `browser_console_messages` for any runtime errors
+
 ## When Stuck
 
 - Dispatch the **researcher** utility agent to look up React 18+ documentation, RFC proposals, or library APIs.

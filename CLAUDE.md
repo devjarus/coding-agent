@@ -210,4 +210,17 @@ Types: `feat`, `fix`, `refactor`, `docs`, `chore`, `test`
 - **Phase agents invoked by human** — human controls flow, approves at gates (spec, plan, final review)
 - **Domain leads between coordinator and specialists** — provides domain expertise and code review layer
 - **Plugin is self-contained** — no dependencies on other Claude Code plugins
-- **MCP servers for external data** — Context7 for docs, Exa for web search, Chrome DevTools for frontend
+- **MCP servers for external data** — Context7 for docs, Exa for web search, Playwright for testing, Chrome DevTools for performance/debugging
+
+## MCP Servers
+
+| Server | Package | Purpose | Which Agents |
+|--------|---------|---------|--------------|
+| **Context7** | `@upstash/context7-mcp` | Current library/framework docs | Domain leads, specialists, researcher, scaffolder |
+| **Exa** | `exa-mcp-server` | Web search, code search | Brainstormer, researcher, planner |
+| **Playwright** | `@playwright/mcp` | Browser testing, assertions, tracing | Frontend lead, frontend specialists, reviewer |
+| **Chrome DevTools** | `chrome-devtools-mcp` | Lighthouse audits, performance profiling, network/memory inspection | Frontend lead, reviewer, debugger |
+
+Playwright and Chrome DevTools serve different purposes:
+- **Playwright** — testing flows, assertions (`browser_verify_*`), recording traces. Uses accessibility tree (token-efficient).
+- **Chrome DevTools** — Lighthouse audits, performance traces, memory snapshots, network inspection. Deep browser internals.

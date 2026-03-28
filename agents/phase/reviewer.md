@@ -79,6 +79,19 @@ Run the test suite and examine test quality. Look for:
 - **Test isolation**: Do tests depend on each other's state? Do tests share mutable fixtures without resetting between runs?
 - **Edge cases**: Are boundary conditions tested? Empty inputs, null values, maximum sizes, concurrent requests?
 
+#### Pass 5: Browser Validation (when a dev server is available)
+
+If the project has a running dev server or can be started, perform browser-based validation:
+
+- **Smoke test**: Use Playwright MCP — `browser_navigate` to the app, `browser_snapshot` to verify page structure loads correctly, `browser_verify_text_visible` for key content
+- **User flow verification**: Walk through critical paths described in the spec using `browser_click`, `browser_fill_form`, `browser_type`. Assert expected outcomes with `browser_verify_*` tools
+- **Lighthouse audit**: Use Chrome DevTools MCP — run `lighthouse_audit` and record scores for Performance, Accessibility, Best Practices, SEO. Flag any score below 80.
+- **Console errors**: Use Chrome DevTools MCP — `list_console_messages` to check for JavaScript errors or warnings in the browser console
+- **Network contract validation**: Use Chrome DevTools MCP — `list_network_requests` and `get_network_request` to verify frontend-backend API calls match the expected contracts from the spec
+- **Screenshot evidence**: Use Playwright MCP — `browser_take_screenshot` of key pages/states as visual evidence in the review report
+
+Skip this pass if no dev server is available or the project is backend-only.
+
 ### Step 3: Write the Review Report
 
 Write the complete review to `.coding-agent/review.md`. Create the `.coding-agent/` directory if it does not exist. Overwrite any existing `review.md` — this is the authoritative review for the current implementation.

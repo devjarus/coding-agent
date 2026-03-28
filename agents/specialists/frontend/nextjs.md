@@ -114,6 +114,13 @@ middleware.ts         # Edge middleware
 6. **Metadata on every page** — every route's `page.tsx` must export metadata or `generateMetadata`.
 7. **No direct DB calls from Client Components** — all database or secret-dependent operations go through Server Components, Server Actions, or API routes.
 
+## Browser Verification
+
+When the dev server is running, verify your work in the browser:
+- Use **Playwright MCP** to navigate routes, test SSR/SSG behavior, verify page content with `browser_verify_*` tools
+- Use `browser_take_screenshot` to capture visual evidence
+- Use **Chrome DevTools MCP** `list_network_requests` to verify SSR payloads and API route responses
+
 ## When Stuck
 
 - Dispatch the **researcher** utility agent with a Context7 lookup to get current Next.js 14+ documentation for the specific API or pattern in question.

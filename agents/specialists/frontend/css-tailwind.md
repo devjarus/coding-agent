@@ -128,6 +128,13 @@ export default {
 7. **`focus-visible:` not `focus:`** — use `focus-visible:` for focus ring styles so mouse users are not shown focus indicators.
 8. **`prefers-reduced-motion` always** — any animation or transition must have a safe fallback for users who prefer reduced motion.
 
+## Browser Verification
+
+When the dev server is running, verify your styling in the browser:
+- Use **Playwright MCP** `browser_resize` to test at mobile (375px), tablet (768px), and desktop (1280px) widths
+- Use `browser_take_screenshot` at each breakpoint for visual evidence
+- Use **Chrome DevTools MCP** `lighthouse_audit` to verify accessibility scores (contrast, focus indicators)
+
 ## When Stuck
 
 - Dispatch the **researcher** utility agent to look up Tailwind CSS configuration options, plugin APIs, or CSS specification behavior.
