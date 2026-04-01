@@ -1,8 +1,11 @@
 {
   "name": "coding-agent",
   "version": "0.1.0",
-  "description": "Multi-agent software development system with layered hierarchy — phase agents, domain leads, specialist workers, and utility agents for building software end-to-end",
+  "description": "Multi-agent software development system — 7 agents, 45 skills. Dispatcher auto-routes through brainstormer, planner, scaffolder, coordinator, and reviewer phases.",
   "author": {
     "name": "suraj-devloper"
+  },
+  "settings": {
+    "agent": "coding-agent:dispatcher"
   }
 }

@@ -4,13 +4,6 @@
       "command": "npx",
       "args": ["-y", "@upstash/context7-mcp@latest"]
     },
-    "exa": {
-      "command": "npx",
-      "args": ["-y", "exa-mcp-server"],
-      "env": {
-        "EXA_API_KEY": "${user_config.exa_api_key}"
-      }
-    },
     "playwright": {
       "command": "npx",
       "args": ["@playwright/mcp@latest", "--caps=vision,testing,tracing"]
@@ -18,6 +11,10 @@
     "chrome-devtools": {
       "command": "npx",
       "args": ["-y", "chrome-devtools-mcp@latest"]
+    },
+    "deepwiki": {
+      "command": "npx",
+      "args": ["-y", "@anthropic-ai/deepwiki-mcp@latest"]
     }
   }
 }

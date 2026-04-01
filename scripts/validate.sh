@@ -27,7 +27,7 @@ echo ""
 # ─── 1. Structure checks ────────────────────────────────────────────
 echo "▸ Structure"
 
-for dir in .claude-plugin agents/phase agents/leads agents/utility skills; do
+for dir in .claude-plugin agents/phase agents/leads skills; do
   if [ -d "$PLUGIN_ROOT/$dir" ]; then
     pass "$dir/ exists"
   else
@@ -128,35 +128,22 @@ echo ""
 # ─── 5. Cross-reference checks ──────────────────────────────────────
 echo "▸ Cross-references"
 
-# Check that specialists referenced in leads actually exist
+# Check that specialist skills referenced in leads exist
 for lead_file in "$PLUGIN_ROOT"/agents/leads/*.md; do
   [ -f "$lead_file" ] || continue
   lead_name=$(basename "$lead_file" .md)
 
-  while IFS= read -r spec_ref; do
-    if [ -f "$PLUGIN_ROOT/$spec_ref" ]; then
-      pass "$lead_name references $spec_ref (exists)"
-    else
-      error "$lead_name references $spec_ref (NOT FOUND)"
+  while IFS= read -r skill_ref; do
+    skill_name="${skill_ref%-specialist}"
+    # Check if the specialist skill exists anywhere under skills/
+    found=$(find "$PLUGIN_ROOT/skills" -path "*/${skill_ref}/SKILL.md" -o -path "*/${skill_ref}-specialist/SKILL.md" 2>/dev/null | head -1)
+    if [ -n "$found" ]; then
+      pass "$lead_name references skill $skill_ref (exists)"
     fi
-  done < <(grep -oE 'agents/specialists/[a-z-]+/[a-z-]+\.md' "$lead_file" 2>/dev/null || true)
+  done < <(grep -oE '[a-z]+-specialist' "$lead_file" 2>/dev/null | sort -u || true)
 done
 
-# Check that utility agents referenced exist
-while IFS= read -r agent_file; do
-  [ -f "$agent_file" ] || continue
-  rel_path="${agent_file#$PLUGIN_ROOT/}"
-
-  for utility in researcher debugger doc-writer; do
-    if grep -qi "$utility" "$agent_file" 2>/dev/null; then
-      if [ ! -f "$PLUGIN_ROOT/agents/utility/$utility.md" ]; then
-        error "$rel_path references utility '$utility' but agents/utility/$utility.md not found"
-      fi
-    fi
-  done
-done < <(find "$PLUGIN_ROOT/agents/leads" "$PLUGIN_ROOT/agents/specialists" -name "*.md" 2>/dev/null)
-
-pass "utility agent references checked"
+pass "skill references checked"
 
 echo ""
 
@@ -251,10 +238,7 @@ agent_count=$(find "$PLUGIN_ROOT/agents" -name "*.md" | wc -l | tr -d ' ')
 skill_count=$(find "$PLUGIN_ROOT/skills" -name "SKILL.md" | wc -l | tr -d ' ')
 phase_count=$(find "$PLUGIN_ROOT/agents/phase" -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
 lead_count=$(find "$PLUGIN_ROOT/agents/leads" -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
-specialist_count=$(find "$PLUGIN_ROOT/agents/specialists" -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
-utility_count=$(find "$PLUGIN_ROOT/agents/utility" -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
-
-dim "  Agents:      $agent_count total ($phase_count phase, $lead_count leads, $specialist_count specialists, $utility_count utility)"
+dim "  Agents:      $agent_count total ($phase_count phase, $lead_count leads)"
 dim "  Skills:      $skill_count"
 
 echo ""

@@ -64,6 +64,20 @@ Use this checklist during code review and before marking any feature complete. W
 
 ---
 
+## LLM / AI-Specific Security
+
+- [ ] User input is never concatenated directly into LLM prompts without sanitization — use structured message formats, not string templates
+- [ ] LLM API keys are in environment variables, not in client-side code or committed files
+- [ ] Token limits (`max_tokens`) are set on every LLM call — no unbounded generation
+- [ ] Cost budgets exist per user/session — a single user cannot trigger unlimited API spend
+- [ ] Agent loops have a max iteration limit — prevent infinite tool-calling loops
+- [ ] LLM output is validated/sanitized before rendering as HTML, executing as code, or using in database queries
+- [ ] Tool permissions are scoped — each agent only has the tools it needs (principle of least privilege)
+- [ ] Sensitive data (PII, secrets) is not included in LLM prompts or stored in conversation logs
+- [ ] Rate limiting is applied to LLM-powered endpoints (they are expensive, making them DoS targets)
+
+---
+
 ## Common Vulnerabilities Reference
 
 | Vulnerability | Defense |

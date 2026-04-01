@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "echo \"[$(date '+%H:%M:%S')] Agent dispatched: $CLAUDE_SUBAGENT_NAME\" >> .coding-agent/agent-log.txt"
+            "command": "AGENT_NAME=$(cat /dev/stdin | jq -r '.agent_type // \"unknown\"') && echo \"[$(date '+%H:%M:%S')] Agent dispatched: $AGENT_NAME\" >> .coding-agent/agent-log.txt"
           }
         ]
       }
