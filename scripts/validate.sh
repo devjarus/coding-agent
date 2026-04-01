@@ -27,7 +27,7 @@ echo ""
 # ─── 1. Structure checks ────────────────────────────────────────────
 echo "▸ Structure"
 
-for dir in .claude-plugin agents/phase agents/leads skills; do
+for dir in .claude-plugin agents skills; do
   if [ -d "$PLUGIN_ROOT/$dir" ]; then
     pass "$dir/ exists"
   else
@@ -129,7 +129,7 @@ echo ""
 echo "▸ Cross-references"
 
 # Check that specialist skills referenced in leads exist
-for lead_file in "$PLUGIN_ROOT"/agents/leads/*.md; do
+for lead_file in "$PLUGIN_ROOT"/agents/domain-lead.md; do
   [ -f "$lead_file" ] || continue
   lead_name=$(basename "$lead_file" .md)
 
@@ -159,7 +159,7 @@ else
   done
 fi
 
-coord_refs=$(grep -rl "\.coding-agent/" "$PLUGIN_ROOT/agents/phase/" 2>/dev/null | wc -l | tr -d ' ')
+coord_refs=$(grep -rl "\.coding-agent/" "$PLUGIN_ROOT/agents/" 2>/dev/null | wc -l | tr -d ' ')
 if [ "$coord_refs" -gt 0 ]; then
   pass "phase agents reference .coding-agent/ for artifact coordination"
 else
@@ -171,34 +171,29 @@ echo ""
 # ─── 7. Model tier checks ───────────────────────────────────────────
 echo "▸ Model tier conventions"
 
-for phase_agent in "$PLUGIN_ROOT"/agents/phase/*.md; do
-  [ -f "$phase_agent" ] || continue
-  name=$(basename "$phase_agent" .md)
-  model=$(sed -n '/^---$/,/^---$/p' "$phase_agent" | grep "^model:" | head -1 | sed 's/model: *//')
+for agent_file in "$PLUGIN_ROOT"/agents/*.md; do
+  [ -f "$agent_file" ] || continue
+  name=$(basename "$agent_file" .md)
+  model=$(sed -n '/^---$/,/^---$/p' "$agent_file" | grep "^model:" | head -1 | sed 's/model: *//')
 
   case "$name" in
-    brainstormer|planner|impl-coordinator|reviewer)
+    orchestrator|brainstormer|planner|reviewer)
       if [ "$model" = "opus" ]; then
         pass "$name uses opus (correct for decision-making agent)"
       else
         warn "$name uses $model (expected opus for decision-making agent)"
       fi
       ;;
-    scaffolder)
-      if [ "$model" = "sonnet" ]; then
-        pass "$name uses sonnet (correct for execution agent)"
-      else
-        warn "$name uses $model (expected sonnet for execution agent)"
-      fi
-      ;;
+    domain-lead)
+      ;; # checked separately below
   esac
 done
 
-for lead_agent in "$PLUGIN_ROOT"/agents/leads/*.md; do
-  [ -f "$lead_agent" ] || continue
-  name=$(basename "$lead_agent" .md)
-  model=$(sed -n '/^---$/,/^---$/p' "$lead_agent" | grep "^model:" | head -1 | sed 's/model: *//')
-
+# Check domain-lead uses sonnet
+for agent_file in "$PLUGIN_ROOT"/agents/domain-lead.md; do
+  [ -f "$agent_file" ] || continue
+  name=$(basename "$agent_file" .md)
+  model=$(sed -n '/^---$/,/^---$/p' "$agent_file" | grep "^model:" | head -1 | sed 's/model: *//')
   if [ "$model" = "sonnet" ]; then
     pass "$name uses sonnet (correct for domain lead)"
   else
@@ -236,9 +231,7 @@ echo "▸ Inventory"
 
 agent_count=$(find "$PLUGIN_ROOT/agents" -name "*.md" | wc -l | tr -d ' ')
 skill_count=$(find "$PLUGIN_ROOT/skills" -name "SKILL.md" | wc -l | tr -d ' ')
-phase_count=$(find "$PLUGIN_ROOT/agents/phase" -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
-lead_count=$(find "$PLUGIN_ROOT/agents/leads" -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
-dim "  Agents:      $agent_count total ($phase_count phase, $lead_count leads)"
+dim "  Agents:      $agent_count"
 dim "  Skills:      $skill_count"
 
 echo ""

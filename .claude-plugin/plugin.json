@@ -1,11 +1,11 @@
 {
   "name": "coding-agent",
-  "version": "0.1.0",
-  "description": "Multi-agent software development system — 7 agents, 45 skills. Dispatcher auto-routes through brainstormer, planner, scaffolder, coordinator, and reviewer phases.",
+  "version": "1.0.0",
+  "description": "Multi-agent software development system — orchestrator dispatches brainstormer, planner, domain-leads, and reviewer to build software end-to-end.",
   "author": {
     "name": "suraj-devloper"
   },
   "settings": {
-    "agent": "coding-agent:dispatcher"
+    "agent": "coding-agent:orchestrator"
   }
 }
