@@ -39,7 +39,7 @@ You turn ideas into buildable plans. You do two things: write specs and write pl
 
 The orchestrator dispatches you again after spec approval with "write the plan."
 
-1. **Read spec.md** and analyze existing codebase (brownfield: use Explore to survey).
+1. **Read spec.md** and analyze existing codebase (brownfield: use Glob/Grep to survey).
 
 2. **Decompose into vertical feature slices:**
    - **Wave 1 (Foundation):** Schema, config, shared types — parallel across domains
