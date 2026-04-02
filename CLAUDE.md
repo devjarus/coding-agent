@@ -14,8 +14,9 @@ Orchestrator (main thread) — dispatches, validates artifacts, tracks progress
 
 **Constraints respected:**
 - Subagents cannot spawn subagents → all dispatches are 1 level deep
-- Plugin agents cannot use mcpServers in frontmatter → all MCP in `.mcp.json`
-- Agents CAN use Agent(Explore) to dispatch the built-in Explore agent for codebase research
+- Plugin agents cannot use mcpServers/hooks/permissionMode in frontmatter → all MCP in `.mcp.json`
+- Subagents cannot use Agent(Explore) → they use Read/Glob/Grep directly for codebase exploration
+- Only the orchestrator (main thread) has the Agent tool
 
 ## Artifact Protocol
 
@@ -34,10 +35,10 @@ If an artifact is missing required sections, the orchestrator re-dispatches the 
 
 | Agent | Model | Role | Built-in Tools Used |
 |-------|-------|------|-------------------|
-| **orchestrator** | opus | Dispatches, validates artifacts, tracks progress. Never writes code. | Agent (dispatches subagents) |
-| **architect** | opus | Expands ideas, researches, designs. Writes spec + plan. | Agent(Explore), AskUserQuestion |
-| **implementor** | sonnet | Writes code by domain. Applies specialist skills. Tests first. | Agent(Explore) |
-| **evaluator** | opus | Independent review. Tests running app. Finds what builder missed. | Agent(Explore), Playwright MCP |
+| **orchestrator** | opus | Dispatches, validates artifacts, tracks progress. Never writes code. | Agent (only agent that dispatches) |
+| **architect** | opus | Expands ideas, researches, designs. Writes spec + plan. | AskUserQuestion, Glob/Grep for research |
+| **implementor** | sonnet | Writes code by domain. Applies specialist skills. Tests first. | Glob/Grep for exploration, Bash for tests |
+| **evaluator** | opus | Independent review. Tests running app. Finds what builder missed. | Bash for tests, Playwright MCP |
 
 ## Pipeline Flow
 

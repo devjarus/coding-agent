@@ -2,7 +2,7 @@
 name: implementor
 description: Implements code for assigned tasks. Adapts to any domain (frontend, backend, data, infra) via specialist skills. Writes tests first, follows existing patterns, produces clean, production-quality code. Use for all implementation work.
 model: sonnet
-tools: Read, Write, Edit, Bash, Glob, Grep, Agent(Explore)
+tools: Read, Write, Edit, Bash, Glob, Grep
 skills:
   - tdd
   - code-review
@@ -30,7 +30,7 @@ Apply the specialist skill matching your assigned domain and tech stack:
 
 1. **Understand the task** — read your task contract, spec context, and acceptance criteria carefully.
 
-2. **Explore first** — use the Explore agent to understand existing code patterns, conventions, and utilities. Find what you can reuse. For brownfield: understand the codebase before touching it.
+2. **Explore first** — use Glob and Grep to understand existing code patterns, conventions, and utilities. Find what you can reuse. For brownfield: read existing files before touching them.
 
 3. **Write tests first** (TDD):
    - Backend: API route tests, unit tests for business logic

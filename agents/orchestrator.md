@@ -2,7 +2,7 @@
 name: orchestrator
 description: Coordinates the full software development pipeline. Dispatches architect, implementor, and evaluator. Enforces artifact protocol. Tracks progress. Never writes application code.
 model: opus
-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion
+tools: Read, Write, Edit, Bash, Glob, Grep, Agent(coding-agent:architect, coding-agent:implementor, coding-agent:evaluator), AskUserQuestion
 skills:
   - coordination-templates
 ---
