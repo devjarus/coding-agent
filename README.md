@@ -1,24 +1,16 @@
 # coding-agent
 
-A Claude Code plugin for building software end-to-end. 5 agents, 45 skills.
-
-## How It Works
+A Claude Code plugin for building software end-to-end. 4 agents, 45 skills.
 
 ```
-You: "Build me a task management API with a React dashboard"
+You: "Build me a task management API"
   │
-Orchestrator (main thread)
-  ├── Brainstormer — asks questions, writes spec → you approve
-  ├── Planner — creates feature slices → you approve
-  ├── Scaffolds project (greenfield)
-  ├── Domain Lead (backend) ─┐
-  ├── Domain Lead (frontend) ─┼── implements code, writes tests
-  ├── Domain Lead (data) ────┘
-  ├── Reviewer — tests the app, reviews code
+Orchestrator
+  ├── Architect — asks questions, writes spec (you approve), writes plan with eval criteria (you approve)
+  ├── Implementor — writes code + tests per domain (frontend/backend/data/infra)
+  ├── Evaluator — independent review against spec + eval criteria
   └── Commits → done
 ```
-
-One orchestrator, flat dispatch, max 1 level of subagents. File-based handoffs via `.coding-agent/`.
 
 ## Install
 
@@ -26,35 +18,30 @@ One orchestrator, flat dispatch, max 1 level of subagents. File-based handoffs v
 claude --plugin-dir /path/to/codingAgent
 ```
 
-Or enable in a project (`.claude/settings.local.json`):
-```json
-{
-  "agent": "coding-agent:orchestrator",
-  "enabledPlugins": { "coding-agent@/path/to/codingAgent": true }
-}
-```
-
 ## Agents
 
 | Agent | Role |
 |-------|------|
-| **orchestrator** | Main thread. Dispatches everything. Never writes code. |
-| **brainstormer** | Expands ideas → spec. Asks structured questions. |
-| **planner** | Spec → plan with vertical feature slices. |
-| **domain-lead** | Implements code. Adapts by domain (frontend/backend/data/infra). |
-| **reviewer** | Independent review. Tests running app. Finds what builders missed. |
+| **Orchestrator** | Dispatches agents, validates artifacts, tracks progress. Never writes code. |
+| **Architect** | Expands ideas → spec → plan with evaluation criteria. Two human approval gates. |
+| **Implementor** | Writes code by domain. Applies specialist skills (react, nodejs, postgres, etc.). Tests first. |
+| **Evaluator** | Independent review. Tests against plan's eval criteria. Finds what builders missed. |
+
+## How Artifacts Flow
+
+```
+Architect writes spec.md → Human approves → Architect writes plan.md → Human approves
+  → Implementor reads plan, writes code → Evaluator reads spec + plan, reviews code
+  → PASS: commit | FAIL: Implementor fixes → Evaluator re-reviews
+```
+
+All artifacts in `.coding-agent/`. Orchestrator validates each before advancing.
 
 ## Skills (45)
 
-Domain leads apply specialist skills based on their assigned domain:
+Implementor adapts by domain:
 - **Frontend:** react, nextjs, css-tailwind, testing, ui-design, generative-ui, assistant-chat-ui
 - **Backend:** nodejs, python, go, typescript, agent-frameworks, llm-integration
-- **Data:** postgres, redis
+- **Data:** postgres, redis, migration-safety
 - **Infra:** aws, docker, terraform, deployment-patterns
-- **Always applied:** tdd, code-review, security-checklist, observability
-
-## Validation
-
-```bash
-./scripts/validate.sh && claude plugin validate .
-```
+- **Always:** tdd, code-review, security-checklist, observability
