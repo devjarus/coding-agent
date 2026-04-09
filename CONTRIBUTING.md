@@ -21,7 +21,7 @@ Thanks for your interest in improving the plugin. This project has been shaped b
 No build step. Clone, edit, test.
 
 ```bash
-git clone https://github.com/your-username/coding-agent
+git clone https://github.com/devjarus91/coding-agent
 cd coding-agent
 
 # Point Claude Code at your local copy
@@ -116,7 +116,7 @@ Agent misbehavior bugs should include the relevant agent prompt and which step w
 
 ## Questions
 
-Open a [Discussion](https://github.com/your-username/coding-agent/discussions).
+Open a [Discussion](https://github.com/devjarus91/coding-agent/discussions).
 
 ## License
 

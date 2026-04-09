@@ -81,7 +81,7 @@ Skills reference and recommend patterns from many libraries. Credit to their mai
 
 ## Contributors
 
-See the [contributors graph](https://github.com/your-username/coding-agent/graphs/contributors).
+See the [contributors graph](https://github.com/devjarus91/coding-agent/graphs/contributors).
 
 ## License
 

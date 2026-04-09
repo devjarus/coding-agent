@@ -4,8 +4,10 @@
   "description": "Multi-agent software development system — 5 agents (orchestrator, architect, implementor, evaluator, debugger) dispatch structured pipelines from idea to shipped code. Includes 54 specialist skills, deterministic pipeline gates, and real runtime testing via Playwright/simulator MCPs.",
   "author": {
     "name": "Suraj",
-    "url": "https://github.com/your-username/coding-agent"
+    "email": "devjarus91@gmail.com"
   },
+  "homepage": "https://github.com/devjarus91/coding-agent#readme",
+  "repository": "https://github.com/devjarus91/coding-agent",
   "license": "MIT",
   "keywords": [
     "multi-agent",
@@ -13,7 +15,9 @@
     "claude-code",
     "coding-agent",
     "pipeline",
-    "tdd"
+    "tdd",
+    "code-generation",
+    "agent-orchestration"
   ],
   "settings": {
     "agent": "coding-agent:orchestrator"
