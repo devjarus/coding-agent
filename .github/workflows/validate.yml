@@ -1,0 +1,70 @@
+name: Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  validate:
+    name: Validate plugin structure
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check required files exist
+        run: |
+          test -f .claude-plugin/plugin.json
+          test -f .mcp.json
+          test -f CLAUDE.md
+          test -f README.md
+          test -f LICENSE
+          test -f CONTRIBUTING.md
+          test -f AGENTS.md
+
+      - name: Validate plugin.json
+        run: |
+          python3 -c "
+          import json, sys
+          with open('.claude-plugin/plugin.json') as f:
+              p = json.load(f)
+          assert 'name' in p, 'plugin.json missing name'
+          assert 'version' in p, 'plugin.json missing version'
+          assert 'description' in p, 'plugin.json missing description'
+          print(f'plugin.json valid: {p[\"name\"]} v{p[\"version\"]}')
+          "
+
+      - name: Validate .mcp.json
+        run: |
+          python3 -c "
+          import json
+          with open('.mcp.json') as f:
+              m = json.load(f)
+          assert 'mcpServers' in m, '.mcp.json missing mcpServers'
+          print(f'MCP servers: {list(m[\"mcpServers\"].keys())}')
+          "
+
+      - name: Validate agent frontmatter
+        run: |
+          for f in agents/*.md; do
+            head -1 "$f" | grep -q "^---$" || { echo "$f missing frontmatter"; exit 1; }
+            grep -q "^name:" "$f" || { echo "$f missing name"; exit 1; }
+            grep -q "^description:" "$f" || { echo "$f missing description"; exit 1; }
+            echo "✓ $f"
+          done
+
+      - name: Validate skill frontmatter
+        run: |
+          find skills -name "SKILL.md" | while read f; do
+            head -1 "$f" | grep -q "^---$" || { echo "$f missing frontmatter"; exit 1; }
+            grep -q "^name:" "$f" || { echo "$f missing name"; exit 1; }
+            grep -q "^description:" "$f" || { echo "$f missing description"; exit 1; }
+          done
+          echo "Validated $(find skills -name 'SKILL.md' | wc -l) skills"
+
+      - name: Count plugin components
+        run: |
+          echo "Agents: $(ls agents/*.md | wc -l)"
+          echo "Skills: $(find skills -name 'SKILL.md' | wc -l)"
+          echo "MCP servers: $(python3 -c 'import json; print(len(json.load(open(".mcp.json"))["mcpServers"]))')"
