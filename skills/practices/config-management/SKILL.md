@@ -1,62 +1,123 @@
 ---
 name: config-management
-description: Centralized configuration patterns — single config module, validated at startup, typed, with environment-aware defaults. Use when scaffolding projects, reviewing config, or fixing hardcoded values.
+description: Centralized config and lightweight dependency injection — single config module, validated at startup, factory/constructor injection for wiring, composition root pattern. No heavy DI frameworks unless the app actually needs them.
 ---
 
-# Config Management
+# Config & Dependency Injection
+
+Two related concerns: where config comes from, and how dependencies are wired. Both follow the same principle — **centralize and inject, don't scatter and import**.
 
 ## When to Apply
 
-- Scaffolding a new project (Scaffolder agent)
-- Reviewing code that accesses environment variables directly
-- Fixing hardcoded values (URLs, ports, secrets, feature flags)
-- Setting up environment-specific configuration (dev/staging/prod)
-- Any specialist writing code that needs config values
+- Scaffolding a new project (set up config module + composition root in Wave 1)
+- Code reads env vars directly in business logic
+- Hardcoded values (URLs, ports, secrets)
+- Services create their own dependencies (new DB() inside a handler)
+- Tests can't swap dependencies without mocking imports
+- Complex app with 10+ services that need wiring
 
-## The Core Rule
+## Config Rules
 
-**`process.env` / `os.environ` is accessed in exactly ONE file -- the config module. Everything else imports from it.**
+### The Core Rule
 
-## Rules
+**`process.env` / `os.environ` / `System.getenv` is accessed in exactly ONE file — the config module. Everything else receives config via injection.**
 
-### CRITICAL
+### Critical
 
-- **CFG-01:** Single config module -- one file reads env vars, exports a typed frozen object
-- **CFG-02:** Validate at startup -- Zod (TS), Pydantic (Python), envconfig (Go); exit on failure
-- **CFG-03:** No secrets in code or config files -- secrets from env vars only; `.env` gitignored
-- **CFG-04:** No silent defaults for required values -- required config fails loudly if missing
+- **CFG-01:** Single config module — one file reads env vars, exports a typed frozen object
+- **CFG-02:** Validate at startup — exit on failure, not silent defaults for required values
+- **CFG-03:** No secrets in code — secrets from env vars only, `.env` gitignored, `.env.example` committed
+- **CFG-04:** Config is a dependency — inject it (or its subset), don't import it globally
 
-### HIGH
+### High
 
-- **CFG-05:** Typed config object -- ports are numbers, booleans are booleans, URLs are validated
-- **CFG-06:** Separate server and client config -- `NEXT_PUBLIC_` in client.ts, secrets in server.ts
-- **CFG-07:** `.env.example` is documentation -- every var listed with description and safe default
-- **CFG-08:** Derive flags from env once -- `config.isProduction` not `process.env.NODE_ENV === 'production'`
+- **CFG-05:** Typed config — ports are numbers, booleans are booleans, URLs are validated
+- **CFG-06:** Group by domain — `config.database.url`, `config.auth.jwtSecret`
+- **CFG-07:** Derive flags once — `config.isProduction` not `process.env.NODE_ENV === 'production'`
+- **CFG-08:** Pass subsets, not the whole config — EmailService gets smtp config, not all of config
 
-### MEDIUM
+For framework-specific config patterns, see [rules/patterns-by-framework.md](rules/patterns-by-framework.md).
 
-- **CFG-09:** Config vs constants -- config changes between envs; constants don't
-- **CFG-10:** Group config by domain -- `config.database.url`, `config.auth.jwtSecret`
-- **CFG-11:** Freeze the config object -- `Object.freeze()` or equivalent
-- **CFG-12:** Lint against direct env access -- ESLint `no-process-env` rule
+## Dependency Injection
 
-### LOW
+### The Universal Pattern (all languages)
 
-- **CFG-13:** Don't overengineer -- `.env` + typed config module + secrets manager is enough
-- **CFG-14:** Monorepo: shared schemas, separate `.env` per service
+```
+1. Define interfaces/protocols for dependencies
+2. Accept them via constructor/factory parameters
+3. Wire everything in ONE place (composition root)
+4. For tests, pass fakes directly — no framework needed
+5. Config is just another dependency
+```
 
-## Framework Patterns (rules/patterns-by-framework.md)
+### When to Use What
 
-- Node.js/TypeScript with Zod schema + `safeParse` + `Object.freeze`
-- Python/FastAPI with Pydantic `BaseSettings` + `@lru_cache`
-- Go with `envconfig` struct tags + `required:"true"`
-- Next.js with separate `server.ts` and `client.ts` config modules
+| Complexity | Pattern | Example |
+|------------|---------|---------|
+| Simple (< 15 services) | Factory functions + constructor injection | Most apps start here |
+| Medium (15-50 services) | Composition root with grouped factory functions | Growing apps |
+| Complex (50+ services, multiple entry points) | Lightweight container (awilix, Wire, Dagger) | Large apps, monorepos |
+| Framework provides it | Use the framework's DI (FastAPI Depends, Spring, SwiftUI Environment) | When it's idiomatic |
 
-## Anti-Patterns
+**Default: start with factory functions. Add a container only when the composition root becomes painful.**
 
-- `process.env.X` scattered in 40 files -- use single config module
-- `process.env.X || 'default'` -- silent failure with wrong value
-- Secrets in committed files -- `.env.example` committed, `.env` gitignored
-- `if (NODE_ENV === 'production')` everywhere -- derive semantic flags in config
-- YAML config inheritance chains -- overengineered; use env vars
-- Config server for 3 services -- unnecessary operational overhead
+### Composition Root
+
+One file/function that wires all dependencies. The ONLY place that knows about concrete implementations.
+
+```
+src/
+├── composition-root.ts    ← wires everything, knows all concrete classes
+├── config.ts              ← reads env vars, exports typed config
+├── services/
+│   ├── user-service.ts    ← accepts interfaces, knows nothing about DB/config
+│   └── order-service.ts
+├── repositories/
+│   ├── user-repo.ts       ← implements interface, accepts db connection
+│   └── order-repo.ts
+└── index.ts               ← calls composition root, starts server
+```
+
+For language-specific composition root patterns, see [rules/dependency-injection.md](rules/dependency-injection.md).
+
+### Testing — Why DI Matters
+
+```
+WITHOUT DI:
+  Service imports DB directly → can't test without real DB
+  Service imports config directly → can't test with different config
+  Must mock imports → fragile, tied to file paths
+
+WITH DI:
+  Service accepts interfaces → pass fakes in tests
+  No mocking library needed for most tests
+  Tests are fast, isolated, don't need infrastructure
+```
+
+### Anti-Patterns
+
+- **Global singletons** — `shared` / `instance` / module-level vars. Makes testing painful.
+- **Service locator** — `Container.resolve(Thing)` inside business logic hides dependencies.
+- **Field injection** — `@Autowired lateinit var repo` hides what a class needs.
+- **Importing the DB/config directly** — `import { db } from '../db'` hardwires the dependency.
+- **Over-abstracting** — don't create an interface for something with only one implementation. Create it when you need a second implementation or need to mock in tests.
+- **Injecting the whole config** — pass only what the service needs, not the entire config object.
+
+## Implementation Checklist
+
+Wave 1 (foundation) should set up:
+
+- [ ] Config module — single file, typed, validated at startup
+- [ ] `.env.example` — every var with description and safe default
+- [ ] Composition root — one file that wires all dependencies
+- [ ] Services accept dependencies via constructor, not import
+- [ ] Config subset injection — services get only the config they need
+
+## Evaluator Checklist
+
+- [ ] No direct env var access outside config module
+- [ ] Config validated at startup (fails loudly on missing required values)
+- [ ] No secrets in committed files
+- [ ] Services accept dependencies via constructor/factory (not global imports)
+- [ ] Composition root exists and is the only place that knows concrete implementations
+- [ ] Tests use injected fakes, not import mocking

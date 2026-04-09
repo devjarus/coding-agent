@@ -1,108 +1,111 @@
 ---
 name: observability
-description: Logging, health checks, error tracking, and monitoring patterns for production applications. Use when scaffolding projects, implementing services, or reviewing production readiness.
+description: Structured logging for any application — language-specific logger setup, log levels, what to log at each layer, request tracing. Mandatory for all implementations. Evaluator checks for it.
 ---
 
-# Observability
+# Observability & Logging
+
+Logging is mandatory for every application, not optional. An app without logging is undebuggable in production. The evaluator checks for it, and missing logging is a finding.
 
 ## When to Apply
-- Scaffolder setting up a new project
-- Backend specialists implementing services
-- Infra specialists setting up deployment
-- Reviewer checking production readiness
 
----
+- **Every implementation** — set up logging in Wave 1 (foundation)
+- **Every tool/service/endpoint** — log inputs, outputs, timing, errors
+- **Every evaluator review** — check that logging exists and is structured
 
-## Priority Rules
+## Logger by Language
 
-### CRITICAL
+Pick the right logger. Always structured JSON, always configurable level, always request tracing.
 
-- **OBS-01: Health check endpoint** — every service exposes `GET /health` (or `/healthz`) returning `200` when ready, `503` when not. Used by load balancers, container orchestrators, and monitoring.
-- **OBS-02: Structured logging** — JSON format with consistent fields: `timestamp`, `level`, `message`, `requestId`, `error` (with stack). Never `console.log` in production.
-- **OBS-03: Error tracking** — uncaught exceptions and unhandled rejections are captured and reported (Sentry, Bugsnag, or equivalent). Include: stack trace, user context, request context.
+| Language | Logger | Key Feature |
+|----------|--------|-------------|
+| **Node.js/TS** | pino + pino-http | Fast, JSON, child loggers, redact option |
+| **Python** | structlog | Context binding, async-safe via contextvars |
+| **Java** | SLF4J + Logback + logstash-logback-encoder | MDC for request tracing, Spring profile support |
+| **Go** | log/slog (stdlib, 1.21+) | Structured, zero deps, JSON handler |
+| **Swift/iOS** | os.Logger | Native, Instruments integration, Console.app filtering |
+| **React Native** | react-native-logs + Sentry | Severity-based, namespaced, crash reporting |
 
-### HIGH
+For framework-specific patterns (Spring Boot, Next.js, Django, FastAPI, Express, Gin), see [rules/frameworks.md](rules/frameworks.md).
 
-- **OBS-04: Request logging** — every HTTP request logged with: `method`, `path`, `status`, `duration`, `requestId`. Use middleware, not per-route logging.
-- **OBS-05: Correlation IDs** — generate a unique `requestId` for each request, propagate through all downstream calls and logs. Essential for debugging distributed issues.
-- **OBS-06: Graceful shutdown** — handle `SIGTERM`: stop accepting new requests, drain in-flight requests (with timeout), close DB/Redis connections, then exit.
+For cloud platform integration (AWS CloudWatch, GCP, Datadog, Vercel, OpenTelemetry), see [rules/cloud-platforms.md](rules/cloud-platforms.md).
 
-### MEDIUM
+## What to Log at Each Layer
 
-- **OBS-07: Startup logging** — log config (non-secret), connected services, listening port at startup. Makes deployment debugging much easier.
-- **OBS-08: Dependency health** — health check should verify connectivity to critical dependencies (database, Redis, external APIs). Return degraded status if optional deps are down.
-- **OBS-09: Metrics endpoint** — expose `/metrics` (Prometheus format) or equivalent for: request count, error rate, response time percentiles, active connections.
-
-### LOW
-
-- **OBS-10: Log levels** — use them correctly: `error` (action required), `warn` (unexpected but handled), `info` (state changes), `debug` (development only, never in prod).
-- **OBS-11: Alerting rules** — define: error rate > 1% = warning, error rate > 5% = critical, p99 latency > 2s = warning, health check fail = critical.
-
----
-
-## Patterns
-
-### Health Check (Node.js)
-
-`GET /health` checks DB and Redis connectivity, returns `{ status, checks: { database, redis }, uptime }`. Respond `200` when all critical deps are healthy, `503` when any critical dep is down. Include response time per dependency check to aid diagnosis.
-
-```js
-app.get('/health', async (req, res) => {
-  const checks = {
-    database: await checkDb(),   // { status: 'ok' | 'fail', latencyMs }
-    redis:    await checkRedis(),
-  };
-  const allOk = Object.values(checks).every(c => c.status === 'ok');
-  res.status(allOk ? 200 : 503).json({
-    status: allOk ? 'ok' : 'degraded',
-    checks,
-    uptime: process.uptime(),
-  });
-});
+### API / HTTP Layer
+```
+Every request:  method, path, status, duration, requestId
+Errors:         stack trace, request context, user context
+Startup:        port, config (non-secret), connected services
+Shutdown:       reason, pending requests count
 ```
 
-### Structured Logger Setup
-
-Configure pino (preferred) or winston to emit JSON, bind `requestId` per request via child logger, and read log level from `LOG_LEVEL` env var (default `info`).
-
-```js
-// logger.js
-import pino from 'pino';
-export const logger = pino({
-  level: process.env.LOG_LEVEL ?? 'info',
-  base: { service: process.env.SERVICE_NAME },
-});
-
-// middleware — bind requestId to every log in the request lifecycle
-app.use((req, _res, next) => {
-  req.log = logger.child({ requestId: req.headers['x-request-id'] ?? crypto.randomUUID() });
-  next();
-});
+### Business Logic / Services
+```
+Operations:     what's happening, with what input (redact secrets)
+Decisions:      branching logic that affects output
+External calls: URL, status, duration, response size
+Errors:         full context, not just message
 ```
 
-### Graceful Shutdown
-
-On `SIGTERM`, stop the HTTP server from accepting new connections, wait for in-flight requests to finish (bounded by a timeout), then close DB/cache connections before exiting.
-
-```js
-process.on('SIGTERM', async () => {
-  logger.info('SIGTERM received — shutting down');
-  server.close(async () => {
-    await db.end();
-    await redis.quit();
-    logger.info('Shutdown complete');
-    process.exit(0);
-  });
-  // Force-exit if drain takes too long
-  setTimeout(() => { logger.error('Shutdown timeout — forcing exit'); process.exit(1); }, 10_000);
-});
+### Data Layer
+```
+Queries:        operation type, table/collection, duration (NOT the data itself)
+Migrations:     version applied, duration, success/failure
+Connection:     pool stats, reconnects, failures
 ```
 
----
+### Tools / Agents (LLM apps)
+```
+Tool calls:     name, params, result summary, duration
+LLM calls:      model, token usage (prompt + completion), duration
+Subagents:      which agent, what task, duration, result summary
+Errors:         full context + what the agent was trying to do
+```
 
-## What the Scaffolder Should Set Up
+## Log Levels — Use Them Correctly
 
-- Health check endpoint (at minimum `GET /health`)
-- Structured logger configured (pino/winston, JSON output)
-- Graceful shutdown handler (`SIGTERM`)
-- `.env` variable for `LOG_LEVEL` (default `info`)
+| Level | When | Example |
+|-------|------|---------|
+| **error** | Requires immediate attention. Something failed and can't recover. | DB connection lost, unhandled exception, critical API down |
+| **warn** | Unexpected but handled. Worth investigating later. | Rate limited, retrying, fallback used, deprecated API called |
+| **info** | Key state changes. The "story" of what happened. | Request start/end, user action, deployment started, query completed |
+| **debug** | Developer diagnostics. Noisy. Off in production. | Full request/response body, cache hit/miss, SQL queries, tool params |
+
+**Rules:**
+- Default level in production: `info` or `warn`
+- Default level in development: `debug`
+- Never log secrets, passwords, tokens, or full credit card numbers
+- Always configurable via env var (`LOG_LEVEL`) or CLI flag (`--log-level`)
+
+## Implementation Checklist
+
+The implementor must set up logging in Wave 1 (foundation):
+
+- [ ] Logger library installed and configured (structured JSON output)
+- [ ] Log level configurable via environment variable or CLI flag
+- [ ] Request/query tracing (unique ID carried through all logs for one request)
+- [ ] API/HTTP layer: request logging middleware (method, path, status, duration)
+- [ ] Error handling: all caught errors logged with context (not silently swallowed)
+- [ ] Startup: log configuration, connected services, listening port
+- [ ] CLI apps: logs go to stderr, output goes to stdout
+
+## Evaluator Checklist
+
+The evaluator checks for logging in every review:
+
+- [ ] Structured logger exists and is used (not `console.log` / `print` / `println`)
+- [ ] Log level is configurable
+- [ ] Errors are logged with context (stack trace, what was happening)
+- [ ] No silent error swallowing (every catch logs or propagates)
+- [ ] API requests are logged (middleware, not per-route)
+- [ ] No secrets in logs (grep for passwords, tokens, API keys in log statements)
+
+## Rules
+
+1. **Logging is set up in Wave 1.** Not added later as an afterthought.
+2. **Structured JSON, not strings.** `logger.info({ userId, action })` not `console.log("user did thing")`
+3. **Every error is logged.** No silent catch blocks. No `try?` without logging.
+4. **Request tracing.** One ID per request/query, carried through all logs.
+5. **Configurable level.** Always. Via env var or CLI flag.
+6. **Secrets never logged.** Grep for it. Evaluator flags it.
