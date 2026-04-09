@@ -25,7 +25,7 @@ coding-agent is a reaction to those failures:
 
 ```bash
 # Clone into Claude Code's plugins directory
-git clone https://github.com/devjarus91/coding-agent ~/.claude/plugins/coding-agent
+git clone https://github.com/devjarus/coding-agent ~/.claude/plugins/coding-agent
 
 # Or use --plugin-dir flag
 claude --plugin-dir /path/to/coding-agent

@@ -1,5 +1,5 @@
 blank_issues_enabled: false
 contact_links:
   - name: Questions and Discussion
-    url: https://github.com/devjarus91/coding-agent/discussions
+    url: https://github.com/devjarus/coding-agent/discussions
     about: Ask questions, share workflows, or discuss design decisions
