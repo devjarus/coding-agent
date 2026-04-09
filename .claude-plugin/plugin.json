@@ -1,10 +1,20 @@
 {
   "name": "coding-agent",
   "version": "1.0.0",
-  "description": "Multi-agent software development system — orchestrator dispatches brainstormer, planner, domain-leads, and reviewer to build software end-to-end.",
+  "description": "Multi-agent software development system — 5 agents (orchestrator, architect, implementor, evaluator, debugger) dispatch structured pipelines from idea to shipped code. Includes 54 specialist skills, deterministic pipeline gates, and real runtime testing via Playwright/simulator MCPs.",
   "author": {
-    "name": "suraj-devloper"
+    "name": "Suraj",
+    "url": "https://github.com/your-username/coding-agent"
   },
+  "license": "MIT",
+  "keywords": [
+    "multi-agent",
+    "software-development",
+    "claude-code",
+    "coding-agent",
+    "pipeline",
+    "tdd"
+  ],
   "settings": {
     "agent": "coding-agent:orchestrator"
   }

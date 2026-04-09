@@ -1,92 +1,124 @@
 # coding-agent — Claude Code Plugin
 
-A multi-agent software development system. 4 agents, 45 skills, 4 MCP servers. The **orchestrator** drives the pipeline, dispatching architect, implementor, and evaluator as subagents — all 1 level deep.
+A multi-agent software development system. 5 agents, 54 skills, 7 MCP servers. The **orchestrator** drives the pipeline, dispatching architect, implementor, evaluator, and debugger as subagents — all 1 level deep.
 
 ## Architecture
 
 ```
-Orchestrator (main thread) — dispatches, validates artifacts, tracks progress
+Orchestrator (main thread) — state machine, dispatches, validates, never writes code
   │
-  ├── Architect — expands ideas → spec.md (Gate 1) → plan.md with eval criteria (Gate 2)
-  ├── Implementor(s) — implements code by domain, applies specialist skills
-  └── Evaluator — independent review against spec + plan's evaluation criteria
+  ├── Architect — asks user → spec.md (Gate 1) → plan.md with eval criteria (Gate 2)
+  ├── Implementor(s) — writes code by domain, tests first, applies specialist skills
+  ├── Evaluator — independent review, builds, runs tests, tests running app
+  └── Debugger — root-cause analysis when bugs survive fix attempts
 ```
 
-**Constraints respected:**
+**Constraints:**
 - Subagents cannot spawn subagents → all dispatches are 1 level deep
 - Plugin agents cannot use mcpServers/hooks/permissionMode in frontmatter → all MCP in `.mcp.json`
-- Subagents cannot use Agent(Explore) → they use Read/Glob/Grep directly for codebase exploration
-- Only the orchestrator (main thread) has the Agent tool
+- Subagents cannot use Agent(Explore) → they use Read/Glob/Grep directly
+- Only the orchestrator has the Agent tool
+
+## Orchestrator State Machine
+
+The orchestrator classifies every request by size before dispatching:
+
+| Size | Pipeline |
+|------|----------|
+| Micro (≤2 files, ≤30 lines, no new logic) | Orchestrator writes directly → tests → commit |
+| Small (2-5 files, clear scope) | Implementor → Evaluator (lightweight) |
+| Medium (design decisions needed) | Architect (plan) → Implementor → Evaluator |
+| Large (new feature, architectural) | Architect (spec+plan) → Implementor → Evaluator |
+
+```
+Classify → Dispatch by size
+  → Implementor → Evaluator (mandatory after every dispatch)
+  → review.md FAIL → Fix Round 1 → Round 2 (Debugger) → Round 3 (Escalate)
+  → review.md PASS → Fix minor findings → Reflect → Generate docs → Commit
+```
+
+Pipeline complete + new message → reflect, archive, classify, restart.
 
 ## Artifact Protocol
 
-The orchestrator enforces structured handoffs via `.coding-agent/`:
-
-| Artifact | Producer | Validated by Orchestrator | Consumed by |
-|----------|----------|--------------------------|-------------|
-| `spec.md` | Architect | Has Overview, Requirements (FR-*), Non-Goals | Implementor, Evaluator |
-| `plan.md` | Architect | Has tasks with domain/wave/files/criteria, **evaluation criteria per slice** | Implementor, Evaluator |
-| `progress.md` | Orchestrator | — | Orchestrator |
-| `review.md` | Evaluator | Has Status (PASS/FAIL), Findings with file:line | Orchestrator |
-
-If an artifact is missing required sections, the orchestrator re-dispatches the agent with specific feedback.
+| Artifact | Producer | Consumed by |
+|----------|----------|-------------|
+| `spec.md` | Architect | Implementor, Evaluator |
+| `plan.md` | Architect | Implementor, Evaluator |
+| `progress.md` | Orchestrator | Orchestrator |
+| `review.md` | Evaluator | Orchestrator |
+| `diagnosis.md` | Debugger | Implementor |
+| `learnings.md` | Orchestrator | Future sessions (gotchas, decisions, patterns) |
+| `README.md` | Implementor (project-docs) | Humans |
+| `ARCHITECTURE.md` | Implementor (project-docs) | Humans, Agents (ASCII diagrams) |
+| `AGENTS.md` | Implementor (project-docs) | All agents |
 
 ## Agents
 
-| Agent | Model | Role | Built-in Tools Used |
-|-------|-------|------|-------------------|
-| **orchestrator** | opus | Dispatches, validates artifacts, tracks progress. Never writes code. | Agent (only agent that dispatches) |
-| **architect** | opus | Expands ideas, researches, designs. Writes spec + plan. | AskUserQuestion, Glob/Grep for research |
-| **implementor** | sonnet | Writes code by domain. Applies specialist skills. Tests first. | Glob/Grep for exploration, Bash for tests |
-| **evaluator** | opus | Independent review. Tests running app. Finds what builder missed. | Bash for tests, Playwright MCP |
+| Agent | Model | Key Behavior |
+|-------|-------|-------------|
+| **orchestrator** | opus | State machine. Dispatches only. Never writes code/specs/reviews. |
+| **architect** | opus | MUST ask user before writing. MUST get approval before returning. Verifies dependencies. |
+| **implementor** | sonnet | Tests first (including integration). No silent error suppression. Pins dependency versions. |
+| **evaluator** | opus | Builds first. Runs tests. Tests running app (Playwright/simulator). Runtime mandatory. |
+| **debugger** | opus | Reproduce → isolate → trace → diagnose. Writes diagnosis.md, never code. |
 
-## Pipeline Flow
+## Skills (50)
 
-```
-User message → Orchestrator
-  ↓
-1. No spec.md → Dispatch Architect
-   Architect: explores codebase, asks questions, writes spec.md
-   Human approves (Gate 1)
-  ↓
-2. spec.md exists, no plan.md → Dispatch Architect again
-   Architect: decomposes into slices, writes plan.md with eval criteria
-   Human approves (Gate 2)
-  ↓
-3. plan.md exists, tasks incomplete → Dispatch Implementor(s)
-   Implementor: reads tasks, applies skills, tests first, implements
-   (Can dispatch multiple in parallel for independent domains)
-  ↓
-4. All tasks done → Dispatch Evaluator
-   Evaluator: tests against plan's eval criteria + spec requirements
-   Writes review.md
-  ↓
-5. Review PASS → Commit and hand off
-   Review FAIL → Dispatch Implementor with findings → re-evaluate
-```
-
-## Skills (45)
-
-**Implementor skill routing by domain:**
+### Implementor skill routing by domain
 
 | Domain | Specialist Skills |
 |--------|------------------|
-| frontend | react-specialist, nextjs-specialist, css-tailwind-specialist, testing-specialist, ui-design, generative-ui-specialist, assistant-chat-ui |
-| backend | nodejs-specialist, python-specialist, go-specialist, typescript-specialist, agent-frameworks-specialist, llm-integration |
-| data | postgres-specialist, redis-specialist |
-| infra | aws-specialist, docker-specialist, terraform-specialist, deployment-patterns |
+| frontend | react-specialist, nextjs-specialist, css-tailwind-specialist, testing-specialist, ui-design, ui-excellence, tanstack, generative-ui-specialist, assistant-chat-ui, react-patterns, composition-patterns, accessibility, performance |
+| mobile | ios-swiftui-specialist, ios-testing-debugging |
+| backend | nodejs-specialist, python-specialist, go-specialist, typescript-specialist, agent-frameworks-specialist, llm-integration, api-design, auth-patterns |
+| data | postgres-specialist, redis-specialist, migration-safety |
+| infra | aws-specialist, docker-specialist, docker-best-practices, terraform-specialist, deployment-patterns, ci-cd-patterns |
 
-**Always applied:** tdd, code-review, security-checklist, config-management, observability
+### Practices (applied across domains)
 
-## Key Design Decisions
+| Skill | Applied By |
+|-------|-----------|
+| tdd | Implementor (preloaded) |
+| code-review | Implementor, Evaluator (preloaded) |
+| security-checklist | Implementor, Evaluator (preloaded) |
+| config-management | Implementor |
+| observability | Implementor |
+| error-handling | Implementor |
+| e2e-testing | Evaluator |
+| integration-testing | Implementor |
+| dependency-evaluation | Architect |
+| shared-contracts | Implementor |
+| release | Orchestrator |
+| publish-ready | Implementor (before public release) |
+| service-architecture | Implementor (apps with external clients/services) |
+| project-detection | Architect |
 
-- **Single orchestrator, flat dispatch** — 1 level deep. No nesting. Respects Claude Code constraints.
-- **Artifact protocol** — orchestrator validates every artifact before advancing. Missing sections = re-dispatch.
-- **Evaluation criteria in the plan** — architect writes testable criteria BEFORE implementation (sprint contracts from Anthropic's harness design).
-- **Generator-Evaluator separation** — evaluator is independent from implementor. Prevents self-evaluation bias.
-- **Prompt expansion** — architect expands "build me a chat app" into 100+ lines of concrete requirements.
-- **Spec over implementation details** — spec focuses on what/why. Plan focuses on tasks/criteria. Implementation details emerge during coding.
-- **Built-in tools welcome** — agents use Explore for codebase research, AskUserQuestion for human interaction, Plan mode concepts naturally.
+### Pipeline skills (preloaded into agents)
+
+| Skill | Preloaded In |
+|-------|-------------|
+| coordination-templates | Orchestrator |
+| pipeline-verification | Orchestrator |
+| ideation-council | Architect |
+| project-docs | Implementor (after review PASS) |
+| research-cache | — (optional, architect saves findings) |
+
+### General
+
+debugging, documentation, git-workflow
+
+## MCP Servers (`.mcp.json`)
+
+| Server | Purpose |
+|--------|---------|
+| context7 | Library documentation (architect, implementor) |
+| exa | Web search — blog posts, release notes, migration guides (architect) |
+| playwright | Browser UI testing (evaluator) |
+| chrome-devtools | Console/network inspection (evaluator) |
+| deepwiki | Dependency research (architect) |
+| xcodebuild | iOS build/test/debug (evaluator) |
+| ios-simulator | iOS simulator control (evaluator) |
 
 ## Development
 

@@ -15,6 +15,18 @@
     "deepwiki": {
       "command": "npx",
       "args": ["-y", "@anthropic-ai/deepwiki-mcp@latest"]
+    },
+    "xcodebuild": {
+      "command": "npx",
+      "args": ["-y", "xcodebuildmcp@latest"]
+    },
+    "ios-simulator": {
+      "command": "npx",
+      "args": ["-y", "ios-simulator-mcp@latest"]
+    },
+    "exa": {
+      "command": "npx",
+      "args": ["-y", "exa-mcp-server@latest"]
     }
   }
 }
