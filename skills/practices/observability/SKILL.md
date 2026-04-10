@@ -109,3 +109,150 @@ The evaluator checks for logging in every review:
 4. **Request tracing.** One ID per request/query, carried through all logs.
 5. **Configurable level.** Always. Via env var or CLI flag.
 6. **Secrets never logged.** Grep for it. Evaluator flags it.
+7. **Logs are separate from outputs.** `logs/` directory (gitignored) is for debug telemetry. `reports/`, `output/`, `dist/` are for application products. Never write logs to the output directory. CLIs write logs to stderr and results to stdout so piping works.
+8. **Emit a self-diagnosis startup log.** One `info` entry on startup with runtime version, platform, cwd, log file path, env-var presence (as booleans, never values), and upstream service URLs. Makes "works on my machine" bugs obvious from the first line of the log.
+
+## CLI Logging Gotchas
+
+CLI tools have a unique constraint: the process exits quickly. Async file writers that buffer logs in memory will lose those logs when `process.exit()` is called before the flush completes. This is a real bug, not a theoretical one.
+
+**Pattern for Node.js CLIs with pino:**
+
+```typescript
+// WRONG — async file stream, logs lost on exit
+const dest = pino.destination({ dest: logFile, sync: false });
+// Crash on exit: "sonic boom is not ready yet"
+// Symptom: log file is 0 bytes
+
+// RIGHT — sync file stream for CLIs
+const dest = pino.destination({ dest: logFile, sync: true });
+// For a CLI that runs one query and exits, the sync overhead is negligible
+// (hundreds of log lines, not millions). Async requires explicit flush
+// handlers at every exit point, which is error-prone.
+```
+
+For **long-running servers**, prefer `sync: false` — the async path is faster and the process stays alive long enough for flushes to complete. Install a graceful shutdown handler that calls `logger.flush()` before exit.
+
+Equivalent gotchas in other runtimes:
+- **Python stdlib logging:** call `logging.shutdown()` in an `atexit` hook, or use `structlog` with a stream handler.
+- **Go slog:** the stdlib handler writes synchronously to `os.Stderr` by default — no flush needed. Custom async handlers need their own flush on shutdown.
+- **Java Logback:** use `addShutdownHook="true"` in the configuration, or call `((LoggerContext) LoggerFactory.getILoggerFactory()).stop()` in a shutdown hook.
+
+## Null Object Pattern for Optional Loggers
+
+Libraries, tools, and services often accept an optional logger parameter so callers can wire one in without forcing the dependency on everyone. The idiomatic fallback is a real-but-silent logger instance, not `null` or `undefined` checks at every call site.
+
+**Node.js / pino** — use the built-in silent level:
+
+```typescript
+// src/utils/logger.ts
+import pino from "pino";
+export type Logger = pino.Logger;
+
+// Standard Null Object pattern — a real pino instance that discards everything.
+// Supports .child(), serializers, etc. without any runtime branching.
+export const silentLogger: Logger = pino({ level: "silent" });
+```
+
+```typescript
+// src/tools/web-search.ts
+import { silentLogger } from "../utils/logger.js";
+import type { Logger } from "../utils/logger.js";
+
+export function createWebSearch(parentLogger?: Logger) {
+  const log = parentLogger?.child({ tool: "web_search" }) ?? silentLogger;
+  // ...log is always a real logger; no `if (log)` branches anywhere
+}
+```
+
+**Python / structlog:**
+
+```python
+import structlog
+# structlog.get_logger() with no configuration is effectively a no-op
+# until configured. For explicit silent fallback:
+from structlog.testing import LogCapture
+silent_logger = structlog.wrap_logger(None, processors=[])
+```
+
+**Go / slog:**
+
+```go
+// Use io.Discard for a silent handler
+silentLogger := slog.New(slog.NewJSONHandler(io.Discard, nil))
+```
+
+Rules for the Null Object pattern:
+- **Real logger instance**, not an ad-hoc `{ info: () => {} }` object. Real instances support `.child()`, serializers, and level checks without special-casing.
+- **Centralized**, not duplicated. Export `silentLogger` from `utils/logger.ts` (or equivalent) and import it everywhere. Hand-rolled no-ops in every file is a code smell.
+- **Preserves the type**. `silentLogger: Logger` means callers get full type safety without `| null` unions.
+
+## Factory Pattern for Testable, Logger-Aware Components
+
+Module-level singletons make logger injection awkward. Use factories that accept an optional logger and return the configured component. Keep a backward-compatible default export so existing imports don't break.
+
+```typescript
+// Factory — primary API
+export function createWebSearch(parentLogger?: Logger) {
+  const log = parentLogger?.child({ tool: "web_search" }) ?? silentLogger;
+  return tool(
+    async ({ query }) => {
+      const start = performance.now();
+      log.debug({ query }, "web_search started");
+      try {
+        const results = await fetch(/* ... */);
+        const elapsed = Math.round(performance.now() - start);
+        log.info({ query, resultCount: results.length, elapsed }, "web_search complete");
+        return formatResults(results);
+      } catch (err) {
+        const elapsed = Math.round(performance.now() - start);
+        log.error({ err, query, elapsed }, "web_search failed");
+        return `Search failed: ${(err as Error).message}`;
+      }
+    },
+    { name: "web_search", description: "...", schema }
+  );
+}
+
+// Backward-compatible default — existing tests/imports keep working
+export const web_search = createWebSearch();
+```
+
+Benefits:
+- **Test isolation** — tests pass a mock logger, assert on log calls.
+- **Per-component context** — child loggers automatically tag every entry with `{ tool: "web_search" }`, making filtering trivial.
+- **Graceful fallback** — omit the logger entirely and it still works (uses silent).
+
+## Self-Diagnosis Startup Log
+
+Every app should emit exactly one startup log entry with the runtime and environment context. This turns "I don't know what's different on your machine" into a one-line grep.
+
+```typescript
+logger.info(
+  {
+    nodeVersion: process.version,
+    platform: process.platform,
+    arch: process.arch,
+    cwd: process.cwd(),
+    logFile,
+    env: {
+      // Presence booleans — NEVER log the values themselves
+      hasAnthropicKey: Boolean(process.env.ANTHROPIC_API_KEY),
+      hasOpenAIKey: Boolean(process.env.OPENAI_API_KEY),
+      SEARXNG_URL: process.env.SEARXNG_URL ?? "http://localhost:8080",
+    },
+  },
+  "App starting"
+);
+```
+
+Log this **once**, at the very top of the logger factory so it's guaranteed to fire. Include:
+- Runtime version (Node.js, Python, Go, JVM)
+- Platform and architecture
+- Working directory
+- Log file path (so users know where to find detail)
+- Package version (read from `package.json`, `pyproject.toml`, etc.)
+- Presence of each required env var as a boolean
+- Upstream service URLs (redact tokens — URL host and path only)
+
+This single line answers "is my environment set up correctly" without interactive debugging.
