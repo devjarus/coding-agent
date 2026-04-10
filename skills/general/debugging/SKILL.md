@@ -42,3 +42,8 @@ description: A structured 4-step debugging process: reproduce, understand, hypot
 | "Works on my machine" | Environment differences are bugs too; make them reproducible |
 | Print-only debugging without forming a hypothesis | Generates noise without narrowing the search space |
 | Fixing the symptom (e.g., null check) instead of the root cause | The bug reappears in a different form |
+
+## Additional Techniques (rules/)
+
+- **[direct-api-diagnostic.md](rules/direct-api-diagnostic.md)** — when a framework is opaque, bypass it and curl the provider's native API directly. 5 minutes of ground truth beats hours of framework speculation. Standard first move for LLM agent bugs.
+- **[read-adapter-source.md](rules/read-adapter-source.md)** — when a library adapter silently drops fields or contradicts its docs, read the adapter source (especially the stream/response handler). Docs lag code.
