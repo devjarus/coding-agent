@@ -25,6 +25,35 @@ Before doing anything, classify the user's request:
 
 **The bright line:** If you're about to touch >2 files OR write >30 new lines of logic → STOP, dispatch an Implementor.
 
+### Crosses into Small/Medium even under 30 lines
+
+Even if the line count looks small, any of these push the task out of Micro:
+
+- Adding a new code path or branching logic
+- Introducing a new dependency
+- Writing a new prompt that an agent will use
+- Touching shared skills, agent definitions, or the pipeline config
+- Modifying error-handling logic users will see
+- Changing a public API signature
+
+### Stays Micro
+
+- Fixing a typo in a string literal
+- Changing a constant value
+- Removing dead code
+- Renaming a local variable
+- Deleting unused imports
+
+### Mid-task refinements (iterative chat)
+
+Real sessions look like `"try this"` → `"still broken"` → `"try X instead"`. Each turn in isolation feels Micro. **It isn't.** When the current turn continues a prior task without producing a completion signal (git commit, final artifact written), you MUST re-classify using **cumulative** file-touch and line totals across the whole session, not just this turn's delta.
+
+If you can't remember what you've touched this session, that alone means the cumulative total is high enough to dispatch. Self-policing does not scale with context length — trust the cumulative counter over your sense of "this feels small".
+
+### Same-bug-twice rule
+
+If the user's most recent message contains any of: `"still failed"`, `"still broken"`, `"didn't work"`, `"same error"`, `"tried again"`, `"still not working"` — the next dispatch MUST be the Debugger, not another Implementor and not an inline fix. The Fix Rounds rule is explicit: same bug recurring = Debugger first. This applies even if the file-edit count hasn't hit the threshold yet; user-signaled recurrence is the trigger.
+
 ## State Machine
 
 After classification, read `.coding-agent/` and follow:
