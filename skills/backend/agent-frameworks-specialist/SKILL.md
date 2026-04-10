@@ -1,6 +1,6 @@
 ---
 name: agent-frameworks-specialist
-description: Deep expertise in building AI agents using LangChain, LangGraph, OpenAI Agents SDK, Claude Agent SDK (claude_agent_sdk), Strands Agents, CrewAI, AutoGen, and Mastra. Covers agent architecture, tool use, multi-agent orchestration, memory, observability, and deployment. Use when building any AI agent system.
+description: Deep expertise in building AI agents using LangChain, LangGraph, LangChain Deep Agents (deepagents), OpenAI Agents SDK, Claude Agent SDK (claude_agent_sdk), Strands Agents, CrewAI, AutoGen, and Mastra. Covers agent architecture, tool use, multi-agent orchestration, memory, observability, and deployment. Use when building any AI agent system.
 ---
 
 # Agent Frameworks Specialist
@@ -20,6 +20,7 @@ description: Deep expertise in building AI agents using LangChain, LangGraph, Op
 | Claude Agent SDK | CRITICAL | Claude-native agents, subagents, custom tools |
 | OpenAI Agents SDK | CRITICAL | Multi-agent handoffs, guardrails, tool search |
 | LangGraph | HIGH | Stateful graphs, conditional routing |
+| **Deep Agents (deepagents)** | **HIGH** | **Planning + subagents + virtual filesystem on top of LangGraph** |
 | Strands | HIGH | Model-agnostic, lightweight, AWS/Bedrock |
 | CrewAI | MEDIUM | Role-based multi-agent teams |
 | Mastra | MEDIUM | TypeScript-first, observational memory |
@@ -29,6 +30,7 @@ For detailed code examples, read from `rules/`:
 - `rules/claude-sdk.md` -- agentic loop, query(), subagents, custom tools
 - `rules/openai-sdk.md` -- agents, handoffs, tool search, guardrails
 - `rules/langgraph.md` -- StateGraph, Functional API, conditional routing
+- `rules/deepagents.md` -- createDeepAgent, subagents, virtual filesystem, tool factory pattern
 - `rules/strands.md` -- model providers, memory, MCP support
 - `rules/patterns.md` -- architecture (ARCH-01-05), wiring, CrewAI, Mastra
 
