@@ -27,6 +27,10 @@ All artifacts you write live at `.coding-agent/features/<CURRENT>/` where `<CURR
 - Read prior features: `ls .coding-agent/features/` to see what's shipped before, skim their `spec.md`/`review.md` for context
 - Check `.coding-agent/learnings.md` for past gotchas on this project — entries are newest-on-top
 
+**Detect partial drafts.** If some files already exist but the project is clearly incomplete (e.g., package.json + a few source files but no functioning UI, a core library without transports, scaffolded config without implementation), treat the existing files as an **implementation draft**, not a codebase to replace. Read them. Extract the decisions already baked in (naming, structure, dependency choices, directory layout). Your spec should **extend** the draft, not propose rebuilding from zero. Propose replacing existing code only when it has a concrete bug or a fundamental mismatch with the new requirements.
+
+**Respect locked decisions.** If the user's brief, existing AGENTS.md, or prior feature specs declare decisions as "locked", "decided", "do not re-litigate", or similar — acknowledge them in the Technical Approach section of your spec. Do NOT re-open those choices in your discovery questions. Your questions should cover **gaps** in what was provided, not settled decisions the user already made.
+
 **Browse specialist skills (NEW — use before writing the spec):**
 - Glob `skills/**/SKILL.md` and Read the ones matching the domain you're designing for
 - For a React frontend: skim `skills/frontend/react-specialist/SKILL.md`, `skills/frontend/tanstack/SKILL.md`, `skills/frontend/ui-excellence/SKILL.md`
@@ -69,9 +73,11 @@ Questions before I write the spec:
 
 Write `.coding-agent/features/<CURRENT>/spec.md`:
 - **Overview** — what, who, why
+- **Locked Decisions** — anything the user pre-declared as not-re-litigable (stack, storage, scope boundaries). If none, omit this section.
 - **Requirements** — FR-1, FR-2... each testable
 - **Technical Approach** — stack, architecture (what/why, not how)
-- **Non-Goals** — out of scope
+- **Performance Budgets** — REQUIRED for apps with UI or latency-sensitive paths. Declare **measurable ceilings** in whatever units the stack uses: First Load JS (web), Lighthouse score (web), app-launch time (mobile), p99 latency (API), time-to-first-byte (CLI). Without declared budgets, bundles balloon and latency drifts.
+- **Non-Goals** — out of scope, explicit
 - **Technical Risks** — REQUIRED section. Enumerate:
   - External dependency risks (version compatibility, maintenance status, platform support)
   - C/FFI risks (thread safety, memory management, platform-specific behavior)
@@ -106,6 +112,9 @@ Write `.coding-agent/features/<CURRENT>/plan.md`:
   - **Threading/concurrency checks** if C/FFI or async code is involved
   - **Build + launch + basic interaction** verification (not just "compiles")
   - **Structured logging** set up and used (Wave 1 foundation task)
+  - **At least one error-path criterion per wave** — test what happens when something is misconfigured, missing, denied, or malformed. Happy-path-only criteria miss a whole class of bugs. Example: *"Sync with `S3_BUCKET` unset returns HTTP 400 with a clear user-visible error, NOT a 500 with a stack trace."*
+  - **Canonical verification commands** where applicable — exact shell commands the evaluator can run to prove the criterion (`cd /tmp && node bin/cli.mjs ls`, `curl -s /api/health | jq .status`, etc.)
+- **Performance mitigations** — if the spec declared performance budgets, list the specific implementation techniques that keep the code within budget (code-splitting via `dynamic`, per-icon lucide imports, lazy loading of non-critical routes, etc.)
 - **Dependencies** between tasks
 - **Risk mitigations** — for each Technical Risk from spec, which task addresses it
 

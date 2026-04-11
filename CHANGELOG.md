@@ -7,7 +7,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
+### Added (from personal-knowledge-base learnings — 2026-04-11)
+
+**Framework-agnostic bug preventers:**
+
+- **Evaluator: dev server port detection.** Never hardcode port 3000/5173. Parse the actual listening port from dev server stderr. Applies to any dev server (Next, Vite, Astro, Nuxt, webpack-dev-server). Prevents "API is broken" false positives when another process owns the default port.
+- **Evaluator: Playwright MCP self-check.** Before runtime testing, probe `mcp__playwright__browser_navigate("about:blank")` as a no-op availability check. If it fails, degrade loudly — add a Critical finding telling the user to enable `playwright` in `.claude/settings.local.json` — do NOT silently fall back to curl.
+- **Evaluator: HTML-inspection Plan B.** Documented fallback when Playwright is unavailable: curl + grep for stable data-attrs (e.g., shadcn `data-sidebar`/`data-slot`), pair with explicit "human 30-second eyeball" notes, mark review as degraded. A review done with HTML inspection alone cannot PASS — can only complete with `PASS (pending human verification)`.
+- **Evaluator: restore test fixtures.** If smoke tests edited files, `git checkout -- <paths>` before returning. Dirty fixtures leak into `git status` and confuse the orchestrator's commit step.
+- **Evaluator: native dialog vs modal.** `browser_handle_dialog` only handles native `window.confirm/alert/prompt`. Modal React components (shadcn AlertDialog, Radix Dialog) are regular DOM — use `browser_click`. Hanging scripts waiting for a dialog that never fires are usually this.
+- **Evaluator: lightweight mode trigger.** If files changed list contains zero paths under `src/`/`app/`/`lib/`/`pkg/`, default to lightweight mode automatically. Packaging-only changes should review in <200 lines.
+- **Implementor: CLI version verification.** When invoking third-party CLIs (`shadcn`, `create-next-app`, etc.), verify the current interface via Context7 or `--help` before running commands from memory. `shadcn@latest` in 2026 is v4 with a preset-based CLI; the classic `--base-color new-york` flags are from v2.x.
+- **Implementor: load-bearing comments.** Use `// LOAD-BEARING: <reason>` marker on code that looks over-engineered but has a specific reason. Prevents future "simplification" passes from regressing defensive patterns.
+- **Orchestrator: preserve load-bearing patterns on refactor.** Before dispatching an implementor to rewrite an existing file, grep it for `// LOAD-BEARING`, `// HACK`, `// F-\d+:` markers, and paste them into the dispatch prompt with "preserve exactly" instructions.
+- **Architect: detect partial drafts.** When some files exist but the project is incomplete (scaffolded but not implemented), treat them as an implementation draft to extend, not a codebase to replace.
+- **Architect: respect locked decisions.** If the user's brief or existing AGENTS.md declares decisions as "locked" / "decided" / "do not re-litigate", acknowledge them in the spec Technical Approach and do NOT re-open them in discovery questions.
+- **Architect: performance budgets for UI/latency-sensitive apps.** Spec must declare measurable ceilings in the stack's native units (First Load JS, Lighthouse score, app-launch time, p99 latency, TTFB). Without declared budgets, bundles balloon.
+- **Architect: error-path criteria in plan evaluation.** Every wave must have at least one "misconfiguration / error path" criterion, not just happy paths. Plus canonical verification commands where applicable.
+
+**Practice skill additions:**
+
+- **project-docs: CLAUDE.md and AGENTS.md must not duplicate.** One is the source of truth, the other is a 5-line redirect. Duplication guarantees drift.
+- **publish-ready: CLI bin loaders (new Step 7).** Bin loaders MUST use `import.meta.url` not `process.cwd()` to find the package root. Canonical verification: `cd /tmp && node /abs/path/bin/mytool.mjs`. `tsx` in devDependencies works for `pnpm link --global` but drops out on `npm i -g .`. Global CLIs don't get `.env` for free — choose CLI flags, user config file, or shell env vars.
+- **publish-ready: Shipping your own MCP tools (new Step 8).** Project-scoped `.mcp.json` at project root auto-wires MCP tools for any Claude Code session opened in the directory. Use `pnpm mcp` (package script), not `kb-mcp` (linked binary), so it works before `pnpm link --global`.
+- **api-design: routes are transports, not logic.** Every route handler should be ~10 lines. Business logic lives in core/service layer, not in Next.js Route Handlers / Express middlewares / FastAPI endpoints / Gin handlers. Testing core = testing every route.
+
+**Framework-specific skill additions:**
+
+- **nextjs-specialist: Next.js 15+ gotchas section.** Async `params`/`searchParams` must be `await`-ed (runtime errors, not typecheck errors). `dynamic(..., { ssr: false })` forbidden in server components — needs a `'use client'` loader wrapper. `next-themes` FOUC prevention requires `<html suppressHydrationWarning>` + IIFE present in served HTML. Dev server port fallback. `pnpm dev` wipes `.next/` on restart — verify artifacts before starting dev server.
+- **css-tailwind-specialist: Tailwind v4 gotchas.** Tailwind v4 has NO config file — `@import "tailwindcss";` + `@theme {}` block in CSS. `@plugin "@tailwindcss/typography";` directive replaces `plugins: []`. Don't create `tailwind.config.js` on a v4 project.
+- **css-tailwind-specialist: shadcn/ui uses OKLCH.** Current shadcn uses OKLCH color space, not HSL. Any older guidance is out of date.
+- **ui-excellence: shadcn data-attr verification.** Stable data-attributes (`data-sidebar`, `data-slot`) enable HTML-inspection verification when Playwright is unavailable.
 
 - **Deep Agents rules** in `agent-frameworks-specialist` skill — new `rules/deepagents.md` (AF-07) documenting the `deepagents` library: when to use it, minimal example, subagent factory pattern, built-in tools, multi-provider model strings, system prompt patterns, and anti-patterns. Learned from building a real research agent.
 - **CLI logging gotchas** in observability skill — `sonic-boom is not ready yet` crash when pino's async stream meets `process.exit()`. Rule: `sync: true` for CLIs, `sync: false` for servers with flush hooks. Equivalent notes for Python, Go, Java.

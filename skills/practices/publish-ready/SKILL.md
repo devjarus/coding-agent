@@ -240,7 +240,58 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 ```
 
-### Step 7 — Final checklist
+### Step 7 — CLI bin loaders (if your package ships a CLI)
+
+When your package ships a CLI via a `bin/` entry, the binary will be invoked from **wherever the user happens to be**, not from the package directory. This breaks several assumptions:
+
+**Use `import.meta.url` to find the package root, never `process.cwd()`:**
+
+```js
+// bin/mytool.mjs
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+
+// pkgRoot is the directory containing package.json — stable regardless of cwd
+const pkgRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+// Now import or read files relative to the package, not the user's cwd
+```
+
+**Canonical verification:** `cd /tmp && node /abs/path/to/bin/mytool.mjs <subcommand>`. If it breaks when invoked from `/tmp`, you're using `process.cwd()` somewhere.
+
+**`tsx` in devDependencies works for `pnpm link --global` but NOT for `npm i -g .`:**
+- `pnpm link --global` symlinks to the local checkout where `devDependencies` are already installed. `tsx` can stay in `devDependencies`.
+- `npm i -g .` drops `devDependencies` when installing globally. `tsx` must be a runtime dependency, or you need to precompile with tsup/tsdown and ship `dist/bin/mytool.js`.
+
+Choose one approach and document it in AGENTS.md.
+
+**Global CLIs don't get `.env` for free.** `dotenv.config()` reads `.env` from `process.cwd()`. When your CLI runs globally, `cwd` is wherever the user is — not the project directory. Either:
+- Accept config via CLI flags: `mytool --config=./config.toml`
+- Read user-level config from `~/.config/<tool>/config.toml`
+- Document required env vars in README and expect the user to set them in their shell profile
+
+Do not silently `dotenv.config()` and assume it'll work for global installs. Document the limitation in AGENTS.md even if you choose not to fix it.
+
+### Step 8 — Shipping your own MCP tools
+
+If your project exposes an MCP server (e.g., a CLI that provides tools to Claude Code), commit a `.mcp.json` at the **project root** so any Claude Code session opened in the directory auto-wires those tools:
+
+```json
+{
+  "mcpServers": {
+    "my-project": {
+      "command": "pnpm",
+      "args": ["-s", "mcp"]
+    }
+  }
+}
+```
+
+**Use a package script (`pnpm mcp`, `npm run mcp`, etc.), NOT a globally-linked binary.** The committed config must work from a fresh checkout **before** the user runs `pnpm link --global`. Once the user has linked the binary, they can optionally switch their own local setup to use `kb-mcp` (or whatever the linked name is) — but don't commit that assumption to the repo.
+
+Document both paths in the README: "opening the repo in Claude Code auto-wires tools via project-scoped `.mcp.json`; for out-of-repo sessions, add `<cli>-mcp` to your global Claude Desktop / Cursor config."
+
+### Step 9 — Final checklist
 
 Before publishing, verify:
 

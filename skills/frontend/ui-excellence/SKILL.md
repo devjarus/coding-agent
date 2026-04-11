@@ -166,6 +166,28 @@ transition: all 150ms ease-out;
 - **Every section has an icon.** Use icons sparingly for clarity, not decoration.
 - **Default shadows on everything.** Shadow = elevation. Only elevated things get shadows.
 
+## Shadcn verification via data-attrs (for HTML-inspection evaluators)
+
+When the evaluator has to fall back to HTML inspection (no Playwright), shadcn components provide stable data-attributes that make presence-verification reliable without a browser. Useful when you need to prove "the Sidebar primitive is actually rendered" from `curl` output alone.
+
+Common data-attributes to grep for:
+
+- **Sidebar:** `data-sidebar="sidebar|header|content|footer|rail|trigger"` and `data-slot="sidebar-wrapper|sidebar-inset|sidebar-container"`
+- **Dialog / AlertDialog:** `data-slot="dialog-content|dialog-overlay|dialog-title"` (when open — may require scraping after an interaction)
+- **Dropdown / Popover:** `data-slot="dropdown-menu-content"`, `data-state="open|closed"`
+- **Tabs:** `data-slot="tabs-list|tabs-trigger|tabs-content"`, `data-state="active|inactive"`
+- **Button / Input:** usually class-based (`class="...inline-flex...h-9..."`) rather than data-attr; less reliable for verification
+
+Example fallback verification:
+
+```bash
+curl -s http://localhost:3000/ -o /tmp/home.html
+grep -c 'data-sidebar="sidebar"' /tmp/home.html           # should be >= 1 if Sidebar rendered
+grep -c 'data-slot="sidebar-wrapper"' /tmp/home.html      # should be >= 1
+```
+
+This can't verify visual styling or interaction — only structural presence. Pair with explicit "human 30-second eyeball" notes in review.md for pixel-level things (dark mode FOUC, layout, animations).
+
 ## Rules
 
 1. **Hierarchy first.** Before styling, ensure the visual order matches importance.

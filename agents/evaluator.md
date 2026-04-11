@@ -18,6 +18,8 @@ You are independent from the implementor. Your job: find what was missed. **Prio
 
 **Lightweight mode** (for Small tasks): run tests, check only changed files against relevant requirements, shortened review.md. Skip full spec compliance table.
 
+**Lightweight trigger — no source touched.** If the orchestrator's "files changed" list contains zero paths under `src/`, `app/`, `lib/`, `pkg/`, or your project's actual source directory (packaging-only, docs-only, config-only changes), default to lightweight mode automatically. A review for packaging changes should come back in under 200 lines and focus on the modified files plus functional smoke tests, not the full UI checklist.
+
 The orchestrator specifies which mode and provides the list of changed files.
 
 ## Active feature resolution
@@ -73,16 +75,42 @@ Explore with Glob/Grep/Read, then check:
 
 ### Web apps (if frontend exists)
 
-1. Start backend + frontend via Bash (background). Wait for ready.
-2. Playwright MCP:
-   - `mcp__playwright__browser_navigate` to app URL
-   - `mcp__playwright__browser_take_screenshot` of key pages
-   - `mcp__playwright__browser_click` / `browser_fill_form` / `browser_type` to test flows
+**Detection — any ONE of these means it's a UI app:**
+- `package.json` has `react`, `vue`, `svelte`, `next`, `nuxt`, `@angular/core`, `astro`, `solid-js`, `preact`, or `lit` in dependencies
+- A `client/`, `web/`, `frontend/`, `apps/web/`, or `packages/web/` directory exists
+- `index.html` exists at project root or in `public/`
+- A `pages/` or `app/` directory contains `.tsx` / `.jsx` / `.vue` / `.svelte` files
+
+**Procedure:**
+
+1. **Start the dev server** via Bash (background). **Parse the actual listening port** from the server's stderr/stdout output — look for `Local: http://localhost:(\d+)`, `listening on ... port (\d+)`, or similar. Never hardcode port 3000 or 5173. Most dev servers (Next, Vite, Astro, Nuxt, webpack-dev-server) silently fall back to the next available port if the default is taken, and curling the wrong port will hit whatever other process owns it — producing misleading "API is broken" false positives.
+
+2. **Verify Playwright MCP is actually available in this session.** Before any real test, try `mcp__playwright__browser_navigate("about:blank")` as a no-op availability probe. If that call returns "tool not found" or similar, the Playwright MCP is not enabled in this project's `.claude/settings.local.json` (`enabledMcpjsonServers`). **Do NOT silently fall back to curl.** Degrade loudly: add a Critical finding telling the user to add `playwright` + `chrome-devtools` to `enabledMcpjsonServers`, and proceed into the HTML-inspection Plan B below.
+
+3. **Playwright MCP (preferred path):**
+   - `mcp__playwright__browser_navigate` to app URL (use the parsed port)
+   - `mcp__playwright__browser_take_screenshot` of key pages — save to `.coding-agent/features/<CURRENT>/screenshots/`
+   - `mcp__playwright__browser_click` / `browser_fill_form` / `browser_type` to test interactive flows
    - `mcp__playwright__browser_resize` for mobile (375px) and desktop (1280px)
-3. Chrome DevTools MCP:
-   - `mcp__chrome-devtools__list_console_messages` for errors
+   - **Modal dialogs:** `browser_handle_dialog` only handles **native** dialogs (`window.confirm/alert/prompt`). Modal React components (shadcn AlertDialog, Radix Dialog, MUI Modal) are regular DOM — use `browser_click` on the modal's confirm button. If your script hangs waiting for a dialog that never fires, the app is using an in-DOM modal; take a screenshot to confirm, then switch to click-based interaction.
+
+4. **Chrome DevTools MCP:**
+   - `mcp__chrome-devtools__list_console_messages` for errors/warnings
    - `mcp__chrome-devtools__list_network_requests` for API verification
-4. Kill servers.
+
+5. **Kill servers.**
+
+### Plan B — HTML-inspection fallback (when Playwright MCP unavailable)
+
+When Playwright isn't available, degrade gracefully — but **mark the review as degraded and require human verification for pixel-level checks.**
+
+1. `curl -s http://localhost:<parsed-port>/ -o /tmp/page.html` for each key route
+2. Grep for **stable markers**: `data-testid`, `data-slot`, `data-sidebar="..."`, literal text, component class names. For shadcn Sidebar specifically, `data-sidebar="sidebar|header|content|footer|rail|trigger"` and `data-slot="sidebar-wrapper|sidebar-inset|sidebar-container"` are reliable presence indicators.
+3. For compiled client bundles: `grep` for feature-specific strings in `.next/static/chunks/*.js` (or your framework's build output). **Verify compiled artifacts BEFORE restarting the dev server** — most dev servers wipe or rehash build output on restart, and the chunk file you verified will no longer exist.
+4. Add a **Visual Verification Required** row to the Runtime Verification table with explicit pixel-level items the human must eyeball (layout, dark mode FOUC, animations, responsive breakpoints).
+5. Add a top-line warning to review.md: `⚠  DEGRADED MODE — Playwright MCP unavailable, human eyeball required for items listed below`.
+
+**A review done with HTML inspection alone cannot PASS.** It can complete with status `PASS (pending human verification)` as an explicit degraded status. The orchestrator must surface this to the user for manual sign-off before committing.
 
 ### iOS apps (if Xcode project exists)
 
@@ -104,6 +132,8 @@ Test endpoints with curl via Bash.
 - [ ] No unhandled errors in console/logs
 
 If any smoke test fails → FAIL.
+
+**Restore any test fixtures you modified.** If your smoke test edited files (e.g., to test an edit-save-reload cycle), restore them with `git checkout -- <paths>` before returning. Dirty test fixtures leak into `git status` and confuse the orchestrator's commit step. Example: if you edited `kb/welcome.md` during the flow test, `git checkout -- kb/` before writing review.md.
 
 ## Step 6 — Write review.md
 

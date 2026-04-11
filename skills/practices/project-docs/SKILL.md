@@ -7,6 +7,22 @@ description: Generates minimal project documentation — README.md, ARCHITECTURE
 
 Creates minimal, accurate project docs by reading the actual codebase. Not boilerplate — every line comes from what's really there.
 
+## CLAUDE.md and AGENTS.md — no duplication
+
+Claude Code reads `CLAUDE.md` at session startup. Most OSS projects use `AGENTS.md` as the canonical agent workflow document (stack, build/test commands, conventions, known issues). **Do not duplicate content between them** — duplication guarantees drift.
+
+The rule: **one file is the source of truth, the other is a pointer.** In practice, `AGENTS.md` holds the content and `CLAUDE.md` is a 5-line redirect:
+
+```markdown
+# Project Notes
+
+This project uses [AGENTS.md](./AGENTS.md) as the canonical agent workflow document.
+
+See AGENTS.md for: stack, build/test commands, conventions, architecture decisions, and known issues.
+```
+
+If this project was created before `AGENTS.md` became standard and already has a detailed `CLAUDE.md`, invert the relationship: keep `CLAUDE.md` as the source of truth and make `AGENTS.md` the redirect. Never maintain both.
+
 ## When to Apply
 
 - **After** first feature ships (review PASS) — docs describe what was actually built, not what was planned

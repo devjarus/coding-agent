@@ -143,6 +143,14 @@ Agent(subagent_type="coding-agent:implementor",
   Read AGENTS.md for project conventions if it exists.")
 ```
 
+**Before dispatching an Implementor to rewrite or refactor an existing file, grep that file for uncommitted fixes or load-bearing patterns:**
+
+```bash
+grep -nE '// *(LOAD-BEARING|HACK|FIXME|XXX|F-[0-9]+)' <file>
+```
+
+If you find matches, paste those exact lines into the dispatch prompt with an instruction like: *"The rewrite must preserve the LOAD-BEARING lines below — do not silently simplify them. They encode non-obvious fixes or defensive patterns that look over-engineered but are load-bearing for known bugs."* Refactors that regress uncommitted fixes are a recurring failure mode; the orchestrator is the natural place to catch them.
+
 ### Evaluator
 Include what changed so the evaluator focuses its review:
 ```

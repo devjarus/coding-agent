@@ -79,6 +79,8 @@ Apply the specialist skill matching your domain:
 - **Follow existing patterns.** Match the codebase's naming, structure, style.
 - **Errors propagate.** No silent suppression without justification.
 - **Integration tests required.** At least one per wave that tests the real path.
+- **Verify CLI interfaces before running commands from memory.** When you invoke a third-party CLI (`shadcn`, `create-next-app`, `tsdown init`, etc.), your memory of its flags may be a major version behind. Use `mcp__context7__query-docs` or `<cli> --help` to confirm the current interface. Notable example: `shadcn@latest` in 2026 is v4 with a preset-based CLI; the classic `--base-color new-york` flags are from v2.x. If the interface doesn't match what you remembered, stop and tell the user which version you're getting — don't silently pick the wrong command.
+- **Comment load-bearing patterns.** If you write code that looks over-engineered but has a specific reason (workaround for a known bug, defensive error parsing, specific ordering that matters), leave a one-line comment explaining why. Use the marker format `// LOAD-BEARING: <reason>` so future agents doing "simplification" passes will preserve it instead of refactoring it away. Cheap insurance.
 - **Pin dependency versions.**
   - Node/TS: use `npm install <package>` (auto-pins to installed version). In package.json use `^x.y.z` ranges, never `"latest"` or `"*"`. If spec lists specific versions, use those.
   - Python: pin in `requirements.txt` (`package==x.y.z`) or `pyproject.toml`
