@@ -54,27 +54,69 @@ If you can't remember what you've touched this session, that alone means the cum
 
 If the user's most recent message contains any of: `"still failed"`, `"still broken"`, `"didn't work"`, `"same error"`, `"tried again"`, `"still not working"` — the next dispatch MUST be the Debugger, not another Implementor and not an inline fix. The Fix Rounds rule is explicit: same bug recurring = Debugger first. This applies even if the file-edit count hasn't hit the threshold yet; user-signaled recurrence is the trigger.
 
+## Artifact Layout
+
+History accumulates — we never overwrite past features. Layout:
+
+```
+.coding-agent/
+├── CURRENT                               # one line: active feature slug, empty if none
+├── learnings.md                          # append-only, newest entries on top
+├── agent-log.txt                         # hook-managed dispatch log
+├── research/                             # optional research cache
+└── features/
+    ├── 2026-04-05-initial-build/         # write-once, never modified after PASS
+    │   ├── spec.md
+    │   ├── plan.md
+    │   ├── progress.md
+    │   └── review.md
+    ├── 2026-04-08-search-feature/
+    │   ├── spec.md
+    │   ├── plan.md
+    │   ├── progress.md
+    │   └── review.md
+    └── 2026-04-10-comments-system/       # currently in flight
+        ├── spec.md
+        ├── plan.md
+        ├── progress.md
+        └── (review.md appears when evaluation runs)
+```
+
+**`AGENTS.md`, `ARCHITECTURE.md`, `README.md` live at the project root** — they are live cumulative files updated in place as features ship, not per-feature snapshots.
+
+**Active feature resolution:** read `.coding-agent/CURRENT`. That's the slug. All artifacts for the active feature live at `.coding-agent/features/<slug>/`.
+
+**Slug format:** `YYYY-MM-DD-<short-name>` (e.g., `2026-04-10-comments-system`). Keep it short, lowercase, hyphenated.
+
 ## State Machine
 
-After classification, read `.coding-agent/` and follow:
+After classification, read `.coding-agent/CURRENT` and follow:
 
 | State | Action |
 |-------|--------|
-| **No `.coding-agent/` directory** | Create it. Go to next row. |
-| **No `spec.md`** (Large task) | Dispatch Architect for spec. |
+| **No `.coding-agent/` directory** | Create it + `features/` subdir. Go to next row. |
+| **`CURRENT` empty or missing** (no active feature) | Generate slug, create `features/<slug>/`, write slug to `CURRENT`, go to next row. |
+| **No `features/<CURRENT>/spec.md`** (Large task) | Dispatch Architect for spec. |
 | **`spec.md` exists, no `plan.md`** | Dispatch Architect for plan. |
-| **`plan.md` exists, incomplete tasks** | Create/update `progress.md`. Dispatch Implementor(s). |
+| **`plan.md` exists, incomplete tasks** | Create/update `features/<CURRENT>/progress.md`. Dispatch Implementor(s). |
 | **All tasks complete, no `review.md`** | Dispatch Evaluator (include git diff). |
 | **`review.md` = FAIL** | See "Fix Rounds" below. |
 | **`review.md` = PASS** | See "After Review PASS" below. |
-| **Pipeline complete + new message** | Archive → classify → dispatch. |
+| **Pipeline complete (`review.md` = PASS) + new message** | Start a new feature — see below. |
+
+**All artifact paths are under `.coding-agent/features/<CURRENT>/`** except `CURRENT` itself and `learnings.md`, which live at the `.coding-agent/` top level.
 
 ## New Request After Completion
 
-1. **Run reflection** (see "Reflection" below) if not already done
-2. **Archive**: `spec.md` → `spec.prev.md`, `plan.md` → `plan.prev.md`, `review.md` → `review.prev.md`, `progress.md` → `progress.prev.md`
-3. **Classify** the new request using the task size table
-4. **Dispatch** accordingly
+When the last feature's `review.md` = PASS and a new user message arrives:
+
+1. **Run reflection** on the completed feature (see "Reflection" below) if not already done. Reflection **appends** to `.coding-agent/learnings.md`, it does NOT overwrite.
+2. **Leave the old feature directory alone** — `features/<previous>/` is the permanent record, never modified.
+3. **Classify** the new request using the task size table.
+4. **Generate a new slug**: `YYYY-MM-DD-<short-name>` based on today's date and the request.
+5. **Create the new directory**: `mkdir .coding-agent/features/<new-slug>/`
+6. **Update the pointer**: write `<new-slug>` into `.coding-agent/CURRENT` (replacing the previous slug).
+7. **Dispatch** accordingly — the architect (or implementor for Small/Micro) now writes into the new feature directory.
 
 ## How to Dispatch
 
@@ -147,42 +189,46 @@ For parallel work: dispatch multiple Implementors in one message.
 
 ## Reflection
 
-After review PASS and before committing, write `.coding-agent/learnings.md`:
+After review PASS and before committing, **prepend** a new entry to `.coding-agent/learnings.md` (append-only, newest entries on top):
 
 ```markdown
-# Learnings — [feature] — [date]
+## <YYYY-MM-DD> — <feature slug>
 
-## Technical Gotchas
+### Technical Gotchas
 [Things that broke, workarounds, environment-specific issues]
 
-## Architecture Decisions
+### Architecture Decisions
 [Choices made and WHY]
 
-## Patterns That Worked
+### Patterns That Worked
 [Reusable approaches worth repeating]
 
-## Suggested AGENTS.md Updates
+### Suggested AGENTS.md Updates
 [Specific additions for this project's AGENTS.md]
+
+---
 ```
+
+**Never overwrite `learnings.md`.** Read the existing file, construct the new entry, write `<new entry>\n\n<existing content>` back. Future sessions should see every feature's learnings in chronological order.
 
 Scale to task size:
 - Micro: skip reflection
-- Small: 1-2 bullet points
-- Medium/Large: full learnings.md + update AGENTS.md
+- Small: 1-2 bullet points as a compact entry
+- Medium/Large: full entry with all sections + update root AGENTS.md
 
 ## Validation
 
 Run the verification script (from pipeline-verification skill) after each subagent returns:
 
 ```bash
-verify-stage.sh spec     # after architect
+verify-stage.sh spec     # after architect — reads .coding-agent/CURRENT and checks features/<current>/spec.md
 verify-stage.sh plan     # after architect
 verify-stage.sh build    # after implementor
 verify-stage.sh tests    # after implementor
 verify-stage.sh review   # after evaluator
 ```
 
-FAIL → re-dispatch with error output. Max 2 retries, then ask user.
+The script reads `.coding-agent/CURRENT` to resolve the active feature directory and validates artifacts inside `features/<current>/`. FAIL → re-dispatch with error output. Max 2 retries, then ask user.
 
 ## After Review PASS
 

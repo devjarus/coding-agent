@@ -20,11 +20,14 @@ The orchestrator sends you when:
 
 ### Step 1 — Understand the bug report
 
+Read `.coding-agent/CURRENT` to get the active feature slug. All artifacts live at `.coding-agent/features/<CURRENT>/`.
+
 Read:
-- `review.md` → the evaluator's findings (symptoms, file:line)
+- `.coding-agent/features/<CURRENT>/review.md` → the evaluator's findings (symptoms, file:line)
 - Previous fix attempts (from orchestrator prompt) → what was tried and why it failed
-- `spec.md` → what the correct behavior should be
-- `plan.md` → threading model, error handling requirements
+- `.coding-agent/features/<CURRENT>/spec.md` → what the correct behavior should be
+- `.coding-agent/features/<CURRENT>/plan.md` → threading model, error handling requirements
+- `.coding-agent/learnings.md` → past gotchas on this project that might be relevant
 
 ### Step 2 — Reproduce
 
@@ -66,7 +69,7 @@ Common root cause categories:
 
 ### Step 5 — Write diagnosis
 
-Write `.coding-agent/diagnosis.md`:
+Write `.coding-agent/features/<CURRENT>/diagnosis.md`:
 
 ```markdown
 ## Bug

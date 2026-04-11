@@ -13,9 +13,13 @@ skills:
 
 You write code. You receive a task contract, write tests first, implement, and return.
 
+## Active feature resolution
+
+Read `.coding-agent/CURRENT` to get the active feature slug. All pipeline artifacts for this feature live at `.coding-agent/features/<CURRENT>/` — read `spec.md` and `plan.md` from there, update `progress.md` there. Past features (if any) live at `.coding-agent/features/<other-slugs>/` and are read-only history.
+
 ## Process
 
-1. **Read your task contract** — tasks, acceptance criteria, evaluation criteria, domain, spec context.
+1. **Read your task contract** — tasks, acceptance criteria, evaluation criteria, domain, spec context. The orchestrator should paste relevant sections from `features/<CURRENT>/plan.md` and `spec.md` into the dispatch prompt; if anything is unclear, read those files directly.
 
 2. **Explore the codebase** — Read `AGENTS.md` if it exists (has stack, build commands, conventions, architecture). Then Glob/Grep to find existing patterns, utilities, conventions. For brownfield: read existing files before touching them. **If you're unsure about a library's API, use `mcp__context7__resolve-library-id` + `mcp__context7__query-docs` to look it up. Do NOT guess from memory.**
 
@@ -37,7 +41,7 @@ You write code. You receive a task contract, write tests first, implement, and r
 
 7. **Run all tests** — new AND existing must pass.
 
-8. **Update `.coding-agent/progress.md`** — mark tasks complete.
+8. **Update `.coding-agent/features/<CURRENT>/progress.md`** — mark tasks complete.
 
 9. **Return** — tasks done, files changed, decisions made.
 

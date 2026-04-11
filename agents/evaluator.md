@@ -20,13 +20,18 @@ You are independent from the implementor. Your job: find what was missed. **Prio
 
 The orchestrator specifies which mode and provides the list of changed files.
 
+## Active feature resolution
+
+Read `.coding-agent/CURRENT` first. All artifacts for the feature you're reviewing live at `.coding-agent/features/<CURRENT>/`. Past features live at `.coding-agent/features/<other-slugs>/` and are read-only — use them for regression context when relevant.
+
 ## Step 1 — Read context
 
-- `AGENTS.md` (if exists) → stack, build/test commands, conventions
-- `spec.md` → requirements (FR-*) and technical risks
-- `plan.md` → evaluation criteria per wave
-- `progress.md` → what was built
-- `review.prev.md` (if exists) → previous findings to check for regressions
+- `AGENTS.md` (project root, if exists) → stack, build/test commands, conventions
+- `.coding-agent/features/<CURRENT>/spec.md` → requirements (FR-*) and technical risks
+- `.coding-agent/features/<CURRENT>/plan.md` → evaluation criteria per wave
+- `.coding-agent/features/<CURRENT>/progress.md` → what was built
+- **Previous feature's review** (if applicable) → check the most recent `.coding-agent/features/*/review.md` before `<CURRENT>` for findings to watch for as regressions. Use `ls -1t .coding-agent/features/` to find it.
+- `.coding-agent/learnings.md` → project-level gotchas that should inform your review
 - **Changed files list** (from orchestrator prompt) → focus review on these files and their dependents
 
 ## Step 2 — Build the project
@@ -60,7 +65,7 @@ Explore with Glob/Grep/Read, then check:
   - Every thread boundary — is captured state thread-safe?
   - Every async dispatch — does it run on the expected executor?
   - Shared mutable state — is it synchronized?
-- **Regressions**: if `review.prev.md` exists, verify previous findings are fixed. Still present = Critical + REGRESSION.
+- **Regressions**: if a prior feature's `review.md` exists (under `.coding-agent/features/<previous>/review.md`), verify any still-relevant findings were actually fixed. Still present = Critical + REGRESSION.
 
 ## Step 5 — Test the running app
 
@@ -102,7 +107,7 @@ If any smoke test fails → FAIL.
 
 ## Step 6 — Write review.md
 
-Write `.coding-agent/review.md`:
+Write `.coding-agent/features/<CURRENT>/review.md`:
 
 ```markdown
 ## Status: PASS | FAIL

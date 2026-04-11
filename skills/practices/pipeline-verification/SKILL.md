@@ -7,6 +7,10 @@ description: Deterministic stage gates for the development pipeline — validate
 
 Deterministic checks the orchestrator runs before advancing the pipeline.
 
+## Artifact resolution
+
+The script reads `.coding-agent/CURRENT` to get the active feature slug and checks artifacts inside `.coding-agent/features/<slug>/`. If `CURRENT` doesn't exist but legacy flat files (`.coding-agent/spec.md` etc.) do, it falls back to the legacy layout with a warning. If neither exists, the script fails with "pipeline has not been started."
+
 ## How to Run
 
 ```bash

@@ -23,29 +23,54 @@ fail() { echo "FAIL: $1" >&2; exit 1; }
 warn() { echo "WARN: $1" >&2; }
 pass() { echo "PASS: $1"; exit 0; }
 
+# ─── ACTIVE FEATURE RESOLUTION ───────────────────────────────────
+# Artifacts live at .coding-agent/features/<current>/ where <current>
+# is the slug in .coding-agent/CURRENT.
+#
+# Backward compatibility: if .coding-agent/CURRENT does not exist but
+# flat legacy files (spec.md/plan.md/review.md) do, fall back to the
+# legacy layout with a warning.
+FEATURE_DIR=""
+resolve_feature_dir() {
+  if [ -f "$CODING_AGENT/CURRENT" ]; then
+    local slug
+    slug=$(tr -d '[:space:]' < "$CODING_AGENT/CURRENT")
+    [ -z "$slug" ] && fail ".coding-agent/CURRENT exists but is empty — orchestrator must write a feature slug"
+    FEATURE_DIR="$CODING_AGENT/features/$slug"
+    [ -d "$FEATURE_DIR" ] || fail "Feature directory does not exist: $FEATURE_DIR"
+  elif [ -f "$CODING_AGENT/spec.md" ] || [ -f "$CODING_AGENT/plan.md" ] || [ -f "$CODING_AGENT/review.md" ]; then
+    warn "Using legacy flat layout at $CODING_AGENT/ — migrate to features/<slug>/ when convenient"
+    FEATURE_DIR="$CODING_AGENT"
+  else
+    fail "No .coding-agent/CURRENT and no legacy artifacts — pipeline has not been started"
+  fi
+}
+
 # ─── SPEC VALIDATION ─────────────────────────────────────────────
 verify_spec() {
-  local f="$CODING_AGENT/spec.md"
-  [ -f "$f" ] || fail "spec.md does not exist"
+  resolve_feature_dir
+  local f="$FEATURE_DIR/spec.md"
+  [ -f "$f" ] || fail "spec.md does not exist at $f"
 
   grep -qi "## overview\|## Overview" "$f" || fail "spec.md missing Overview section"
   grep -qiE "FR-[0-9]+" "$f" || fail "spec.md missing requirements (no FR-* found)"
   grep -qi "## non.goal\|## Non.Goal" "$f" || fail "spec.md missing Non-Goals section"
   grep -qi "## technical risk\|## Technical Risk" "$f" && true || warn "spec.md missing Technical Risks section (recommended)"
 
-  pass "spec.md has Overview, Requirements, Non-Goals"
+  pass "spec.md has Overview, Requirements, Non-Goals ($FEATURE_DIR)"
 }
 
 # ─── PLAN VALIDATION ─────────────────────────────────────────────
 verify_plan() {
-  local f="$CODING_AGENT/plan.md"
-  [ -f "$f" ] || fail "plan.md does not exist"
+  resolve_feature_dir
+  local f="$FEATURE_DIR/plan.md"
+  [ -f "$f" ] || fail "plan.md does not exist at $f"
 
   grep -qiE "T-[0-9]+|Task.?[0-9]+" "$f" || fail "plan.md missing task definitions (no T-* or Task-* found)"
   grep -qi "wave\|Wave" "$f" || fail "plan.md missing wave structure"
   grep -qi "evaluation.criter\|Evaluation.Criter" "$f" || fail "plan.md missing evaluation criteria"
 
-  pass "plan.md has Tasks, Waves, Evaluation Criteria"
+  pass "plan.md has Tasks, Waves, Evaluation Criteria ($FEATURE_DIR)"
 }
 
 # ─── BUILD VERIFICATION ──────────────────────────────────────────
@@ -145,8 +170,9 @@ verify_tests() {
 
 # ─── REVIEW VALIDATION ────────────────────────────────────────────
 verify_review() {
-  local f="$CODING_AGENT/review.md"
-  [ -f "$f" ] || fail "review.md does not exist"
+  resolve_feature_dir
+  local f="$FEATURE_DIR/review.md"
+  [ -f "$f" ] || fail "review.md does not exist at $f"
 
   grep -qi "## status\|## Status" "$f" || fail "review.md missing Status section"
   grep -qiE "PASS|FAIL" "$f" || fail "review.md missing PASS/FAIL status"
@@ -154,7 +180,7 @@ verify_review() {
   grep -qi "## build result\|## Build Result\|## test result\|## Test Result" "$f" || warn "review.md missing Build/Test Result section"
   grep -qi "## runtime\|## Runtime" "$f" || warn "review.md missing Runtime Verification section"
 
-  pass "review.md has Status, Findings"
+  pass "review.md has Status, Findings ($FEATURE_DIR)"
 }
 
 # ─── DISPATCH ─────────────────────────────────────────────────────
