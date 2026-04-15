@@ -57,11 +57,29 @@ Classification weights **decisions per file**, not raw line count.
 - Changing a public API signature
 - New function with non-trivial logic
 
-### Mid-task refinements (iterative chat)
+### Automatic classification overrides
 
-Real sessions look like `"try this"` → `"still broken"` → `"try X instead"`. Each turn in isolation feels Micro. **It isn't.** When the current turn continues a prior task without producing a completion signal (git commit, final artifact written), you MUST re-classify using **cumulative** file-touch and line totals across the whole session, not just this turn's delta.
+These override the size table regardless of file/line count:
 
-If you can't remember what you've touched this session, that alone means the cumulative total is high enough to dispatch. Self-policing does not scale with context length — trust the cumulative counter over your sense of "this feels small".
+| Signal | Minimum classification | Why |
+|--------|----------------------|-----|
+| **New destructive operation on user data** (delete files, drop tables, purge records, bulk-remove) | **Medium** (architect must AskUserQuestion about safety semantics: soft vs hard delete, confirmation UX, undo mechanism) | A destructive API shipped without user input on safety is a liability. This is never touch-up. |
+| **New public API endpoint or route** | **Small** (evaluator must test it) | Untested endpoints are production bugs. |
+| **New stateful UI component with client-side state management** | **Small** | State bugs only surface at runtime. |
+| **Changes to auth, permissions, or access control** | **Medium** | Security changes need architect review. |
+
+**Touch-up mode is for fixing existing behavior, not adding new destructive capabilities.** If the change introduces a new way to delete/modify/corrupt user data, it's feature or refactor mode — even if it "feels like a continuation" of a UI redesign.
+
+### Same-session accumulation
+
+Real sessions look like `"try this"` → `"and also add X"` → `"oh and fix Y"`. Each turn in isolation feels Micro. **It isn't.**
+
+**Concrete trigger:** after every turn, mentally count: how many files have I touched in this session? How many new functions/endpoints/components? If either exceeds:
+- **5+ files touched** across the whole session → you are at minimum Small
+- **3+ new functions/endpoints/components** created → you are at minimum Small
+- **Any new destructive operation** → you are at minimum Medium (see overrides above)
+
+If you can't remember what you've touched, that alone means the total is high enough to dispatch. Self-policing does not scale with context length.
 
 ### Same-bug-twice rule
 
