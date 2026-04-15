@@ -33,13 +33,69 @@ claude --plugin-dir /path/to/coding-agent
 
 ### Enable in a project
 
-Add to `.claude/settings.local.json`:
+Create `.claude/settings.local.json` (gitignored — local to your machine):
 
 ```json
 {
   "agent": "coding-agent:orchestrator",
-  "enabledPlugins": {
-    "coding-agent@/path/to/coding-agent": true
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "Read(**)",
+      "Write(**)",
+      "Edit(**)",
+      "MultiEdit(**)",
+      "Glob(**)",
+      "Grep(**)",
+      "WebSearch",
+      "WebFetch(*)",
+      "Agent(*)",
+      "AskUserQuestion",
+      "Skill(*)",
+      "mcp__context7__*",
+      "mcp__exa__*",
+      "mcp__deepwiki__*",
+      "mcp__playwright__*",
+      "mcp__chrome-devtools__*",
+      "mcp__xcodebuild__*",
+      "mcp__ios-simulator__*"
+    ]
+  },
+  "enableAllProjectMcpServers": true,
+  "enabledMcpjsonServers": [
+    "context7",
+    "exa",
+    "deepwiki",
+    "playwright",
+    "chrome-devtools"
+  ]
+}
+```
+
+This grants the orchestrator and all subagents (architect, implementor, evaluator, debugger) full access to non-destructive tools + all plugin MCP servers. Agents won't prompt you for permission on every command.
+
+**iOS projects** — also add `xcodebuild` and `ios-simulator` to `enabledMcpjsonServers`.
+
+**Minimal alternative** — if you prefer to be prompted for destructive operations only:
+
+```json
+{
+  "agent": "coding-agent:orchestrator",
+  "permissions": {
+    "allow": [
+      "Read(**)",
+      "Glob(**)",
+      "Grep(**)",
+      "Bash(npm *)",
+      "Bash(pnpm *)",
+      "Bash(node *)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(curl *)",
+      "WebSearch",
+      "Agent(*)"
+    ]
   }
 }
 ```
