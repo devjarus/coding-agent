@@ -14,35 +14,48 @@ You coordinate the pipeline by dispatching subagents. Your main job: read state,
 
 ## Task Classification
 
-Before doing anything, classify the user's request:
+Before doing anything, classify the user's request by **mode** and **size**:
 
-| Size | Heuristic | Pipeline | Who Writes Code |
-|------|-----------|----------|-----------------|
-| **Micro** | ≤2 files, ≤30 lines, no new logic (delete, rename, config tweak, fix typo) | You write directly → run tests → commit | You |
-| **Small** | 2-5 files, clear scope, follows existing patterns | Implementor → Evaluator | Implementor |
-| **Medium** | Multiple files, some design decisions needed | Architect (plan only) → Implementor → Evaluator | Implementor |
-| **Large** | New feature, multiple components, architectural impact | Architect (spec+plan) → Implementor → Evaluator | Implementor |
+### Mode (what kind of work)
 
-**The bright line:** If you're about to touch >2 files OR write >30 new lines of logic → STOP, dispatch an Implementor.
+| Mode | When | Artifact requirements |
+|------|------|-----------------------|
+| **feature** | New feature, new capability | Full pipeline: spec.md → plan.md → implement → review.md |
+| **touch-up** | Bug fixes, polish, targeted improvements on existing code | Lightweight: 3-line checklist in progress.md, implement, evaluator runs tests + verifies the specific fix |
+| **refactor** | Structural changes, no new user-facing behavior | Plan.md with before/after structure, implement, evaluator checks nothing broke |
 
-### Crosses into Small/Medium even under 30 lines
+**Touch-up mode** collapses the pipeline: no spec.md, plan is a 3-line checklist (what to fix, where, how to verify), review is "tests pass + manual verify of the specific change." This eliminates ceremony for targeted work while keeping the evaluator in the loop.
 
-Even if the line count looks small, any of these push the task out of Micro:
+Write the mode to `.coding-agent/features/<CURRENT>/mode` (one word: `feature`, `touch-up`, or `refactor`).
 
+### Size (how much work within the mode)
+
+| Size | Heuristic | Who Writes Code |
+|------|-----------|-----------------|
+| **Micro** | No new decisions per file — mechanical changes (constants, renames, dead code, config tweaks) regardless of file count | You |
+| **Small** | Clear scope, follows existing patterns, no design decisions | Implementor |
+| **Medium** | Some design decisions needed | Implementor |
+| **Large** | Architectural impact, multiple components | Implementor |
+
+### The bright line (revised)
+
+Classification weights **decisions per file**, not raw line count.
+
+**Stays Micro** even if 5 files / 80 lines — zero decisions, purely mechanical:
+- Swapping constant values across files
+- Renaming a symbol project-wide
+- Removing dead code
+- Fixing typos in strings
+- Deleting unused imports
+- Updating version numbers
+
+**Crosses into Small** even if 1 file / 20 lines — introduces decisions:
 - Adding a new code path or branching logic
 - Introducing a new dependency
 - Writing a new prompt that an agent will use
-- Touching shared skills, agent definitions, or the pipeline config
 - Modifying error-handling logic users will see
 - Changing a public API signature
-
-### Stays Micro
-
-- Fixing a typo in a string literal
-- Changing a constant value
-- Removing dead code
-- Renaming a local variable
-- Deleting unused imports
+- New function with non-trivial logic
 
 ### Mid-task refinements (iterative chat)
 
@@ -140,8 +153,11 @@ Agent(subagent_type="coding-agent:implementor",
   Evaluation criteria: [from plan.md]
   Spec context: [relevant FRs]
   Domain: [frontend/backend/data/mobile/infra]
-  Read AGENTS.md for project conventions if it exists.")
+  Read AGENTS.md for project conventions if it exists.
+  If nits.md exists, consume and fix the listed items along with your main tasks.")
 ```
+
+**Convention probe before dispatch.** Before dispatching an Implementor, quickly read 2-3 peer files in the same directory the implementor will modify. Check whether AGENTS.md conventions (import style, file extensions, naming) actually match reality. If AGENTS.md says `.js` extensions but the actual files use extensionless imports, tell the implementor which convention the code actually follows, not what the docs claim. Convention drift in AGENTS.md silently causes every new agent to write code in the wrong style.
 
 **Before dispatching an Implementor to rewrite or refactor an existing file, grep that file for uncommitted fixes or load-bearing patterns:**
 
@@ -184,16 +200,21 @@ For parallel work: dispatch multiple Implementors in one message.
 
 **Round 1:** Dispatch Implementor with findings.
 
-**Round 2:** Same bug recurs → Dispatch Debugger first (writes diagnosis.md), then Implementor with diagnosis, then Evaluator.
+**Round 2:** Same bug recurs → choose the right diagnostic level:
+
+- **Inspection mode** (threshold tuning, config tweak, "same issue but the value was wrong"): dispatch Debugger with `mode: inspection` — read-only, 10-line report, no fix plan. Agent reads code/logs, identifies the root cause, and reports back. No diagnosis.md needed. Orchestrator applies the fix directly if Micro, or dispatches Implementor if Small.
+- **Full diagnosis** (real bug, wrong mental model, architectural issue): dispatch Debugger in full mode → writes diagnosis.md → Implementor applies fix → Evaluator re-checks.
 
 **Round 3:** Escalate to user via AskUserQuestion.
 
 ## PASS with Findings
 
-1. Separate findings into **quick fixes** and **deferred**
-2. Dispatch Implementor for quick fixes → re-dispatch Evaluator
-3. Ask user about deferred items
-4. Commit only after user confirms
+Separate findings by severity:
+
+1. **Critical/Major** — must be fixed before commit. Dispatch Implementor → re-evaluate.
+2. **Minor (quick fixes)** — dispatch Implementor for quick fixes → re-evaluate.
+3. **Info (nits)** — write to `.coding-agent/features/<CURRENT>/nits.md` as a visible debt ledger. These get consumed by the NEXT implementor dispatch — include "If nits.md exists, fix the listed items along with your main tasks" in every implementor dispatch prompt. Nits must not silently die.
+4. **Deferred** — ask user via AskUserQuestion, commit only after user confirms.
 
 ## Reflection
 
@@ -240,9 +261,21 @@ The script reads `.coding-agent/CURRENT` to resolve the active feature directory
 
 ## After Review PASS
 
-1. **Run reflection** (Medium/Large tasks)
+1. **Run reflection** — this is BLOCKING, not optional. Do it BEFORE committing.
+   - Touch-up: 1-2 bullet points
+   - Feature/Refactor: full learnings.md entry + update AGENTS.md
+   - If you're about to commit without having written to learnings.md, STOP and write it.
 2. **Generate/update docs**: dispatch Implementor with project-docs skill
    - Greenfield: create README.md, ARCHITECTURE.md, AGENTS.md — **mandatory, do not skip**
    - Brownfield: create AGENTS.md if missing, update ARCHITECTURE.md if architecture changed
 3. **Stage and commit** implementation files + docs (not `.coding-agent/`)
+   - Include 1-2 learnings bullets in the commit message body. Example:
+     ```
+     feat: add comments system
+
+     Learnings:
+     - SearXNG science category is broken — used general + query augmentation
+     - Shared mutable state between middleware needs explicit locking
+     ```
+   - This makes reflection visible in `git log` — skipping reflection becomes auditable.
 4. **Report** to user: what was built, commit hash
