@@ -286,7 +286,13 @@ The script reads `.coding-agent/CURRENT` to resolve the active feature directory
 2. **Generate/update docs**: dispatch Implementor with project-docs skill
    - Greenfield: create README.md, ARCHITECTURE.md, AGENTS.md — **mandatory, do not skip**
    - Brownfield: create AGENTS.md if missing, update ARCHITECTURE.md if architecture changed
-3. **Stage and commit** implementation files + docs (not `.coding-agent/`)
+3. **Ensure CI exists** (greenfield or first feature only — skip for touch-ups on projects that already have CI):
+   - Dispatch Implementor with the ci-testing-standard skill to set up:
+     - A test script in package.json / Makefile / pyproject.toml (if not already present)
+     - A CI workflow (`.github/workflows/ci.yml` or equivalent for the platform) that runs: lint, typecheck, tests, build — on every push and PR
+     - Pre-commit or pre-push git hook (optional, via `husky` / `lefthook` / `lint-staged` or equivalent) that runs the fast checks locally before push
+   - If the project already has a CI workflow, verify it covers the tests the evaluator ran. If it doesn't (e.g., CI only runs lint but not tests), add the missing steps.
+4. **Stage and commit** implementation files + docs + CI config (not `.coding-agent/`)
    - Include 1-2 learnings bullets in the commit message body. Example:
      ```
      feat: add comments system

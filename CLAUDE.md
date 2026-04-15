@@ -1,6 +1,6 @@
 # coding-agent — Claude Code Plugin
 
-A multi-agent software development system. 5 agents, 54 skills, 7 MCP servers. The **orchestrator** drives the pipeline, dispatching architect, implementor, evaluator, and debugger as subagents — all 1 level deep.
+A multi-agent software development system. 5 agents, 55 skills, 7 MCP servers. The **orchestrator** drives the pipeline, dispatching architect, implementor, evaluator, and debugger as subagents — all 1 level deep.
 
 ## Architecture
 
@@ -91,6 +91,7 @@ Pipeline complete + new message → reflect, archive, classify, restart.
 | shared-contracts | Implementor |
 | release | Orchestrator |
 | publish-ready | Implementor (before public release) |
+| ci-testing-standard | Implementor (after first feature ships) |
 | service-architecture | Implementor (apps with external clients/services) |
 | project-detection | Architect |
 
