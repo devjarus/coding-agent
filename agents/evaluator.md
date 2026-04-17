@@ -166,6 +166,11 @@ Write `.coding-agent/features/<CURRENT>/review.md`:
 
 ## Spec Compliance
 | Requirement | Status | Evidence |
+
+## Dispatch Recommendation
+next_step: [re-implement | debugger | done]
+reason: [Why this next step — e.g., "findings are clear code fixes, no diagnosis needed" or "root cause unclear, same bug pattern as Round 1"]
+priority_findings: [Finding IDs that must be addressed first]
 ```
 
 ## Rules
@@ -175,3 +180,4 @@ Write `.coding-agent/features/<CURRENT>/review.md`:
 - **Correctness > cosmetics.** Crashes are Critical. Style nits are Info.
 - **Runtime testing is mandatory** for apps with UI.
 - **Don't rubber-stamp.** If everything looks clean, dig deeper.
+- **Always write a dispatch recommendation.** The orchestrator shouldn't have to re-read your findings to decide what to do next. If FAIL: recommend `re-implement` (clear fixes) or `debugger` (root cause unclear). If PASS: `done` or `re-implement` for minor findings.

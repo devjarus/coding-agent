@@ -6,6 +6,7 @@ tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion
 skills:
   - coordination-templates
   - pipeline-verification
+  - context-management
 ---
 
 # Orchestrator
@@ -79,7 +80,7 @@ Real sessions look like `"try this"` → `"and also add X"` → `"oh and fix Y"`
 - **3+ new functions/endpoints/components** created → you are at minimum Small
 - **Any new destructive operation** → you are at minimum Medium (see overrides above)
 
-If you can't remember what you've touched, that alone means the total is high enough to dispatch. Self-policing does not scale with context length.
+If you can't remember what you've touched, that alone means the total is high enough to dispatch. Self-policing does not scale with context length. When this happens, compact with steering (see context-management skill) before the next dispatch.
 
 ### Same-bug-twice rule
 
@@ -110,6 +111,8 @@ History accumulates — we never overwrite past features. Layout:
         ├── spec.md
         ├── plan.md
         ├── progress.md
+        ├── handoff.md                    # appears between fix rounds
+        ├── session-state.md              # appears on /clear checkpoint
         └── (review.md appears when evaluation runs)
 ```
 
@@ -131,9 +134,10 @@ After classification, read `.coding-agent/CURRENT` and follow:
 | **`spec.md` exists, no `plan.md`** | Dispatch Architect for plan. |
 | **`plan.md` exists, incomplete tasks** | Create/update `features/<CURRENT>/progress.md`. Dispatch Implementor(s). |
 | **All tasks complete, no `review.md`** | Dispatch Evaluator (include git diff). |
-| **`review.md` = FAIL** | See "Fix Rounds" below. |
+| **`review.md` = FAIL** | Read review.md `Dispatch Recommendation` field. Follow it (see "Fix Rounds" below). |
 | **`review.md` = PASS** | See "After Review PASS" below. |
-| **Pipeline complete (`review.md` = PASS) + new message** | Start a new feature — see below. |
+| **Pipeline complete (`review.md` = PASS) + new message** | Compact session (see context-management skill), then start a new feature — see below. |
+| **`session-state.md` exists** | Resuming after /clear. Read session-state.md + handoff.md (if exists) to pick up where the previous session left off. |
 
 **All artifact paths are under `.coding-agent/features/<CURRENT>/`** except `CURRENT` itself and `learnings.md`, which live at the `.coding-agent/` top level.
 
@@ -202,7 +206,8 @@ Agent(subagent_type="coding-agent:evaluator",
 ### Debugger
 ```
 Agent(subagent_type="coding-agent:debugger",
-  prompt="Bug: [description]. Previous fix: [what was tried]. Diagnose root cause.")
+  prompt="Bug: [description]. Previous fix: [what was tried]. Diagnose root cause.
+  Read .coding-agent/features/<CURRENT>/handoff.md for what's been tried and ruled out.")
 ```
 
 For parallel work: dispatch multiple Implementors in one message.
@@ -216,14 +221,37 @@ For parallel work: dispatch multiple Implementors in one message.
 
 ## Fix Rounds
 
-**Round 1:** Dispatch Implementor with findings.
+**Before every re-dispatch**, write `.coding-agent/features/<CURRENT>/handoff.md`:
 
-**Round 2:** Same bug recurs → choose the right diagnostic level:
+```markdown
+## Handoff — Round <N>
+
+### What Was Tried
+[Approach taken, by which agent, key files changed]
+
+### Why It Failed
+[Root cause or evaluator findings — be specific]
+
+### What's Ruled Out
+[Approaches that won't work and why]
+
+### Recommended Next Approach
+[Specific strategy for the next agent]
+
+### Key Files
+[Files the next agent should read first]
+```
+
+This artifact prevents the next implementor/debugger from repeating dead-end approaches. Include the `handoff.md` path in every re-dispatch prompt.
+
+**Round 1:** Write `handoff.md`. Compact with steering: `/compact focus on open findings from review.md and handoff.md. Drop implementor transcript.` Dispatch Implementor with findings + handoff.md path.
+
+**Round 2:** Update `handoff.md` (append Round 2 section). Same bug recurs → choose the right diagnostic level:
 
 - **Inspection mode** (threshold tuning, config tweak, "same issue but the value was wrong"): dispatch Debugger with `mode: inspection` — read-only, 10-line report, no fix plan. Agent reads code/logs, identifies the root cause, and reports back. No diagnosis.md needed. Orchestrator applies the fix directly if Micro, or dispatches Implementor if Small.
 - **Full diagnosis** (real bug, wrong mental model, architectural issue): dispatch Debugger in full mode → writes diagnosis.md → Implementor applies fix → Evaluator re-checks.
 
-**Round 3:** Escalate to user via AskUserQuestion.
+**Round 3:** Write `session-state.md` (see context-management skill). Escalate to user via AskUserQuestion. Offer to `/clear` and resume from the checkpoint.
 
 ## PASS with Findings
 
@@ -302,4 +330,5 @@ The script reads `.coding-agent/CURRENT` to resolve the active feature directory
      - Shared mutable state between middleware needs explicit locking
      ```
    - This makes reflection visible in `git log` — skipping reflection becomes auditable.
-4. **Report** to user: what was built, commit hash
+5. **Compact after commit**: `/compact keep only learnings.md entry and user's last message. Drop all feature artifacts and dispatch transcripts — they're on disk.` This prepares a clean context for the next task.
+6. **Report** to user: what was built, commit hash

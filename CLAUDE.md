@@ -1,6 +1,6 @@
 # coding-agent — Claude Code Plugin
 
-A multi-agent software development system. 5 agents, 55 skills, 7 MCP servers. The **orchestrator** drives the pipeline, dispatching architect, implementor, evaluator, and debugger as subagents — all 1 level deep.
+A multi-agent software development system. 5 agents, 56 skills, 7 MCP servers. The **orchestrator** drives the pipeline, dispatching architect, implementor, evaluator, and debugger as subagents — all 1 level deep.
 
 ## Architecture
 
@@ -48,6 +48,8 @@ Pipeline complete + new message → reflect, archive, classify, restart.
 | `progress.md` | Orchestrator | Orchestrator |
 | `review.md` | Evaluator | Orchestrator |
 | `diagnosis.md` | Debugger | Implementor |
+| `handoff.md` | Orchestrator | Implementor, Debugger (what was tried, why it failed, what's ruled out) |
+| `session-state.md` | Orchestrator | Orchestrator (session checkpoint for recovery after /clear) |
 | `learnings.md` | Orchestrator | Future sessions (gotchas, decisions, patterns) |
 | `README.md` | Implementor (project-docs) | Humans |
 | `ARCHITECTURE.md` | Implementor (project-docs) | Humans, Agents (ASCII diagrams) |
@@ -63,7 +65,7 @@ Pipeline complete + new message → reflect, archive, classify, restart.
 | **evaluator** | opus | Builds first. Runs tests. Tests running app (Playwright/simulator). Runtime mandatory. |
 | **debugger** | opus | Reproduce → isolate → trace → diagnose. Writes diagnosis.md, never code. |
 
-## Skills (50)
+## Skills (51)
 
 ### Implementor skill routing by domain
 
@@ -93,6 +95,7 @@ Pipeline complete + new message → reflect, archive, classify, restart.
 | publish-ready | Implementor (before public release) |
 | ci-testing-standard | Implementor (after first feature ships) |
 | service-architecture | Implementor (apps with external clients/services) |
+| context-management | Orchestrator |
 | project-detection | Architect |
 
 ### Pipeline skills (preloaded into agents)
@@ -101,6 +104,7 @@ Pipeline complete + new message → reflect, archive, classify, restart.
 |-------|-------------|
 | coordination-templates | Orchestrator |
 | pipeline-verification | Orchestrator |
+| context-management | Orchestrator |
 | ideation-council | Architect |
 | project-docs | Implementor (after review PASS) |
 | research-cache | — (optional, architect saves findings) |
