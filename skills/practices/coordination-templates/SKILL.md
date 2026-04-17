@@ -46,6 +46,8 @@ When resuming after `/clear` or a new session, read in this order:
 
 This ordering is deliberate: session-state.md and handoff.md tell you what happened recently (high value, small file), so you avoid re-reading large artifacts unnecessarily.
 
+**Precedence when both `session-state.md` and `handoff.md` exist:** session-state.md is the more recent checkpoint — its `Current Phase` field tells you where you are. Read it first. Only read handoff.md if the phase is a fix round; otherwise handoff.md is historical and can be skipped.
+
 ## Context Health Signals
 
 Watch for these in progress.md updates:

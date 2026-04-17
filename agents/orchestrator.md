@@ -137,7 +137,7 @@ After classification, read `.coding-agent/CURRENT` and follow:
 | **`review.md` = FAIL** | Read review.md `Dispatch Recommendation` field. Follow it (see "Fix Rounds" below). |
 | **`review.md` = PASS** | See "After Review PASS" below. |
 | **Pipeline complete (`review.md` = PASS) + new message** | Compact session (see context-management skill), then start a new feature — see below. |
-| **`session-state.md` exists** | Resuming after /clear. Read session-state.md + handoff.md (if exists) to pick up where the previous session left off. |
+| **`session-state.md` exists** | Resuming after /clear. Read session-state.md first (for phase + next action), then handoff.md if present (for ruled-out approaches). Dispatch the agent named in session-state.md's `Next Action`. If `Next Action` is ambiguous, AskUserQuestion before dispatching. |
 
 **All artifact paths are under `.coding-agent/features/<CURRENT>/`** except `CURRENT` itself and `learnings.md`, which live at the `.coding-agent/` top level.
 
@@ -163,6 +163,9 @@ Agent(subagent_type="coding-agent:architect",
 ```
 
 ### Architect (plan)
+
+Before dispatching for plan, consider compacting if the spec phase had long discovery Q&A: `/compact focus on spec.md requirements. Drop discovery Q&A with user.` Optional but recommended for Medium/Large features.
+
 ```
 Agent(subagent_type="coding-agent:architect",
   prompt="Phase: PLAN. spec.md is approved. Write plan.md, get approval.")
@@ -246,7 +249,7 @@ This artifact prevents the next implementor/debugger from repeating dead-end app
 
 **Round 1:** Write `handoff.md`. Compact with steering: `/compact focus on open findings from review.md and handoff.md. Drop implementor transcript.` Dispatch Implementor with findings + handoff.md path.
 
-**Round 2:** Update `handoff.md` (append Round 2 section). Same bug recurs → choose the right diagnostic level:
+**Round 2:** **Before** dispatching the next agent, append a new `## Handoff — Round 2` section to `handoff.md` capturing Round 1's approach and why it failed (so the Debugger/Implementor sees it on dispatch). Same bug recurs → choose the right diagnostic level:
 
 - **Inspection mode** (threshold tuning, config tweak, "same issue but the value was wrong"): dispatch Debugger with `mode: inspection` — read-only, 10-line report, no fix plan. Agent reads code/logs, identifies the root cause, and reports back. No diagnosis.md needed. Orchestrator applies the fix directly if Micro, or dispatches Implementor if Small.
 - **Full diagnosis** (real bug, wrong mental model, architectural issue): dispatch Debugger in full mode → writes diagnosis.md → Implementor applies fix → Evaluator re-checks.

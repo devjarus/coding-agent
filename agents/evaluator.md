@@ -181,3 +181,4 @@ priority_findings: [Finding IDs that must be addressed first]
 - **Runtime testing is mandatory** for apps with UI.
 - **Don't rubber-stamp.** If everything looks clean, dig deeper.
 - **Always write a dispatch recommendation.** The orchestrator shouldn't have to re-read your findings to decide what to do next. If FAIL: recommend `re-implement` (clear fixes) or `debugger` (root cause unclear). If PASS: `done` or `re-implement` for minor findings.
+- **Your recommendation is a strong hint, not binding.** The orchestrator may pick the diagnostic *mode* (debugger inspection vs. full diagnosis) based on round number and bug pattern. Your job is next-agent selection; diagnostic depth is the orchestrator's call.

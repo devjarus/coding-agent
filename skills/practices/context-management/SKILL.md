@@ -127,3 +127,7 @@ Don't count tokens. Use dispatch count as a proxy:
 | 8+ | Clear with handoff brief — session is too deep |
 
 Multi-round fix sessions accumulate fastest: each round = implementor dispatch + evaluator dispatch + orchestrator reads review.md. Two fix rounds = 6+ dispatches. Compact after Round 1 if entering Round 2.
+
+### Counter reset
+
+After `/compact` or `/clear`, the dispatch counter resets to 0. Start counting fresh dispatches from the next dispatch after the compact/clear. Track the count informally — a mental tally or a one-line note in `progress.md`'s decisions log is enough.
