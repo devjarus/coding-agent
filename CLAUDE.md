@@ -95,7 +95,6 @@ Pipeline complete + new message → reflect, archive, classify, restart.
 | publish-ready | Implementor (before public release) |
 | ci-testing-standard | Implementor (after first feature ships) |
 | service-architecture | Implementor (apps with external clients/services) |
-| context-management | Orchestrator |
 | project-detection | Architect |
 
 ### Pipeline skills (preloaded into agents)
