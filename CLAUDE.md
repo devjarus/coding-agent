@@ -124,6 +124,21 @@ debugging, documentation, git-workflow
 | xcodebuild | iOS build/test/debug (evaluator) |
 | ios-simulator | iOS simulator control (evaluator) |
 
+## Compact Instructions
+
+When compaction fires (auto or manual), preserve:
+- Active feature slug from `.coding-agent/CURRENT` and its current pipeline phase
+- Open findings from the latest `review.md` (if in fix rounds)
+- Contents of `handoff.md` and `session-state.md` (if they exist)
+- Key decisions from `progress.md`'s decisions log
+- The user's most recent message and intent
+
+Drop:
+- Completed dispatch transcripts (subagent prompts + returns from finished stages)
+- Resolved findings from prior review rounds
+- File contents already captured in artifacts on disk
+- Discovery Q&A from spec phase (requirements are in spec.md)
+
 ## Development
 
 ```bash

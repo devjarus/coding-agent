@@ -80,7 +80,7 @@ Real sessions look like `"try this"` → `"and also add X"` → `"oh and fix Y"`
 - **3+ new functions/endpoints/components** created → you are at minimum Small
 - **Any new destructive operation** → you are at minimum Medium (see overrides above)
 
-If you can't remember what you've touched, that alone means the total is high enough to dispatch. Self-policing does not scale with context length. When this happens, compact with steering (see context-management skill) before the next dispatch.
+If you can't remember what you've touched, that alone means the total is high enough to dispatch. Self-policing does not scale with context length. When this happens, suggest compact to the user (see context-management skill) before the next dispatch.
 
 ### Same-bug-twice rule
 
@@ -136,7 +136,7 @@ After classification, read `.coding-agent/CURRENT` and follow:
 | **All tasks complete, no `review.md`** | Dispatch Evaluator (include git diff). |
 | **`review.md` = FAIL** | Read review.md `Dispatch Recommendation` field. Follow it (see "Fix Rounds" below). |
 | **`review.md` = PASS** | See "After Review PASS" below. |
-| **Pipeline complete (`review.md` = PASS) + new message** | Compact session (see context-management skill), then start a new feature — see below. |
+| **Pipeline complete (`review.md` = PASS) + new message** | Suggest compact to user if 5+ dispatches in session (see context-management skill), then start a new feature — see below. |
 | **`session-state.md` exists** | Resuming after /clear. Read session-state.md first (for phase + next action), then handoff.md if present (for ruled-out approaches). Dispatch the agent named in session-state.md's `Next Action`. If `Next Action` is ambiguous, AskUserQuestion before dispatching. |
 
 **All artifact paths are under `.coding-agent/features/<CURRENT>/`** except `CURRENT` itself and `learnings.md`, which live at the `.coding-agent/` top level.
@@ -164,7 +164,7 @@ Agent(subagent_type="coding-agent:architect",
 
 ### Architect (plan)
 
-Before dispatching for plan, consider compacting if the spec phase had long discovery Q&A: `/compact focus on spec.md requirements. Drop discovery Q&A with user.` Optional but recommended for Medium/Large features.
+Before dispatching for plan, consider whether the spec phase had long discovery Q&A. If so, suggest compact to the user: "Spec is approved. Context is heavy from discovery — suggest running `/compact focus on spec.md requirements. Drop discovery Q&A.` before I continue." Optional but recommended for Medium/Large features.
 
 ```
 Agent(subagent_type="coding-agent:architect",
@@ -247,14 +247,14 @@ For parallel work: dispatch multiple Implementors in one message.
 
 This artifact prevents the next implementor/debugger from repeating dead-end approaches. Include the `handoff.md` path in every re-dispatch prompt.
 
-**Round 1:** Write `handoff.md`. Compact with steering: `/compact focus on open findings from review.md and handoff.md. Drop implementor transcript.` Dispatch Implementor with findings + handoff.md path.
+**Round 1:** Write `handoff.md`. Suggest compact to user: "Entering fix round — suggest running `/compact focus on open findings from review.md and handoff.md. Drop implementor transcript.`" Dispatch Implementor with findings + handoff.md path regardless of whether user compacts.
 
 **Round 2:** **Before** dispatching the next agent, append a new `## Handoff — Round 2` section to `handoff.md` capturing Round 1's approach and why it failed (so the Debugger/Implementor sees it on dispatch). Same bug recurs → choose the right diagnostic level:
 
 - **Inspection mode** (threshold tuning, config tweak, "same issue but the value was wrong"): dispatch Debugger with `mode: inspection` — read-only, 10-line report, no fix plan. Agent reads code/logs, identifies the root cause, and reports back. No diagnosis.md needed. Orchestrator applies the fix directly if Micro, or dispatches Implementor if Small.
 - **Full diagnosis** (real bug, wrong mental model, architectural issue): dispatch Debugger in full mode → writes diagnosis.md → Implementor applies fix → Evaluator re-checks.
 
-**Round 3:** Write `session-state.md` (see context-management skill). Escalate to user via AskUserQuestion. Offer to `/clear` and resume from the checkpoint.
+**Round 3:** Write `session-state.md` (see context-management skill). Escalate to user via AskUserQuestion — include the session-state.md path and suggest `/clear` to resume from the checkpoint. Do not assume the user will clear; be ready to continue if they prefer.
 
 ## PASS with Findings
 
@@ -333,5 +333,5 @@ The script reads `.coding-agent/CURRENT` to resolve the active feature directory
      - Shared mutable state between middleware needs explicit locking
      ```
    - This makes reflection visible in `git log` — skipping reflection becomes auditable.
-5. **Compact after commit**: `/compact keep only learnings.md entry and user's last message. Drop all feature artifacts and dispatch transcripts — they're on disk.` This prepares a clean context for the next task.
+5. **Suggest compact** to user if session has had 5+ dispatches: "Feature shipped. Context is heavy — suggest running `/compact keep only learnings.md entry and user's last message. Drop all feature artifacts — they're on disk.`" This prepares a clean context for the next task if the user acts on it.
 6. **Report** to user: what was built, commit hash

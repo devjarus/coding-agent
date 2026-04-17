@@ -1,11 +1,13 @@
 ---
 name: context-management
-description: Context window management for long-running orchestrator sessions. Defines when and how to compact, rewind, clear, and delegate to subagents to prevent context rot.
+description: Context window management for long-running orchestrator sessions. Detects when context is degrading and suggests user actions. Manages artifacts for session recovery.
 ---
 
 # Context Management
 
-The orchestrator's context window is finite. Every dispatch prompt, subagent summary, artifact read, and tool output accumulates. Performance degrades as context grows (context rot), and the model is at its least capable when autocompact fires near the limit. Manage context proactively.
+The orchestrator's context window is finite. Every dispatch prompt, subagent summary, artifact read, and tool output accumulates. Performance degrades as context grows (context rot), and the model is at its least capable when autocompact fires near the limit.
+
+**Key constraint:** `/compact`, `/clear`, and `/rewind` are user-initiated CLI commands. Agents cannot execute them. The orchestrator's job is to detect when context is degrading, write recovery artifacts, and suggest user actions via AskUserQuestion.
 
 ## Decision Point: After Every Subagent Return
 
@@ -13,61 +15,51 @@ When a subagent returns and you're about to act, choose one:
 
 | Action | When to use |
 |--------|-------------|
-| **Continue** | Context is clean, next step is clear, dispatch count < 5 since last compact |
-| **Compact** | Dispatch count >= 5, or switching from one feature phase to another (e.g., spec done, starting implementation) |
-| **Rewind** | A subagent produced bad output and you haven't acted on it yet — rewind to before the dispatch, adjust the prompt, re-dispatch |
-| **Clear + handoff** | Round 3 escalation, major pivot from user, or accumulated context from 2+ completed features in one session |
-| **Delegate to subagent** | The next chunk of work will produce intermediate output you won't need again (only the conclusion) |
+| **Continue** | Context is clean, next step is clear, dispatch count < 5 |
+| **Suggest compact** | Dispatch count >= 5, or switching feature phases — ask user via AskUserQuestion |
+| **Write session-state.md + suggest clear** | Round 3 escalation, major pivot, or 2+ features completed in one session |
+| **Delegate to subagent** | Next chunk of work will produce intermediate output you won't need again (only the conclusion) |
 
-## Compact Playbook
+## When to Suggest Compact
 
-### Triggers (compact proactively, not reactively)
+### Triggers (detect these, then ask the user)
 
-- **5+ dispatches** since last compact or session start
+- **5+ dispatches** since session start or last known compact
 - **Phase transition**: spec complete -> starting implementation, or implementation complete -> starting evaluation
-- **After a successful commit** before starting next feature
+- **After a successful commit** before starting the next feature
 - **Before a complex dispatch** that will need focused context (e.g., debugger dispatch with long history)
 
-### Steering (always steer, never bare `/compact`)
+### How to suggest
 
-Include what to keep and what to drop:
+Use AskUserQuestion with the trigger reason and a ready-to-paste compact command:
 
 ```
-/compact focus on: current feature <slug>, active plan tasks, evaluator findings still open.
-Drop: completed dispatch transcripts, resolved findings, file contents already captured in artifacts.
+AskUserQuestion("Context is getting heavy (6 dispatches since start, entering fix round).
+Suggest running:
+
+/compact focus on open findings from review.md and handoff.md. Drop resolved findings and completed dispatch transcripts.
+
+Want to compact before I continue?")
 ```
 
-Examples by phase:
-- After spec approval: `/compact focus on spec.md requirements and plan.md tasks. Drop discovery Q&A with user.`
-- After fix round: `/compact focus on open findings from review.md and handoff.md. Drop resolved findings and first implementor's transcript.`
-- After commit: `/compact keep only learnings.md entry and user's last message. Drop all feature artifacts — they're on disk.`
+The steering text matters — it tells autocompact (or a manual /compact) what to preserve. Tailor it to the current phase:
+- After spec approval: `focus on spec.md requirements and plan.md tasks. Drop discovery Q&A with user.`
+- After fix round: `focus on open findings from review.md and handoff.md. Drop resolved findings and first implementor's transcript.`
+- After commit: `keep only learnings.md entry and user's last message. Drop all feature artifacts — they're on disk.`
 
-## Rewind Playbook
+**After suggesting, do not assume the user ran it.** Continue with the next dispatch regardless. The suggestion is advisory.
 
-### When to rewind (not re-dispatch)
+## When to Suggest Clear
 
-Rewind drops messages after the rewind point. Use it when the **dispatched work was wrong**, not when it was incomplete:
+### Triggers
 
-- Subagent took wrong approach and you haven't dispatched a follow-up yet
-- Tool output (file read, grep) returned irrelevant content that's now polluting context
-- You assembled a dispatch prompt with wrong excerpts from spec/plan
-
-### When NOT to rewind
-
-- Subagent completed work and you've already dispatched the evaluator — rewind would lose the evaluator's output
-- The "bad" output actually contains useful diagnostic information — extract what you need first, then compact
-
-## Clear + Handoff Playbook
-
-### When to clear
-
-- Round 3 escalation: user provides new direction after 2 failed fix attempts
+- Round 3 escalation: 2 failed fix attempts, bug persists
 - User pivots to an entirely new task mid-session
 - 2+ features completed in one session and context is stale
 
-### Handoff brief structure
+### What the orchestrator does (file I/O — this works)
 
-Before `/clear`, write `.coding-agent/features/<CURRENT>/session-state.md`:
+Write `.coding-agent/features/<CURRENT>/session-state.md` before suggesting:
 
 ```markdown
 ## Session State — <YYYY-MM-DD HH:MM>
@@ -91,7 +83,26 @@ Before `/clear`, write `.coding-agent/features/<CURRENT>/session-state.md`:
 [Exact next step for the fresh session to take]
 ```
 
-After writing `session-state.md`, tell the user: "I've checkpointed the session state. Starting fresh — the new session will read session-state.md to resume."
+Then tell the user:
+
+```
+AskUserQuestion("I've written a session checkpoint to session-state.md.
+Context is deep — suggest running /clear and starting fresh.
+The new session will read session-state.md to resume where we left off.")
+```
+
+## When to Suggest Rewind (guidance for users)
+
+The orchestrator cannot rewind, but it can recognize when rewind would have been better than correction. When the orchestrator notices it's about to re-dispatch because a previous dispatch went wrong (not incomplete — actually wrong approach), tell the user:
+
+```
+AskUserQuestion("The last dispatch took the wrong approach.
+If you'd like to try a different angle, you can press Esc Esc to rewind
+to before that dispatch, and I'll re-prompt with a different strategy.
+Otherwise I'll re-dispatch with corrections.")
+```
+
+This is advisory only. The orchestrator should always be ready to re-dispatch normally if the user declines.
 
 ## Subagent Delegation Patterns
 
@@ -120,14 +131,14 @@ If just the conclusion, use a subagent.
 
 Don't count tokens. Use dispatch count as a proxy:
 
-| Dispatch count (since last compact/clear) | Action |
-|-------------------------------------------|--------|
+| Dispatch count (since session start or last known compact) | Action |
+|------------------------------------------------------------|--------|
 | 1-4 | Continue normally |
-| 5-7 | Compact with steering before next dispatch |
-| 8+ | Clear with handoff brief — session is too deep |
+| 5-7 | Suggest compact to user before next dispatch |
+| 8+ | Write session-state.md + suggest clear |
 
-Multi-round fix sessions accumulate fastest: each round = implementor dispatch + evaluator dispatch + orchestrator reads review.md. Two fix rounds = 6+ dispatches. Compact after Round 1 if entering Round 2.
+Multi-round fix sessions accumulate fastest: each round = implementor dispatch + evaluator dispatch + orchestrator reads review.md. Two fix rounds = 6+ dispatches. Suggest compact after Round 1 if entering Round 2.
 
-### Counter reset
+### Counter tracking
 
-After `/compact` or `/clear`, the dispatch counter resets to 0. Start counting fresh dispatches from the next dispatch after the compact/clear. Track the count informally — a mental tally or a one-line note in `progress.md`'s decisions log is enough.
+Track dispatches informally — a one-line note in `progress.md`'s decisions log is enough. After the user runs `/compact` or `/clear`, reset the count. If you don't know whether the user compacted, assume the count did NOT reset.
