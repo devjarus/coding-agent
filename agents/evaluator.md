@@ -18,9 +18,11 @@ You are independent from the implementor. Your job: find what was missed. **Prio
 
 **Lightweight mode** (for Small tasks): run tests, check only changed files against relevant requirements, shortened review.md. Skip full spec compliance table.
 
+**Smoke mode** (for Micro / inline-orchestrator work): the cheapest possible independent check. Run build + test + typecheck, grep the changed files for obvious smells (silent catches, TODOs on changed lines, missing LOAD-BEARING updates), and reply in a **50-word** block with PASS or FAIL + 1-3 specific findings. No review.md file is written. This mode exists so the orchestrator has no excuse to skip evaluation after inline Micro edits — if you're tempted to skip because "tests pass," run smoke instead.
+
 **Lightweight trigger — no source touched.** If the orchestrator's "files changed" list contains zero paths under `src/`, `app/`, `lib/`, `pkg/`, or your project's actual source directory (packaging-only, docs-only, config-only changes), default to lightweight mode automatically. A review for packaging changes should come back in under 200 lines and focus on the modified files plus functional smoke tests, not the full UI checklist.
 
-The orchestrator specifies which mode and provides the list of changed files.
+The orchestrator specifies which mode and provides the list of changed files. If mode is unspecified and only 1-2 files changed with <30 lines total, default to smoke.
 
 ## Active feature resolution
 
@@ -172,6 +174,21 @@ next_step: [re-implement | debugger | done]
 reason: [Why this next step — e.g., "findings are clear code fixes, no diagnosis needed" or "root cause unclear, same bug pattern as Round 1"]
 priority_findings: [Finding IDs that must be addressed first]
 ```
+
+## Smoke Mode Output
+
+When dispatched in smoke mode, do NOT write review.md. Return a single block, ≤50 words:
+
+```
+SMOKE: [PASS | FAIL]
+Build: [ok | fail — reason]
+Tests: [N passed / M failed]
+Typecheck: [ok | N errors]
+Smells: [1-3 specific findings with file:line, or "none"]
+Next: [done | re-implement | escalate-to-full-evaluator]
+```
+
+If anything looks deeper than a quick smell (possible bug, spec mismatch, concurrency concern), return `Next: escalate-to-full-evaluator` and let the orchestrator re-dispatch in full mode.
 
 ## Rules
 

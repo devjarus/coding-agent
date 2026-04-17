@@ -4,150 +4,141 @@ This file tells agents (and humans) how to work on the coding-agent plugin itsel
 
 ## What This Is
 
-A Claude Code plugin: 5 agents + 54 skills + 7 MCP servers that orchestrate multi-agent software development. Written in Markdown (agent/skill prompts) and Bash (pipeline verification scripts). No compiled code, no build step.
+A Claude Code plugin: 5 agents + 57 skills + 7 MCP servers. All Markdown prompts, no build step, no compiled code. Changes to an agent or skill file take effect on the next Claude Code session start.
 
 ## Project Structure
 
 ```
 coding-agent/
-├── .claude-plugin/plugin.json    # plugin manifest
+├── .claude-plugin/plugin.json    # plugin manifest (name, default main agent)
 ├── .mcp.json                     # MCP server configuration
 ├── agents/                       # 5 agent prompts (orchestrator, architect, implementor, evaluator, debugger)
-├── skills/                       # 54 skill folders, each with SKILL.md
-│   ├── frontend/
-│   ├── backend/
-│   ├── data/
-│   ├── mobile/
-│   ├── infra/
+├── skills/                       # 57 skill folders, each with SKILL.md
+│   ├── frontend/   backend/   data/   mobile/   infra/
 │   ├── general/
-│   └── practices/
-├── hooks/hooks.json              # plugin hooks (subagent logging, post-edit validation)
-├── scripts/                      # plugin-level scripts (validation, setup)
-└── docs/                         # design docs, retrospectives
+│   └── practices/                # cross-cutting: tdd, code-review, observability, etc.
+├── hooks/hooks.json              # SubagentStart logging + PostToolUse validator
+├── scripts/
+│   ├── validate.sh               # plugin self-validator — run before commit
+│   └── post-edit-validate.sh     # called by PostToolUse hook; validates frontmatter on every Write/Edit
+├── CLAUDE.md, README.md          # docs (keep skill counts + tables in sync with reality)
+└── docs/                         # design retrospectives
 ```
 
-## Working on the Plugin
+## After Making Changes — The Checklist
 
-There's no build or test command — this is a prompt-driven plugin. Changes are validated by:
+Run this every time you edit an agent, skill, or doc:
 
-1. **Running the plugin on a real project** — the best test is to use it
-2. **Manual review** — read the updated agent prompts end-to-end
-3. **Script validation** — `./scripts/validate.sh` checks frontmatter, required fields
+1. **Run the validator**
+   ```bash
+   ./scripts/validate.sh
+   ```
+   Must report PASSED (warnings are ok, errors are not). The validator checks:
+   - Agent frontmatter: `name`, `description`, `model` (opus/sonnet/haiku/inherit or a full model ID like `claude-opus-4-7`)
+   - Skill frontmatter: `name`, `description`
+   - Skill references in agents actually exist on disk
+   - No stale `docs/agents/` paths
+   - Phase agents reference `.coding-agent/` for artifacts
 
-### Adding a new skill
+2. **If you added or removed a skill**, update these in the same commit:
+   - `CLAUDE.md` → `## Skills (N)` header count + the appropriate table row
+   - `README.md` → subtitle count + `## Skills (N)` header + the relevant table
+   - If the skill is domain-specific, add it to the implementor's routing row in both files
+   - If the skill should be preloaded into an agent, add it to that agent's frontmatter `skills:` list
+
+3. **If you added or removed an artifact** (spec/plan/review/etc.):
+   - `CLAUDE.md` → artifact protocol table
+   - `agents/orchestrator.md` → artifact layout diagram + state machine row
+
+4. **If you changed an agent's model or behavior**, read the full agent file end-to-end after editing. Agent prompts are under 800 words for a reason; a drive-by edit can break flow.
+
+5. **Commit**
+   - One logical change per commit
+   - Reference the affected agent or skill in the subject line
+   - The `PostToolUse` hook already validated frontmatter on every save — no surprises at commit time
+
+## Adding a New Skill
 
 ```bash
-# Create skill folder
 mkdir -p skills/<category>/<skill-name>
-
-# Minimum: SKILL.md with frontmatter
-cat > skills/<category>/<skill-name>/SKILL.md << 'EOF'
+cat > skills/<category>/<skill-name>/SKILL.md <<'EOF'
 ---
 name: <skill-name>
-description: <1-2 sentence description — Claude uses this to decide when to apply it>
+description: <1-2 sentences — Claude uses this to decide when to apply it. Under 250 chars.>
 ---
 
-# <Skill Name>
+# <Title>
 
-Content here...
+Content...
 EOF
-
-# Optional: scripts/ for executables, rules/ for progressive disclosure
 ```
 
-Then wire it into the implementor's skill routing table if it's domain-specific:
-```
-agents/implementor.md — add to the appropriate domain row
-CLAUDE.md — update the skill table + count
-```
+Then:
+- Wire into `agents/implementor.md` routing if domain-specific, or an agent's frontmatter `skills:` if preloaded
+- Update `CLAUDE.md` + `README.md` counts and tables
+- Run `./scripts/validate.sh`
 
-### Modifying an agent
+Optional subdirectories: `scripts/` for executables (reference via `${CLAUDE_SKILL_DIR}` inside SKILL.md), `rules/` for progressive-disclosure detail files.
 
-Agent prompts live in `agents/*.md`. Rules for modifying:
+## Modifying an Agent
 
-- **Keep them short** — under 800 words. Long prompts get skipped by the LLM.
-- **Prioritize critical rules** — put the most important constraints first
-- **Use explicit examples** — show the exact Agent tool call syntax for dispatches
-- **Test on a real project** after changes — run a full pipeline
-
-### Modifying the pipeline verification script
-
-The deterministic gate script is at `skills/practices/pipeline-verification/scripts/verify-stage.sh`. It auto-detects project type (Node/Swift/Go/Python) and runs the appropriate build/test commands.
-
-Test it manually before committing:
-```bash
-cd /path/to/any/project
-/path/to/coding-agent/skills/practices/pipeline-verification/scripts/verify-stage.sh build
-/path/to/coding-agent/skills/practices/pipeline-verification/scripts/verify-stage.sh tests
-```
+- **Keep prompts under ~800 words.** Long prompts get partially ignored.
+- **Put critical rules first.** Ordering matters.
+- **Use tables and numbered lists** over prose where possible.
+- **Show exact `Agent(...)` syntax** when documenting dispatches.
+- **Run the full pipeline on a real project** after architectural changes.
 
 ## Conventions
 
-### Agent Prompts
-
-- Short, direct, action-oriented — not exhaustive documentation
-- Numbered steps for processes, tables for decision trees
-- Use `${CLAUDE_SKILL_DIR}` inside SKILL.md to reference bundled scripts
-- Always include frontmatter: `name`, `description`, optional `model`, `tools`, `skills`
-
 ### Skills
-
-- Follow Anthropic's pattern: `SKILL.md` at the root, optional `scripts/` and `rules/` subdirectories
-- Progressive disclosure: `SKILL.md` is the entry point, `rules/*.md` is detail loaded when relevant
-- Keep `SKILL.md` under 500 lines — move detail to `rules/`
-- Descriptions under 250 characters (Claude truncates longer ones in the skill index)
+- `SKILL.md` at the root, optional `scripts/` and `rules/` subdirectories
+- Keep `SKILL.md` under 500 lines — push detail into `rules/*.md`
+- `description` under 250 characters (truncated in the skill index)
 
 ### Commits
-
 - One feature/fix per commit
-- Reference the relevant agent or skill in the commit message
-- Test on a real project before committing architectural changes
+- Subject line mentions the affected agent or skill
+- Run the plugin on a real project before committing architectural changes to agents
 
-### Versioning
-
-Semver. Current version: `1.0.0`.
-
-Bump rules:
-- **Patch** — skill content updates, typo fixes, doc updates
+### Versioning (semver)
+- **Patch** — content tweaks, typos, doc updates
 - **Minor** — new skill, new agent instruction, new MCP server
-- **Major** — architectural changes (new agent, pipeline reorganization, breaking changes to artifact format)
+- **Major** — new agent, pipeline reorganization, breaking artifact-format changes
 
 ## Architecture Decisions
 
-- **5 agents flat, 1 level deep** — Claude Code doesn't allow nested subagents. Only the main-thread orchestrator can dispatch via `Agent` tool.
-- **Deterministic gates over prompts** — LLMs skip instructions. Scripts don't.
-- **Short agent prompts** — learned the hard way: 2000-word prompts get partially ignored. Keep it tight.
-- **Separate evaluator from implementor** — generator-evaluator separation prevents self-evaluation bias.
-- **Research from real docs** — architect uses Context7/DeepWiki/Exa MCP, not training data.
-- **Task size classification** — the orchestrator can write code for Micro tasks, must dispatch for everything larger.
-
-## Known Issues
-
-- `${user_config.exa_api_key}` in `.mcp.json` — plugin configs can't reference user config this way. Users must set `EXA_API_KEY` in their shell environment.
-- The `coordination-templates` skill is minimal — could be expanded with more progress.md schema examples.
-- No automated CI for the plugin itself (it's all prompt-based).
+- **5 agents flat, 1 level deep.** Claude Code subagents can't spawn subagents. Only the main-thread orchestrator has the `Agent` tool.
+- **Short agent prompts.** 2000-word prompts get partially ignored.
+- **Generator-evaluator separation.** The evaluator is independent from the implementor to prevent self-evaluation bias.
+- **Research from real docs.** Architect uses Context7 / DeepWiki / Exa MCPs, not training data.
+- **Task-size classification.** The orchestrator can inline Micro tasks but must dispatch for anything larger. Smoke-mode evaluator exists so "inline" still gets an independent review.
+- **Prompt edits over enforcement hooks.** When an agent breaks a rule, the fix is a clearer prompt, not a JSON state file or a PreToolUse blocker.
 
 ## Testing Changes
 
-The test suite lives in `~/workspace/test-agents/` with test scenarios:
+The test suite lives in `~/workspace/test-agents/`:
 - **W1** — greenfield backend (Todo API)
 - **W2** — fullstack with parallel dispatch (Blog dashboard)
-- **W3** — brownfield (add features to W2)
+- **W3** — brownfield (extend W2)
 - **W4** — session recovery
 
-To run a test:
 ```bash
 cd ~/workspace/test-agents/W1-todo-api
 rm -rf .coding-agent/
 claude
-# Paste the prompt from PROMPT.md
+# paste prompt from PROMPT.md
 ```
 
-Verify the agent-log shows the correct dispatch sequence.
+Check `.coding-agent/agent-log.txt` for the dispatch sequence (the `SubagentStart` hook writes to it).
+
+## Known Issues
+
+- `${user_config.exa_api_key}` in `.mcp.json` — plugin configs can't currently resolve this reference. Users must set `EXA_API_KEY` in their shell environment.
+- No automated CI for the plugin repo itself. The `validate.sh` script is the gate.
 
 ## Development Notes
 
-- Changes to agents/skills are picked up on the next Claude Code session start (no reload needed)
-- `.coding-agent/` is gitignored — it's runtime state, not source
-- Test failures in the test suite often surface agent instruction ambiguity — fix the prompt, not the test
-- When in doubt, check `docs/` for past retrospectives and design discussions
+- Agent/skill changes are picked up on next session start — no reload command needed
+- `.coding-agent/` is runtime state, gitignored, not source
+- Test failures in the test suite usually reveal prompt ambiguity — fix the prompt, not the test
+- Past design decisions and retrospectives live in `docs/`

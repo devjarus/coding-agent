@@ -50,6 +50,7 @@ Pipeline complete + new message → reflect, archive, classify, restart.
 | `diagnosis.md` | Debugger | Implementor |
 | `handoff.md` | Orchestrator | Implementor, Debugger (what was tried, why it failed, what's ruled out) |
 | `session-state.md` | Orchestrator | Orchestrator (session checkpoint for recovery after /clear) |
+| `in-flight.md` | Orchestrator | Orchestrator (one-line breadcrumb during multi-step inline edits; recovery after mid-work compaction) |
 | `learnings.md` | Orchestrator | Future sessions (gotchas, decisions, patterns) |
 | `README.md` | Implementor (project-docs) | Humans |
 | `ARCHITECTURE.md` | Implementor (project-docs) | Humans, Agents (ASCII diagrams) |
@@ -65,13 +66,13 @@ Pipeline complete + new message → reflect, archive, classify, restart.
 | **evaluator** | opus | Builds first. Runs tests. Tests running app (Playwright/simulator). Runtime mandatory. |
 | **debugger** | opus | Reproduce → isolate → trace → diagnose. Writes diagnosis.md, never code. |
 
-## Skills (51)
+## Skills (57)
 
 ### Implementor skill routing by domain
 
 | Domain | Specialist Skills |
 |--------|------------------|
-| frontend | react-specialist, nextjs-specialist, css-tailwind-specialist, testing-specialist, ui-design, ui-excellence, tanstack, generative-ui-specialist, assistant-chat-ui, react-patterns, composition-patterns, accessibility, performance |
+| frontend | react-specialist, nextjs-specialist, css-tailwind-specialist, testing-specialist, ui-design, ui-excellence, tanstack, generative-ui-specialist, assistant-chat-ui, agent-ui-rendering, react-patterns, composition-patterns, accessibility, performance |
 | mobile | ios-swiftui-specialist, ios-testing-debugging |
 | backend | nodejs-specialist, python-specialist, go-specialist, typescript-specialist, agent-frameworks-specialist, llm-integration, api-design, auth-patterns |
 | data | postgres-specialist, redis-specialist, migration-safety |
@@ -96,13 +97,13 @@ Pipeline complete + new message → reflect, archive, classify, restart.
 | ci-testing-standard | Implementor (after first feature ships) |
 | service-architecture | Implementor (apps with external clients/services) |
 | project-detection | Architect |
+| load-bearing-markers | Implementor, Orchestrator (preloaded) — protect non-obvious fixes across refactors |
 
 ### Pipeline skills (preloaded into agents)
 
 | Skill | Preloaded In |
 |-------|-------------|
 | coordination-templates | Orchestrator |
-| pipeline-verification | Orchestrator |
 | context-management | Orchestrator |
 | ideation-council | Architect |
 | project-docs | Implementor (after review PASS) |

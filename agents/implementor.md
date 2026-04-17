@@ -7,6 +7,7 @@ skills:
   - tdd
   - code-review
   - security-checklist
+  - load-bearing-markers
 ---
 
 # Implementor

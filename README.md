@@ -2,7 +2,7 @@
 
 > A Claude Code plugin for building software end-to-end — from idea to shipped code.
 
-**5 agents** · **54 skills** · **7 MCP servers** · **Deterministic pipeline gates**
+**5 agents** · **57 skills** · **7 MCP servers**
 
 The plugin turns a vague prompt like "build me a blog with comments" into a structured pipeline: research → spec (you approve) → plan with evaluation criteria (you approve) → parallel implementation by domain → independent review with real UI testing → commit.
 
@@ -152,19 +152,7 @@ The orchestrator classifies every request before dispatching:
 
 **Bright line:** if you're about to touch >2 files OR write >30 new lines of logic → dispatch an Implementor.
 
-### Deterministic Pipeline Gates
-
-Every stage is gated by a script that exits 0 or 1. Agents can't skip it.
-
-```bash
-./skills/practices/pipeline-verification/scripts/verify-stage.sh spec     # after architect
-./skills/practices/pipeline-verification/scripts/verify-stage.sh plan     # after architect
-./skills/practices/pipeline-verification/scripts/verify-stage.sh build    # after implementor
-./skills/practices/pipeline-verification/scripts/verify-stage.sh tests    # after implementor
-./skills/practices/pipeline-verification/scripts/verify-stage.sh review   # after evaluator
-```
-
-## Skills (54)
+## Skills (57)
 
 Skills are scoped knowledge modules. Implementor routes by domain:
 
@@ -187,7 +175,10 @@ Skills are scoped knowledge modules. Implementor routes by domain:
 | **service-architecture** | Singleton clients, connection pools, retry/timeout wrappers, graceful shutdown |
 | **publish-ready** | package.json exports, LICENSE, GitHub templates, release workflows (inspired by Next.js, Vite, tRPC patterns) |
 | **project-docs** | Generates README.md, ARCHITECTURE.md (ASCII diagrams), AGENTS.md from real codebase |
-| **pipeline-verification** | The deterministic script that gates every pipeline stage |
+| **context-management** | When to compact/clear/rewind; handoff.md, session-state.md, in-flight.md artifacts |
+| **load-bearing-markers** | LOAD-BEARING / F-NNN / HACK markers so refactors don't silently regress non-obvious fixes |
+| **agent-ui-rendering** | LLM-driven UI via typed JSON spec (@json-render) — for AI-agent output, not general UI |
+| **ci-testing-standard** | Auto-generates CI workflow + test scripts + pre-commit hooks after first feature ships |
 | **research-cache** | Persistent research knowledge base — prevents redundant re-research |
 | **tdd** | Test-first development |
 | **code-review**, **security-checklist** | Quality gates applied by implementor and evaluator |

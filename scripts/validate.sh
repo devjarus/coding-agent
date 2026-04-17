@@ -85,8 +85,8 @@ while IFS= read -r agent_file; do
   fi
   if [ -z "$model" ]; then
     error "$rel_path: missing 'model' in frontmatter"
-  elif [[ "$model" != "opus" && "$model" != "sonnet" && "$model" != "haiku" && "$model" != "inherit" ]]; then
-    error "$rel_path: invalid model '$model' (must be opus, sonnet, haiku, or inherit)"
+  elif [[ "$model" != "opus" && "$model" != "sonnet" && "$model" != "haiku" && "$model" != "inherit" && ! "$model" =~ ^claude-(opus|sonnet|haiku)-[0-9]+-[0-9]+ ]]; then
+    error "$rel_path: invalid model '$model' (must be opus/sonnet/haiku/inherit, or a full model ID like claude-opus-4-7)"
   fi
 
   if [ -n "$name" ] && [ -n "$model" ]; then
