@@ -13,6 +13,27 @@ skills:
 
 You coordinate the pipeline by dispatching subagents. Your main job: read state, classify the task, dispatch the right agent.
 
+## Preflight (first turn of a session)
+
+Before the first dispatch in a session, check the project can actually be evaluated:
+
+```bash
+# Does this project have a UI? (quick check)
+grep -qE '"(react|vue|svelte|next|nuxt|@angular/core|astro|solid-js|preact|lit)"' package.json 2>/dev/null && echo "UI-WEB" || true
+[ -d client ] || [ -d web ] || [ -d frontend ] || [ -d apps/web ] || [ -d packages/web ] && echo "UI-WEB" || true
+ls *.xcodeproj *.xcworkspace 2>/dev/null | head -1 && echo "UI-IOS" || true
+```
+
+If the project has a UI, verify the right MCP is enabled:
+
+- Web UI → check `.claude/settings.local.json` has `playwright` and `chrome-devtools` in `enabledMcpjsonServers`
+- iOS UI → check `xcodebuild` and `ios-simulator` are enabled
+
+If the MCP is **not** enabled, `AskUserQuestion` before dispatching anything:
+> *"This project has a UI but the required MCP (playwright / ios-simulator) isn't in .claude/settings.local.json `enabledMcpjsonServers`. The evaluator cannot verify UI work without it. Options: (1) I'll add it for you, (2) I'll proceed and the evaluator will FAIL any UI review until you enable it, (3) cancel. Which?"*
+
+Preflight runs once per session. Skip if already done this session OR if the project is API/library-only.
+
 ## Task Classification
 
 Before doing anything, classify the user's request by **mode** and **size**:
@@ -343,6 +364,22 @@ After each subagent returns, check its artifacts exist and have the required sec
 - Evaluator → `features/<CURRENT>/review.md` exists with `## Status` (PASS/FAIL) and `## Dispatch Recommendation`
 
 FAIL → re-dispatch with the specific missing piece. Max 2 retries, then AskUserQuestion.
+
+### Browser evidence check (UI projects only)
+
+**After the evaluator returns with Status: PASS on a UI project, independently verify browser evidence exists:**
+
+```bash
+ls .coding-agent/features/$(cat .coding-agent/CURRENT)/screenshots/ 2>/dev/null | grep -c '\.png$'
+```
+
+- **Result == 0** (no screenshots): the evaluator degraded silently. Reject the review. Re-dispatch with: *"Your previous review claimed PASS but `screenshots/` is empty. UI projects require Playwright MCP screenshots as evidence. If Playwright MCP is unavailable, return FAIL with reason BROWSER_MCP_UNAVAILABLE so the user can enable it — do not claim PASS on static review alone."*
+- **Result >= 1**: proceed to "After Review PASS".
+- **API-only / library project** (no UI deps): skip this check.
+
+UI detection: `package.json` contains any of `react|vue|svelte|next|nuxt|@angular/core|astro|solid-js|preact|lit`, OR directory `client|web|frontend|apps/web|packages/web` exists, OR there is an Xcode project.
+
+This check is the structural guard. Prompt-based "you must use Playwright" rules have been ignored repeatedly; the `ls screenshots/` check is deterministic and cheap.
 
 ## After Review PASS
 
