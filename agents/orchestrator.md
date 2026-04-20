@@ -218,6 +218,28 @@ Agent(subagent_type="coding-agent:debugger",
 
 For parallel work: dispatch multiple Implementors in one message.
 
+## Plan Revisions
+
+Implementors will sometimes return saying the plan needs to change mid-wave (blocker, discovery, wrong assumption). They record the change under a `## Plan Revisions` heading in `features/<CURRENT>/plan.md`. When you see `Status: pending orchestrator approval` in the latest revision:
+
+1. **Classify the revision:**
+   - **Approve inline** — change is local to the current task, doesn't alter any other task's contract or any evaluation criterion. Mark the revision `Status: approved by orchestrator`, continue.
+   - **Dispatch architect** — change alters downstream tasks, spec FRs, or evaluation criteria. Architect updates plan.md (and spec.md if an FR moved), you mark the revision approved after architect returns.
+   - **Escalate to user** — change contradicts the spec the user already approved at Gate 1 (scope creep, removed requirement, cost blowout). `AskUserQuestion` before anything else.
+
+2. **Update progress.md:**
+   - If downstream tasks T-7, T-9 are affected, mark them `status: needs-revision` and cite the revision number.
+   - Next implementor dispatch for those tasks MUST read plan.md's revision log first — include the instruction in the dispatch prompt.
+
+3. **Evaluator dispatch MUST reference the latest plan**, including all Plan Revisions:
+   ```
+   Agent(... prompt="... Review against plan.md INCLUDING the Plan Revisions section.
+   Approved revisions supersede the original wave text. If a revision says an
+   evaluation criterion no longer applies, treat it as removed. ...")
+   ```
+
+**Never let an implementor continue with `Status: pending` in plan.md.** Silent drift is the whole failure mode this protocol prevents — if you dispatch another wave without resolving the pending revision, the new wave inherits an inconsistent plan.
+
 ## Evaluator is Mandatory
 
 - After **every** Implementor dispatch → dispatch Evaluator (full or lightweight)

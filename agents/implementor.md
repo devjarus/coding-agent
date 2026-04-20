@@ -47,6 +47,45 @@ Read `.coding-agent/CURRENT` to get the active feature slug. All pipeline artifa
 
 9. **Return** — tasks done, files changed, decisions made.
 
+## Approach Change Protocol
+
+If mid-task you realize the approach in `plan.md` is wrong, blocked, or needs to change — **do not silently deviate.** Stale plans cause silent downstream breakage: the evaluator reviews against the old criteria, later waves inherit the old design, and nobody notices until a regression surfaces.
+
+**Classify the change first:**
+
+| Change type | Example | What to do |
+|---|---|---|
+| **Trivial** | Renamed a helper, split a function, different library version within the same family | Just proceed. Note it in progress.md under `### Deviations`. |
+| **Material** | Different library, changed API shape, altered data model, removed/added a task, changed evaluation criteria, affects a downstream wave | **Stop.** Write a revision block and return to orchestrator. |
+| **Blocker** | Task can't be done as specified (missing dep, wrong assumption in spec, upstream API gone) | **Stop.** Write a revision block + mark the task `blocked`. Return. |
+
+**How to record a material change or blocker:**
+
+Append to `features/<CURRENT>/plan.md` under a `## Plan Revisions` heading (create the heading if missing):
+
+```markdown
+## Plan Revisions
+
+### Revision 1 — 2026-04-19 — by implementor (wave 2, task T-5)
+- **Original:** Use Redis for rate-limit counters (plan.md §Wave 2)
+- **New:** In-memory LRU with process-affinity routing
+- **Why:** Ops constraint — no managed Redis in target env (discovered in infra probe, see AGENTS.md)
+- **Downstream impact:** T-7 (metrics emitter) must now read from the in-memory store, not Redis. T-9 evaluation criterion "rate-limit survives restart" no longer applies — replace with "rate-limit degrades gracefully on restart."
+- **Status:** pending orchestrator approval
+```
+
+Also update progress.md:
+```markdown
+### Deviations
+- T-5: approach changed — see plan.md Revision 1 (awaiting orchestrator approval)
+```
+
+Then return to the orchestrator with the revision summary. Do **not** continue the material work until the orchestrator confirms (approves the change or dispatches architect to re-plan downstream).
+
+Trivial deviations only need the `### Deviations` line in progress.md — no plan revision needed.
+
+**Never silently edit evaluation criteria.** If you change the design such that an evaluation criterion no longer applies or needs rewording, that is always a material change. The evaluator reads plan.md verbatim; inconsistency here directly causes false FAILs or missed regressions.
+
 ## Error Handling
 
 - **No silent error suppression** without a comment explaining why. Every try/catch (or language equivalent) must either propagate, log, or justify why ignoring is safe.

@@ -127,6 +127,18 @@ Waves:
 - Wave 1: Foundation (schema, config, shared types) — include risk probes here
 - Wave 2+: Vertical feature slices (DB → API → UI → test each)
 
+**End plan.md with an empty Plan Revisions section:**
+
+```markdown
+## Plan Revisions
+
+_No revisions yet. Implementors append here when mid-wave approach changes require orchestrator/architect approval. Format: see implementor.md "Approach Change Protocol"._
+```
+
+This header must exist from day one so implementors know where to append. Approved revisions supersede the original wave text when the evaluator reviews.
+
+**If re-dispatched mid-implementation to resolve a revision**: read the pending revision in plan.md, update the affected wave's tasks and/or evaluation criteria inline (editing the original wave text, not just appending), then mark the revision `Status: approved by architect` with a 1-line summary of what changed upstream. Do NOT leave two conflicting versions in the file.
+
 ### Step 3 — Get approval (MANDATORY)
 
 Use `AskUserQuestion`:

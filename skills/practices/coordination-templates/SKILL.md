@@ -31,9 +31,33 @@ _None_
 
 ## Plan Amendments
 _None_
+
+## Deviations
+_None_
 ```
 
-Status values — domains: `not-started`, `in-progress`, `complete`, `blocked`. Tasks: `ready`, `in-progress`, `complete`, `blocked`, `failed`.
+Status values — domains: `not-started`, `in-progress`, `complete`, `blocked`. Tasks: `ready`, `in-progress`, `complete`, `blocked`, `failed`, `needs-revision`.
+
+## Plan Revisions (in plan.md, not progress.md)
+
+When an implementor hits a blocker or discovers the plan's approach won't work mid-wave, they append a revision block to `features/<CURRENT>/plan.md`:
+
+```markdown
+## Plan Revisions
+
+### Revision <N> — <YYYY-MM-DD> — by <implementor|architect> (wave <W>, task <T-ID>)
+- **Original:** <quote or ref to original wave/criterion>
+- **New:** <what the approach/criterion becomes>
+- **Why:** <discovery, blocker, ops constraint — be specific>
+- **Downstream impact:** <which tasks/criteria change, or "none">
+- **Status:** pending orchestrator approval | approved by orchestrator | approved by architect | rejected
+```
+
+**Rules:**
+- Trivial deviations (rename, refactor within the same design) go in progress.md's `### Deviations`, NOT plan.md.
+- Anything that touches evaluation criteria, task contracts, or downstream waves is a **material** revision and goes in plan.md.
+- Evaluator reads the revisions log as authoritative; approved revisions supersede original wave text.
+- Orchestrator must resolve any `Status: pending` revision before dispatching the next wave — otherwise downstream work inherits an inconsistent plan.
 
 ## Session Recovery
 

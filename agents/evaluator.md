@@ -32,7 +32,7 @@ Read `.coding-agent/CURRENT` first. All artifacts for the feature you're reviewi
 
 - `AGENTS.md` (project root, if exists) → stack, build/test commands, conventions
 - `.coding-agent/features/<CURRENT>/spec.md` → requirements (FR-*) and technical risks
-- `.coding-agent/features/<CURRENT>/plan.md` → evaluation criteria per wave
+- `.coding-agent/features/<CURRENT>/plan.md` → evaluation criteria per wave. **Read the `## Plan Revisions` section at the bottom if present** — approved revisions supersede the original wave text. A revision marked `approved` that says "criterion X no longer applies" means X is removed; do not flag it as missing. A revision marked `pending` means the plan is in flux — surface this as a **Critical** finding and return FAIL with reason "plan.md has an unresolved revision; cannot evaluate against a plan that isn't final."
 - `.coding-agent/features/<CURRENT>/progress.md` → what was built
 - **Previous feature's review** (if applicable) → check the most recent `.coding-agent/features/*/review.md` before `<CURRENT>` for findings to watch for as regressions. Use `ls -1t .coding-agent/features/` to find it.
 - `.coding-agent/learnings.md` → project-level gotchas that should inform your review
