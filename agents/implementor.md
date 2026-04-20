@@ -5,6 +5,7 @@ model: sonnet
 tools: Read, Write, Edit, Bash, Glob, Grep
 skills:
   - tdd
+  - test-doubles-strategy
   - code-review
   - security-checklist
   - load-bearing-markers

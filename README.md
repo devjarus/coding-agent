@@ -2,7 +2,7 @@
 
 > A Claude Code plugin for building software end-to-end — from idea to shipped code.
 
-**5 agents** · **57 skills** · **7 MCP servers**
+**5 agents** · **58 skills** · **7 MCP servers**
 
 The plugin turns a vague prompt like "build me a blog with comments" into a structured pipeline: research → spec (you approve) → plan with evaluation criteria (you approve) → parallel implementation by domain → independent review with real UI testing → commit.
 
@@ -152,7 +152,7 @@ The orchestrator classifies every request before dispatching:
 
 **Bright line:** if you're about to touch >2 files OR write >30 new lines of logic → dispatch an Implementor.
 
-## Skills (57)
+## Skills (58)
 
 Skills are scoped knowledge modules. Implementor routes by domain:
 
@@ -180,7 +180,8 @@ Skills are scoped knowledge modules. Implementor routes by domain:
 | **agent-ui-rendering** | LLM-driven UI via typed JSON spec (@json-render) — for AI-agent output, not general UI |
 | **ci-testing-standard** | Auto-generates CI workflow + test scripts + pre-commit hooks after first feature ships |
 | **research-cache** | Persistent research knowledge base — prevents redundant re-research |
-| **tdd** | Test-first development |
+| **tdd** | Test-first development (RED / GREEN / REFACTOR) |
+| **test-doubles-strategy** | Decide unit vs integration vs e2e; mock vs fake vs real per dependency. DI enables the choice |
 | **code-review**, **security-checklist** | Quality gates applied by implementor and evaluator |
 
 ## MCP Servers

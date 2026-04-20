@@ -66,7 +66,7 @@ Pipeline complete + new message → reflect, archive, classify, restart.
 | **evaluator** | opus | Builds first. Runs tests. Tests running app (Playwright/simulator). Runtime mandatory. |
 | **debugger** | opus | Reproduce → isolate → trace → diagnose. Writes diagnosis.md, never code. |
 
-## Skills (57)
+## Skills (58)
 
 ### Implementor skill routing by domain
 
@@ -83,6 +83,7 @@ Pipeline complete + new message → reflect, archive, classify, restart.
 | Skill | Applied By |
 |-------|-----------|
 | tdd | Implementor (preloaded) |
+| test-doubles-strategy | Implementor (preloaded) — when to use unit/integration/e2e; mock vs real per dependency |
 | code-review | Implementor, Evaluator (preloaded) |
 | security-checklist | Implementor, Evaluator (preloaded) |
 | config-management | Implementor |
