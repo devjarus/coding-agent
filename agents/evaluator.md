@@ -126,6 +126,28 @@ When Playwright isn't available, degrade gracefully — but **mark the review as
 
 Test endpoints with curl via Bash.
 
+**Port & process hygiene (required when spinning up a server):**
+- Parse the actual listening port from server stdout/stderr — don't hardcode. Same rule as web apps: frameworks fall back to the next free port silently.
+- Poll for readiness — don't `sleep 7`. Loop: `until curl -sf localhost:$PORT/health >/dev/null; do sleep 0.2; done` with a 30s cap.
+- Never `lsof -ti:$PORT | xargs kill -9` — that nukes whatever owns the port, possibly another dev's work. Use a random ephemeral port per run (`PORT=$((20000 + RANDOM % 10000))`) or kill only the PID you started (`kill $API_PID`, not `pkill -f "tsx watch"`).
+- Trap on exit: `trap "kill $API_PID 2>/dev/null" EXIT` so a mid-script failure doesn't orphan the server.
+
+### Runtime Verification vs Committed Tests
+
+Your curl/HTTP checks are **runtime verification** — valid for confirming the deployed server actually works in the current PR. But they evaporate after your review. Every non-trivial curl check you run should be filed as an **integration-test gap finding**:
+
+- If you had to craft a signing ceremony (HMAC, JWT, OAuth), hit a multi-step endpoint flow, or verify a status code for a specific header — that check is a regression waiting to happen. Flag it.
+- Add a finding (Severity: **Major** if the endpoint has no committed test, **Minor** if a test exists but doesn't cover this case):
+  - `Description`: "Evaluator verified X at runtime via curl, but no committed integration test exists. Next PR can regress silently."
+  - `Fix Direction`: "Add `*.integration.test.ts` using in-process server (fastify.inject, supertest, app.test_client) — no port, no sleep, reuse the signing helper from prod code. See `test-doubles-strategy` skill."
+
+Don't block PASS on this — the feature may work correctly. But surface it so the implementor commits the test before the next feature lands on top.
+
+**Smell signals that a test should have existed:**
+- You wrote an `openssl dgst` / `crypto.createHmac` call in your bash — the signing logic is duplicated, prod and test should share one helper.
+- You used `sleep N` to wait for the server — that brittleness belongs in a readiness helper once, not in every check.
+- You manually verified 3+ routes — that's a test suite, not a review step.
+
 ### Smoke test (required before PASS)
 
 - [ ] Project builds without errors
