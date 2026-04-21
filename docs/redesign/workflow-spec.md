@@ -1,0 +1,536 @@
+# Workflow Spec
+
+The canonical session flow for the redesigned plugin, expressed in terms of the four primitives (`docs/redesign/primitives.md`). This is the authoritative reference for how a feature ships from request to commit.
+
+## Overview
+
+```
+User typed request
+      │
+      ▼
+  Intake ─── (approval) ───> Intent signed
+      │
+      ▼
+  Spec-writing ── (approval) ───> spec.md signed
+      │
+      ▼
+  Plan-writing ── (approval) ───> plan.md signed
+      │
+      ▼
+  Implementation (serial by default; parallel only where plan declares)
+      │
+      ▼
+  Review ── PASS ───> Close-out ───> Commit local ── (approval) ───> Push
+           │
+           └── FAIL ───> Fix-round ───> Review
+```
+
+Four User-facing gates: **Intent, Spec, Plan, Push**. Everything else is automated with deterministic Checks.
+
+## Session Start (T=0)
+
+### What loads automatically
+
+| Artifact | Scope | Purpose |
+|----------|-------|---------|
+| `~/.coding-agent/profile.md` | Global | User preferences, default stacks per domain |
+| `.coding-agent/session.md` | Project | Where we left off |
+| `.coding-agent/CURRENT` | Project | Active feature slug (empty if none) |
+| Last `features/<recent>/review.md` | Project | Yesterday's outcome |
+| `.coding-agent/learnings.md` | Project | Cumulative project gotchas |
+| `AGENTS.md` (project root) | Project | Stack, conventions, test commands |
+
+### First output
+
+Orchestrator emits a five-line summary:
+
+```
+Resumed. Last: shipped notifications-v1 (2026-04-19, 3 findings fixed, 0 nits).
+Active: none. Project: deep-research-agent (Next 15, shadcn, TanStack, Postgres).
+Profile: devjarus-default. Open PRs: 0. Ready.
+```
+
+### Checks at session start
+
+- `session-state-consistent` — `CURRENT` points to an existing feature dir or is empty
+- `profile-loaded` — `~/.coding-agent/profile.md` exists; if missing, Orchestrator prompts User to initialize on first feature
+
+---
+
+## T=1 — Intake
+
+User types a request. Orchestrator responds with:
+
+1. **Restatement** (one paragraph): "You want X, constrained by Y, in the context of Z (from AGENTS.md)."
+2. **Path proposal**:
+   - Mode: `feature` / `touch-up` / `refactor`
+   - Size: `micro` / `small` / `medium` / `large`
+   - Gates this pass: Intent → Spec → Plan → Push (or reduced for touch-up)
+   - Estimated waves
+3. **`AskUserQuestion`** — approve / redirect / cancel.
+
+### Intent artifact
+
+On approval, Orchestrator writes `intent.md`:
+
+```markdown
+---
+mode: feature
+size: medium
+approved_by: user
+approved_at: 2026-04-20T14:32:00Z
+---
+
+# Intent
+
+## Request (verbatim)
+"add notifications to the app"
+
+## Restated
+Add push + in-app notifications for comment replies and mentions. Must persist
+read state per-user. Existing Postgres user schema is the source of truth.
+
+## Path
+Gates: Intent ✓ | Spec | Plan | Push
+Waves: ~3 (schema, API, UI+realtime)
+```
+
+### Check
+
+- `intent-approved` — `intent.md` has `approved_by: user` footer before Architect is dispatched
+
+### Touch-up mode
+
+Collapses to: restate → `AskUserQuestion` → direct Implementor dispatch → Evaluator smoke → commit-local → push approval. No spec/plan gates. Still writes `intent.md` (keeps audit trail).
+
+---
+
+## T=2–3 — Spec-writing
+
+### Step A — Profile-driven discovery
+
+Architect reads the profile. For any unknown the profile can't answer, bundles all questions into one `AskUserQuestion` with profile defaults bolded:
+
+> *I'll build this with: **Next 15** (profile default), **shadcn** (profile), **TanStack Query** (profile), **json-render** if AI output ✓. Decisions needed:*
+> *(1) Delivery — **push + in-app** / email / push only?*
+> *(2) Read state — **per-user with last-read timestamps** / thread-level?*
+> *(3) Backfill old users — **dual-write 1 week** / hard cutover?*
+> *Confirm or change in one reply.*
+
+### Step B — Test infrastructure research
+
+Architect researches the right test tools for each external dep via MCPs (Context7, Exa, DeepWiki). Records:
+
+```markdown
+## Test Infrastructure
+
+| Dep | Tool | Why (tradeoff) | Source |
+|-----|------|----------------|--------|
+| Postgres | testcontainers | Catches migration bugs; ~3s CI overhead | Context7 (drizzle), Exa 2026 |
+| WebSocket realtime | in-process ws + test client | No sandbox needed; avoids fake drift | Context7 (ws) |
+| Push provider (FCM) | recorded fixtures via msw | FCM has no dev sandbox | Exa 2026 |
+```
+
+### Step C — Write spec.md
+
+```markdown
+---
+feature: notifications-v1
+approved_by: user
+approved_at: 2026-04-20T14:45:00Z
+---
+
+# Spec
+
+## Tech Stack
+| Area | Chosen | Alternatives | Why |
+|------|--------|--------------|-----|
+| Realtime | WebSocket via Fastify | SSE, polling | Bidirectional, lower latency |
+| Push | FCM | APNS-only, OneSignal | Free tier, Android priority |
+| Persist | Postgres (existing users table + new notifications, notification_reads) | Redis-only | Source of truth stays where user schema lives |
+
+## Requirements
+FR-1: System emits a notification when user is mentioned in a comment.
+FR-2: Notifications are delivered via push (if device token) and in-app (always).
+FR-3: Read state persists per (user, notification) pair.
+...
+
+## Technical Risks
+- FCM device tokens expire silently → invalidation path needed
+- WebSocket reconnect storm on deploy → graceful shutdown protocol required
+
+## Non-Goals
+- Email delivery (deferred to v2)
+- Notification grouping / digest (deferred)
+```
+
+### Step D — Print + approve
+
+Architect prints the spec in chat, calls `AskUserQuestion`. User approves or requests changes.
+
+### Checks
+
+- `stack-justified` — `spec.md` has `## Tech Stack` with ≥1 alternative per row
+- `test-infra-declared` — `spec.md` has `## Test Infrastructure` with ≥1 row per external dep
+- `spec-approved` — footer present
+
+---
+
+## T=4 — Plan-writing
+
+Architect writes `plan.md` with per-task Skill manifests and per-wave Test requirements.
+
+```markdown
+---
+feature: notifications-v1
+approved_by: user
+approved_at: 2026-04-20T15:10:00Z
+---
+
+# Plan
+
+## Wave 1 — Schema & Config (serial)
+### T-1 — notifications + notification_reads migration
+domain_tags: [data, postgres]
+skills: [postgres-specialist, migration-safety, tdd]
+acceptance:
+  - Migration applies on empty DB and existing DB (with users)
+  - Rollback migration exists and is idempotent
+evaluation:
+  - Unit: column types, constraints via SQL assertions
+  - Integration: testcontainers postgres, migration + rollback
+  - E2E: N/A (no user-facing surface yet)
+
+### T-2 — env config for FCM keys
+domain_tags: [backend, config]
+skills: [config-management, nodejs-specialist, tdd]
+...
+
+## Wave 2 — API (parallel subsets allowed)
+Serial by default. Parallel subsets:
+  parallel: [T-3 signing-helper, T-4 route-handler-structure]  # disjoint files
+
+### T-3 — FCM client adapter
+domain_tags: [backend, nodejs, http-client]
+skills: [nodejs-specialist, api-design, test-doubles-strategy, tdd, observability]
+acceptance:
+  - Wrapper interface PushGateway; only file importing fcm-admin
+  - Token invalidation path implemented
+evaluation:
+  - Unit: mock PushGateway at boundary
+  - Integration: msw with recorded FCM fixtures
+  - E2E: N/A
+
+### T-4 — notification route handlers
+... (similar structure)
+
+### T-5 — websocket realtime channel
+... (depends on T-3 and T-4 complete; not in parallel set)
+
+## Wave 3 — UI & flow (serial)
+### T-6 — shadcn notification bell + popover
+domain_tags: [frontend, react, shadcn]
+skills: [react-specialist, nextjs-specialist, css-tailwind-specialist, ui-excellence, tdd]
+acceptance:
+  - Bell count updates in realtime
+  - Read state persists across reload
+evaluation:
+  - Unit: component state transitions
+  - Integration: MSW-mocked API
+  - E2E: Playwright flow — comment mention → bell increments → click → read persists
+```
+
+### Checks
+
+- `test-tiers-covered` — each wave's tasks have unit + integration rows; e2e if UI touched (or explicit `e2e: N/A` with reason)
+- `plan-approved` — footer present
+- `skills-match-domain` — every task's `skills:` row references real skills for its `domain_tags`
+
+---
+
+## T=5 — Implementation
+
+### Dispatch policy
+
+- **Default: serial.** Tasks within a wave run in dispatch order.
+- **Parallel: only when plan's `parallel:` block declares it.** Orchestrator fans out those tasks in one message.
+
+### Progress tracking
+
+Orchestrator maintains `work.md` in the feature directory. Sections:
+
+```markdown
+# Work Ledger
+
+## Tasks
+| ID | Title | State | Assignee | Started | Finished |
+|----|-------|-------|----------|---------|----------|
+| T-1 | migration | complete | implementor-1 | 14:20 | 14:35 |
+| T-3 | fcm-adapter | active | implementor-2 | 14:40 | — |
+| T-4 | route-handler | active | implementor-3 | 14:40 | — |
+
+## Decisions Log
+| When | Who | Decision | Why |
+|------|-----|----------|-----|
+
+## Deviations (trivial)
+_None_
+
+## Plan Revisions (material — supersede plan.md sections; plan.md itself stays immutable)
+_None_
+<!--
+Format when populated:
+### R-1 — 2026-04-20 — material, approved by user
+Supersedes: plan.md §Wave 2 T-5
+Change: replace Redis counters with in-memory LRU
+Why: target env has no managed Redis
+Downstream: T-7 evaluation criterion "survives restart" → "degrades gracefully on restart"
+-->
+
+
+## Nits (deferred fixes)
+_None_
+```
+
+One file, five sections. Replaces today's `progress.md` + `handoff.md` + `session-state.md` + `in-flight.md` + `nits.md`.
+
+### Parallel failure handling
+
+If one of three parallel Implementors fails:
+- The other two continue to completion.
+- Orchestrator updates `work.md`: failed task → `state: failed`, others progress normally.
+- When all parallel tasks have returned, Orchestrator regroups and dispatches Debugger or re-Implementor for the failure.
+
+### Implementor snag protocol
+
+If mid-task the Implementor hits a design question the plan doesn't answer, it stops and asks the User directly via `AskUserQuestion`. Not plan-revision, not self-decide. One question, 2–3 options, continue on answer.
+
+### Checks
+
+- `work-ledger-consistent` — `work.md` task states match the dispatched Actors
+- `revisions-resolved` — no `Status: pending` revisions before next wave dispatch
+- `no-raw-print` — Evaluator Output check (but also self-run by Implementor before return)
+
+**Plan revision supersession.** Approved `plan.md` is immutable. If wave work reveals the plan needs to change, the revision lives in `work.md` `## Plan Revisions`, with `Supersedes: plan.md §<section>` referencing the original. Readers (Evaluator, next Implementor dispatch) consult both files — `plan.md` for the base contract, `work.md` for approved amendments. Same applies to spec-level changes (rare, but possible): amendment in `work.md`, spec.md untouched.
+
+**Why not edit plan.md in place.** Because approval semantics would dissolve. Once the User signs `approved_by: user`, that signature must remain meaningful. Editing the approved body rewrites history. Supersession preserves the record of what was approved when, and what was amended by whom.
+
+---
+
+## T=6 — Review
+
+### Default mode: Lightweight
+
+Evaluator runs:
+1. `npm test` (or project's test command from AGENTS.md)
+2. `npm run test:integration`
+3. `npm run test:e2e` if UI was touched
+4. `no-raw-print` grep on changed files
+5. Spec-compliance check for FRs in scope
+6. Runtime check **only if UI changed** — Playwright MCP launches, takes named screenshots, writes to `features/<slug>/screenshots/`
+7. Write `review.md`
+
+### Mode escalation
+
+- Smoke (Micro) — `npm test` + typecheck only, 50-word reply
+- Lightweight (Small, default) — as above
+- Full (Medium/Large, or prior-feature regressions) — add full spec-compliance table + regression check against last `review.md`
+
+### No ad-hoc scripts
+
+The Evaluator **invokes committed test suites**. It does not write curl pipelines, openssl signing dances, or `sleep 7` bash. If a test suite doesn't cover a scenario the Evaluator needs to verify, that is itself a finding:
+
+```markdown
+| ID | Severity | Finding | Fix direction |
+|----|----------|---------|---------------|
+| F-4 | **FAIL** | webhook signature verification has no integration test | Add `tests/api/webhook.integration.test.ts` with fastify.inject + real signing helper |
+```
+
+### Checks
+
+- `tests-actually-committed` — test files the plan promised exist on disk
+- `ui-screenshots-exist` — if UI project, `screenshots/` non-empty; named files
+- `review-has-required-sections` — `## Status`, `## Findings`, `## Dispatch Recommendation`
+
+### FAIL branches into fix-round
+
+See `lifecycle.md` (Fix-round Protocol).
+
+---
+
+## T=7 — Close-out & Commit
+
+### Close-out Protocol
+
+On PASS, Orchestrator runs Close-out (see `lifecycle.md` for details):
+
+1. Freeze feature dir (archived state)
+2. Distill to `learnings.md` (project memory)
+3. Update `AGENTS.md` / `ARCHITECTURE.md` if conventions/architecture changed
+4. Clear `CURRENT`
+5. Update `session.md`
+
+### Commit
+
+Orchestrator shows diff + commit message in chat. `AskUserQuestion` — approve push / commit-local-only / redo message.
+
+```
+feat(notifications): push + in-app for mentions
+
+Ships FR-1 through FR-3. Delivery via FCM (fallback to in-app).
+WebSocket reconnect logic handles deploy storms with jittered backoff.
+
+Learnings:
+- FCM device tokens silently expire on Android 14 → rebuild on 'token refreshed' event
+- Testcontainers Postgres startup adds 3s; acceptable; kept in CI
+
+Co-authored-by: Claude <noreply@anthropic.com>
+```
+
+Commit is always local-first. Push only after approval (your T=7c answer).
+
+### Checks
+
+- `close-out-complete` — all 5 close-out steps ran
+- `commit-has-learnings` — commit message body contains a `Learnings:` block for Medium/Large features
+
+---
+
+## T=8 — Next feature (same session)
+
+User says: *"now add feature B"*.
+
+- Previous feature is already closed out (from T=7).
+- Orchestrator generates new slug, `mkdir features/<new-slug>/`, writes slug into `CURRENT`.
+- Context is carried over (your T=8b answer) — learnings.md and last review.md inform Intent.
+- If B's Intent restatement touches files/modules that A just changed, Orchestrator notes it explicitly in the restatement ("this overlaps with files touched by `notifications-v1`: X, Y").
+- No enforced checkpoint; user chooses whether to `/compact`.
+
+### Checks
+
+- `one-active-feature` — `CURRENT` must be empty OR point to a feature whose `review.md` is missing (i.e., still active). Not allowed to have two active.
+
+---
+
+## T=9 — Context hygiene (automatic)
+
+Orchestrator silently maintains:
+- `session.md` rewritten every 3 dispatches
+- Preflights cached in `.coding-agent/cache.json` (MCP availability, UI detection, test commands) — refreshed once per session
+
+Suggests `/compact` only at deep thresholds (12+ dispatches). Does not nag.
+
+---
+
+## T=10 — Next morning
+
+User `cd`s back, runs `claude`.
+
+```
+Resumed. Last: shipped notifications-v1 on 2026-04-20.
+         Then: shipped search-improvements on 2026-04-20 (same session).
+Active: none. Project: deep-research-agent.
+Pending: commit 7b5f5e0 is unpushed (you declined push last night).
+Ready.
+```
+
+The "where we left off" is the first five lines, always. Never a cold start.
+
+---
+
+## Micro inline flow (orchestrator does the work itself)
+
+Used when: single-file mechanical change, no new logic, ≤30 lines. Orchestrator edits directly without dispatching.
+
+```
+User: "rename `getUserById` to `findUserById` across the repo"
+Orchestrator: [classifies: micro] → restate → AskUserQuestion
+User: approves
+Orchestrator: appends action-log entry | micro-start | rename refactor, ~14 call sites
+              runs grep for all references
+              appends action-log entry | action | grepped references (14 sites)
+              makes edits via Edit tool
+              appends action-log entry | action | edits applied (14 files)
+              dispatches Evaluator smoke-mode
+Evaluator: smoke | build+test+typecheck PASS
+Orchestrator: appends action-log entry | micro | smoke PASS | commit-pending
+              shows diff + commit message in chat
+User: approves push
+Orchestrator: commits, pushes, appends action-log entry | micro | commit <sha> | pushed
+```
+
+**Auditability:** Even though no `features/<slug>/` directory is created for Micro work, every action is appended to `session.md` action log. Later auditing "what did the orchestrator do at 16:50?" is answered by grep on the action log.
+
+**Intent still exists.** For a Micro task, the restated intent is captured as the first action-log entry, not as a separate `intent.md`. The `AskUserQuestion` approval is the gate.
+
+**No spec, no plan, no work.md.** Micro tasks are explicitly exempt from the feature dir protocol — their entire lifecycle fits in the action log.
+
+**Checks that fire on Micro:**
+- `action-logged` — every Orchestrator action has a corresponding log entry
+- Evaluator's smoke-mode output-checks (`tests-passed`, `typecheck-clean`, `no-raw-print`)
+- `commit-message-has-context` — commit message body references the micro action description
+
+**Checks that are skipped:**
+- `intent-approved` footer check — no intent.md file
+- `spec-approved`, `plan-approved` — no spec/plan
+- `close-out-complete` — no feature dir to close out
+
+---
+
+## Touch-up flow (short)
+
+```
+User: "fix the login button color to match brand"
+Orchestrator: [classifies: touch-up, micro] → restate → AskUserQuestion
+User: approves
+Orchestrator: writes intent.md (skips spec.md and plan.md per touch-up mode)
+Implementor: one edit, one test update
+Evaluator: smoke mode (tests + typecheck + grep)
+Orchestrator: diff + AskUserQuestion to commit
+User: approves push
+Commit + push
+```
+
+No spec, no plan, no waves. Intent is the only gate.
+
+---
+
+## Fix-round flow (short)
+
+```
+Evaluator: Status FAIL, findings F-1..F-3, dispatch_recommendation: re-implement
+Orchestrator: updates work.md with findings reference
+              → dispatches Implementor with findings + work.md
+Implementor: fixes F-1..F-3, runs tests, returns
+Evaluator: re-reviews → PASS
+Orchestrator: close-out → commit gate
+```
+
+Second failure → Debugger.
+Third failure → escalate to User with `AskUserQuestion` and a session checkpoint.
+
+---
+
+## Flow coverage summary
+
+| Flow | Covered? |
+|------|---------|
+| Fresh Tuesday, known project | ✓ (T=0 through T=10) |
+| Greenfield new project | Covered — profile loads; AGENTS.md auto-generated at close-out |
+| Touch-up | ✓ (short flow above) |
+| Multi-feature session | ✓ (T=8) |
+| Conversational debugging drift | Fix-round + `repeat-symptom` check |
+| Plan revision mid-implementation | work.md revisions section + `revisions-resolved` check |
+| Long-running session | T=9 silent hygiene |
+| Parallel + one failure | T=5 parallel failure handling |
+
+---
+
+## What this spec deliberately omits
+
+- Hook-based enforcement (user preference: prompt edits + checks, not PreToolUse blockers)
+- Self-modifying agents (profile updates require user confirmation)
+- Cross-project breadcrumbs (dropped — project Memory is sufficient)
+- Fan-out evaluator (one evaluator per review, no parallel critics)
+
+These may be revisited later; they are not in this design.
