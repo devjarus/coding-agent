@@ -20,7 +20,7 @@ Default: Lightweight. Orchestrator escalates to Full automatically on size or re
    - Detect UI: package.json frontend dep OR `client|web|frontend|apps/web|packages/web` dir OR `*.xcodeproj`.
    - Probe required MCP: `mcp__playwright__browser_navigate("about:blank")` (web) or `mcp__ios-simulator__get_booted_sim_id` (iOS).
    - **If MCP unavailable:** write `review.md` with `Status: FAIL`, `Reason: BROWSER_MCP_UNAVAILABLE`, instruct user to enable, return. Do NOT degrade to HTML grep.
-2. **Read context:** `spec.md`, `plan.md`, `plan.md` Plan Revisions in work.md, `progress.md`/`work.md`, last `review.md` (regressions), `learnings.md`, changed files list.
+2. **Read context:** `spec.md`, `plan.md`, `work.md` (especially `## Plan Revisions` — approved revisions supersede plan.md), last feature's `review.md` (regressions), `learnings.md`, changed files list.
 3. **Build:** run the project's actual build command (from AGENTS.md). Capture stdout/stderr.
 4. **Run committed tests** (per tier — never write ad-hoc scripts):
    - Unit: `npm test` (or project's command)

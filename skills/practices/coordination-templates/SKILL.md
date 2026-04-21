@@ -1,15 +1,17 @@
 ---
 name: coordination-templates
-description: Progress tracking structure for impl-coordinator. Defines the progress.md schema used for task coordination and session recovery.
+description: Progress tracking structure for the orchestrator. Defines the work.md schema used for task coordination and session recovery. v2.
 ---
 
 # Coordination Templates
 
 ## When to Apply
-- Impl Coordinator initializing progress.md
-- Resuming a session from existing progress.md
+- Orchestrator initializing `work.md` at the start of implementation
+- Resuming a session from existing `work.md`
 
-## Progress.md Structure
+For the canonical template, see `${CLAUDE_PLUGIN_ROOT}/templates/work.template.md`.
+
+## work.md Structure (v2)
 
 ```markdown
 # Implementation Progress
@@ -38,7 +40,7 @@ _None_
 
 Status values — domains: `not-started`, `in-progress`, `complete`, `blocked`. Tasks: `ready`, `in-progress`, `complete`, `blocked`, `failed`, `needs-revision`.
 
-## Plan Revisions (in plan.md, not progress.md)
+## Plan Revisions (in plan.md, not work.md)
 
 When an implementor hits a blocker or discovers the plan's approach won't work mid-wave, they append a revision block to `features/<CURRENT>/plan.md`:
 
@@ -54,7 +56,7 @@ When an implementor hits a blocker or discovers the plan's approach won't work m
 ```
 
 **Rules:**
-- Trivial deviations (rename, refactor within the same design) go in progress.md's `### Deviations`, NOT plan.md.
+- Trivial deviations (rename, refactor within the same design) go in work.md's `### Deviations`, NOT plan.md.
 - Anything that touches evaluation criteria, task contracts, or downstream waves is a **material** revision and goes in plan.md.
 - Evaluator reads the revisions log as authoritative; approved revisions supersede original wave text.
 - Orchestrator must resolve any `Status: pending` revision before dispatching the next wave — otherwise downstream work inherits an inconsistent plan.
@@ -64,7 +66,7 @@ When an implementor hits a blocker or discovers the plan's approach won't work m
 When resuming after `/clear` or a new session, read in this order:
 1. `.coding-agent/features/<CURRENT>/session-state.md` — where we left off, what was tried
 2. `.coding-agent/features/<CURRENT>/handoff.md` — what failed and what's ruled out (if in fix rounds)
-3. `.coding-agent/features/<CURRENT>/progress.md` — task completion status
+3. `.coding-agent/features/<CURRENT>/work.md` — task completion status
 4. `.coding-agent/features/<CURRENT>/spec.md` + `plan.md` — requirements and tasks
 5. `.coding-agent/learnings.md` — project-level gotchas
 
@@ -74,7 +76,7 @@ This ordering is deliberate: session-state.md and handoff.md tell you what happe
 
 ## Context Health Signals
 
-Watch for these in progress.md updates:
+Watch for these in work.md updates:
 
 | Signal | Meaning | Action |
 |--------|---------|--------|

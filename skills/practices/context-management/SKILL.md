@@ -141,4 +141,4 @@ Multi-round fix sessions accumulate fastest: each round = implementor dispatch +
 
 ### Counter tracking
 
-Track dispatches informally — a one-line note in `progress.md`'s decisions log is enough. After the user runs `/compact` or `/clear`, reset the count. If you don't know whether the user compacted, assume the count did NOT reset.
+Track dispatches informally — a one-line note in `work.md`'s decisions log is enough. After the user runs `/compact` or `/clear`, reset the count. If you don't know whether the user compacted, assume the count did NOT reset.

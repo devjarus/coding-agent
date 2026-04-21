@@ -5,6 +5,66 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.0] — 2026-04-20 — First-principles redesign
+
+Clean break from v1. No backwards compatibility with v1 artifacts. v1 feature directories remain readable but v2 protocols do not consume them. Profile (`~/.coding-agent/profile.md`) and global learnings remain compatible.
+
+### Added
+
+**Four primitives, explicit:**
+- **Actor** — Orchestrator + Architect + Implementor + Evaluator + Debugger + User. Only the Orchestrator dispatches.
+- **Artifact** — five categories (Intent, Plan, Work, Findings, Memory), typed frontmatter with `mutability:` class (`immutable` / `append-only` / `single-writer-mutable` / `composite`).
+- **Skill** — scope, trigger, category declared in frontmatter; Architect picks the manifest per task.
+- **Check** — deterministic bash scripts, exit 0/1 + JSON output, replace ~70 prose MUST rules.
+
+**Nine named protocols** (new `protocols/` directory) — intake, spec-writing, plan-writing, implementation, review, fix-round, close-out, redirect, recovery. Agents reference by `${CLAUDE_PLUGIN_ROOT}/protocols/<name>.md`; they do not redescribe the workflow.
+
+**Ten deterministic check scripts** (new `checks/` directory) — intent-approved, spec-approved, plan-approved, revisions-resolved, ui-evidence, no-raw-print, close-out-complete, action-logged, active-feature-consistent, plus lib.sh shared helpers. All tested on happy + failure paths before ship.
+
+**Seven artifact templates** (new `templates/` directory) — canonical frontmatter stubs for intent, spec, plan, work, review, diagnosis, session.
+
+**`scripts/setup.sh`** — one-command per-project installer. Writes `.claude/settings.local.json` with `defaultMode: acceptEdits` + broad allow + narrow ask for dangerous ops (git push, rm -rf, sudo, publish). Auto-detects iOS and enables xcodebuild / ios-simulator MCPs. Updates `.gitignore` for `.claude/settings.local.json` and `.coding-agent/`.
+
+**`ARCHITECTURE.md`** — ASCII diagrams for topology, artifact lifecycle, supersession rule, check placement, fix-round escalation, memory scopes, plugin file layout.
+
+**Design docs (`docs/redesign/`)** — `primitives.md`, `workflow-spec.md`, `lifecycle.md`.
+
+### Changed
+
+**Agents rewritten.** Each under ~150 lines (was 114–410 in v1):
+- Reference protocols via `${CLAUDE_PLUGIN_ROOT}/...` (survives marketplace caching)
+- Return structured YAML `return:` block; Orchestrator parses + applies to `work.md`
+- Structured-return schema: `artifacts_written`, `status`, `work_updates.{task_states, deviations, revisions, decisions, nits}`, `ask_user`, `notes`
+
+**Artifact consolidation.** Nine+ files collapsed to five categories:
+- `work.md` merges v1's `progress.md`, `handoff.md`, `session-state.md`, `in-flight.md`, `nits.md` into one single-writer-mutable ledger with explicit sections.
+- `session.md` is composite: `## Checkpoint` (single-writer-mutable) + `## Action Log` (append-only).
+
+**User approvals owned exclusively by Orchestrator.** Subagent `AskUserQuestion` does not reach the real user (stays in subagent context). Architect now writes `spec.md` and `plan.md` in `state: draft` with blank approval fields; Orchestrator prints the body in chat, calls `AskUserQuestion`, and signs `approved_by: user` only on real user approval.
+
+**Supersession rule.** Approved `spec.md` / `plan.md` are immutable forever. Mid-implementation amendments live in `work.md § Plan Revisions` with `Supersedes: plan.md §<section>` pointer. Architect, if re-dispatched for a revision, writes only into `work.md` (never edits approved artifacts).
+
+**Close-out protocol.** Eight deterministic steps on review PASS, before commit gate: freeze artifacts, distill to `learnings.md`, update AGENTS/ARCHITECTURE if applicable, clear `CURRENT`, update `session.md`, append action-log entry, run all close-out checks.
+
+**Path references.** All plugin-internal references use `${CLAUDE_PLUGIN_ROOT}/...` instead of relative paths. Works in dev (`--plugin-dir`) and marketplace-cached contexts.
+
+**Plugin manifest** — version 2.0.0, description updated.
+
+### Removed
+
+- `pipeline-verification/verify-stage.sh` skill — wasn't invoked in practice; replaced by the `checks/` directory.
+- "PASS pending human verification" escape hatch in Evaluator — UI projects either have `screenshots/` evidence (PASS) or they don't (FAIL with `BROWSER_MCP_UNAVAILABLE` or `BROWSER_EVIDENCE_MISSING` reason).
+
+### Known issues
+
+- Architect-approval-forging observed in first post-v2 S1 test run: spec and plan signed `approved_by: user` at the same timestamp as architect dispatch-returned. Fix landed in this release (Architect writes `state: draft` only; Orchestrator signs after real `AskUserQuestion`) but needs verification on re-run. Acceptance suite at `test-agents/V2-ACCEPTANCE-TESTS.md` has checkpoints that catch forged approvals.
+
+### Migration
+
+No automatic migration. v1 feature directories (`.coding-agent/features/<slug>/`) remain readable but v2 protocols will not consume them. Either close out v1 in-flight features manually against v1 agents, or archive the `.coding-agent/` directory and start fresh. Profile and global learnings are forward-compatible.
+
+---
+
 ## [Unreleased]
 
 ### Added (from personal-knowledge-base learnings — 2026-04-11)
