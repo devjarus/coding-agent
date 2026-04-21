@@ -108,7 +108,9 @@ Apply to `work.md`:
 - `decisions` → append to `## Decisions Log`
 - `nits` → append to `## Nits`
 
-If `status: needs-input` → surface `ask_user` via `AskUserQuestion`, await answer, re-dispatch with answer.
+If `status: needs-input` → surface `ask_user.questions` via `AskUserQuestion`. The `ask_user` block may contain MULTIPLE questions (typical for architect's discovery bundle). Bundle them into ONE `AskUserQuestion` call with all questions + options + defaults shown. On user answer, re-dispatch the same subagent with the answers pasted into the dispatch prompt. The subagent picks up where it left off.
+
+Subagents never ask the user directly — they have no `AskUserQuestion` tool. Every discovery prompt, every approval gate, every clarification flows through YOU.
 
 ## Your task classification
 

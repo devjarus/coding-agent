@@ -7,8 +7,19 @@
 ## Steps
 
 1. **Read profile** (`~/.coding-agent/profile.md`) for default stack preferences.
-2. **Bundle discovery questions** — for any unknown not answered by profile, batch into one `AskUserQuestion` with profile defaults bolded:
-   > *I'll build this with: **Next 15** (profile), **shadcn** (profile), **TanStack Query** (profile). Decisions needed: (1) X — A / B / C? (2) Y — A / B? Confirm or change.*
+2. **Identify discovery questions** — for any unknown the profile doesn't answer, return them as an `ask_user.questions` bundle in your structured return (NOT via `AskUserQuestion` — you don't have that tool). Orchestrator asks the user and re-dispatches you with the answers.
+   Example bundle:
+   ```yaml
+   ask_user:
+     questions:
+       - q: "Notification delivery?"
+         options: ["push + in-app", "email only", "toast only"]
+         default: "push + in-app"
+       - q: "Read state persistence?"
+         options: ["per-user timestamp", "thread-level"]
+         default: "per-user timestamp"
+   ```
+   Set `status: needs-input`. Upon re-dispatch with answers, continue to step 3.
 3. **Test infrastructure research** — for each external dep in the stack, query MCPs and decide test tool:
    - `mcp__context7__query-docs` for SDK / framework test patterns
    - `mcp__exa__web_search_exa` for `<dep> testing 2026`
