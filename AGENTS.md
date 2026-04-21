@@ -1,61 +1,79 @@
-# Development Workflow
+# Development Workflow — Plugin Self
 
-This file tells agents (and humans) how to work on the coding-agent plugin itself.
+This file tells agents (and humans) how to work on the coding-agent plugin itself. (For consumer-project AGENTS.md, see what individual projects generate during close-out.)
 
 ## What This Is
 
-A Claude Code plugin: 5 agents + 57 skills + 7 MCP servers. All Markdown prompts, no build step, no compiled code. Changes to an agent or skill file take effect on the next Claude Code session start.
+A Claude Code plugin: 5 agents + ~58 skills + 9 named protocols + 10 deterministic checks + 7 artifact templates + 7 MCP servers. All Markdown + Bash. No build step.
 
-## Project Structure
+## Project Structure (v2)
 
 ```
 coding-agent/
-├── .claude-plugin/plugin.json    # plugin manifest (name, default main agent)
-├── .mcp.json                     # MCP server configuration
-├── agents/                       # 5 agent prompts (orchestrator, architect, implementor, evaluator, debugger)
-├── skills/                       # 57 skill folders, each with SKILL.md
+├── .claude-plugin/plugin.json    # plugin manifest
+├── .mcp.json                     # MCP server config
+├── agents/                       # 5 agent prompts (each ≤300 lines, references protocols)
+├── skills/                       # ~58 skill folders, each with SKILL.md
 │   ├── frontend/   backend/   data/   mobile/   infra/
-│   ├── general/
-│   └── practices/                # cross-cutting: tdd, code-review, observability, etc.
-├── hooks/hooks.json              # SubagentStart logging + PostToolUse validator
+│   ├── general/   practices/
+├── protocols/                    # NEW — 9 named multi-actor workflows
+│   ├── intake.md   spec-writing.md   plan-writing.md
+│   ├── implementation.md   review.md   fix-round.md
+│   ├── close-out.md   redirect.md   recovery.md
+├── checks/                       # NEW — deterministic verification scripts
+│   ├── lib.sh                    # shared helpers (sourced)
+│   ├── intent-approved.sh    spec-approved.sh    plan-approved.sh
+│   ├── ui-evidence.sh   no-raw-print.sh   close-out-complete.sh
+│   ├── action-logged.sh   active-feature-consistent.sh   revisions-resolved.sh
+├── templates/                    # NEW — artifact frontmatter templates
+│   ├── intent.template.md   spec.template.md   plan.template.md
+│   ├── work.template.md   review.template.md   diagnosis.template.md
+│   ├── session.template.md
+├── hooks/hooks.json              # SubagentStart logging + PostToolUse validation
 ├── scripts/
-│   ├── validate.sh               # plugin self-validator — run before commit
-│   └── post-edit-validate.sh     # called by PostToolUse hook; validates frontmatter on every Write/Edit
-├── CLAUDE.md, README.md          # docs (keep skill counts + tables in sync with reality)
-└── docs/                         # design retrospectives
+│   ├── validate.sh               # plugin self-validator
+│   ├── post-edit-validate.sh     # called by PostToolUse hook
+│   └── setup.sh                  # writes recommended .claude/settings.local.json into target project
+├── docs/
+│   ├── redesign/                 # v2 design docs (primitives, workflow-spec, lifecycle)
+│   └── ...
+├── CHANGELOG.md
+├── CLAUDE.md
+├── README.md
+├── ARCHITECTURE.md
+└── AGENTS.md (this file)
 ```
 
-## After Making Changes — The Checklist
+## After Making Changes — Checklist
 
-Run this every time you edit an agent, skill, or doc:
+Run every time you edit an agent, skill, protocol, check, or doc:
 
 1. **Run the validator**
    ```bash
    ./scripts/validate.sh
    ```
-   Must report PASSED (warnings are ok, errors are not). The validator checks:
-   - Agent frontmatter: `name`, `description`, `model` (opus/sonnet/haiku/inherit or a full model ID like `claude-opus-4-7`)
-   - Skill frontmatter: `name`, `description`
-   - Skill references in agents actually exist on disk
-   - No stale `docs/agents/` paths
-   - Phase agents reference `.coding-agent/` for artifacts
+   Must report PASSED. The validator now also lints protocol/check existence and frontmatter schema.
 
-2. **If you added or removed a skill**, update these in the same commit:
-   - `CLAUDE.md` → `## Skills (N)` header count + the appropriate table row
-   - `README.md` → subtitle count + `## Skills (N)` header + the relevant table
-   - If the skill is domain-specific, add it to the implementor's routing row in both files
-   - If the skill should be preloaded into an agent, add it to that agent's frontmatter `skills:` list
+2. **If you added a skill**:
+   - Add to `CLAUDE.md` skill table + count
+   - If domain-specific: add to implementor's domain routing
+   - If preloaded: add to agent frontmatter `skills:` list
 
-3. **If you added or removed an artifact** (spec/plan/review/etc.):
-   - `CLAUDE.md` → artifact protocol table
-   - `agents/orchestrator.md` → artifact layout diagram + state machine row
+3. **If you added a protocol or check**:
+   - Add to `protocols/README.md` table OR `CLAUDE.md` checks list
+   - Reference from the agent prompt(s) that use it via `${CLAUDE_PLUGIN_ROOT}/protocols/<name>.md`
 
-4. **If you changed an agent's model or behavior**, read the full agent file end-to-end after editing. Agent prompts are under 800 words for a reason; a drive-by edit can break flow.
+4. **If you added an artifact category**: update `docs/redesign/primitives.md` Artifact Categories table AND create `templates/<name>.template.md`.
 
-5. **Commit**
+5. **Path conventions**:
+   - Plugin internals: always `${CLAUDE_PLUGIN_ROOT}/...` (works in dev + marketplace cache)
+   - User project artifacts: `.coding-agent/...` (relative to project root, set by user)
+   - NEVER use relative `..` paths — they break in marketplace caching
+
+6. **Commit**:
    - One logical change per commit
-   - Reference the affected agent or skill in the subject line
-   - The `PostToolUse` hook already validated frontmatter on every save — no surprises at commit time
+   - Subject mentions affected agent/skill/protocol/check
+   - PostToolUse hook validates frontmatter on every save
 
 ## Adding a New Skill
 
@@ -64,7 +82,10 @@ mkdir -p skills/<category>/<skill-name>
 cat > skills/<category>/<skill-name>/SKILL.md <<'EOF'
 ---
 name: <skill-name>
-description: <1-2 sentences — Claude uses this to decide when to apply it. Under 250 chars.>
+description: <1-2 sentences — Claude uses this to decide when to apply. Under 250 chars.>
+scope: any | architect | implementor | evaluator | debugger | orchestrator
+trigger: always | on-match | on-invoke
+category: domain-specialist | practice | protocol-helper | general
 ---
 
 # <Title>
@@ -73,54 +94,58 @@ Content...
 EOF
 ```
 
-Then:
-- Wire into `agents/implementor.md` routing if domain-specific, or an agent's frontmatter `skills:` if preloaded
-- Update `CLAUDE.md` + `README.md` counts and tables
-- Run `./scripts/validate.sh`
-
-Optional subdirectories: `scripts/` for executables (reference via `${CLAUDE_SKILL_DIR}` inside SKILL.md), `rules/` for progressive-disclosure detail files.
+Then update CLAUDE.md routing tables and run validate.sh.
 
 ## Modifying an Agent
 
-- **Keep prompts under ~800 words.** Long prompts get partially ignored.
-- **Put critical rules first.** Ordering matters.
-- **Use tables and numbered lists** over prose where possible.
-- **Show exact `Agent(...)` syntax** when documenting dispatches.
-- **Run the full pipeline on a real project** after architectural changes.
+- **Keep prompts under 300 lines.** Long prompts get partially ignored.
+- **Reference protocols, don't re-describe.** Use `${CLAUDE_PLUGIN_ROOT}/protocols/<name>.md`.
+- **Critical rules first.** Ordering matters.
+- **Tables and lists over prose.**
+
+## Adding a Protocol or Check
+
+- **Protocol**: write `protocols/<name>.md`. Add row to `protocols/README.md`. Reference from each agent that uses it.
+- **Check**: write `checks/<name>.sh` (executable, exits 0/1, JSON output). Add to `agents/orchestrator.md` checks list. Source `lib.sh` for shared helpers.
 
 ## Conventions
 
+### Agent prompts
+- ≤300 lines target (orchestrator may be longer; aim for ≤350)
+- Frontmatter: `name`, `description`, `model`, `tools`, `skills`
+- Body: capabilities + protocols referenced + structured-return contract + hard rules + refusals
+
 ### Skills
-- `SKILL.md` at the root, optional `scripts/` and `rules/` subdirectories
-- Keep `SKILL.md` under 500 lines — push detail into `rules/*.md`
-- `description` under 250 characters (truncated in the skill index)
+- `SKILL.md` at root, optional `scripts/`, `rules/`
+- ≤500 lines in `SKILL.md` (push detail to `rules/`)
+- `description` ≤250 chars
 
 ### Commits
 - One feature/fix per commit
-- Subject line mentions the affected agent or skill
-- Run the plugin on a real project before committing architectural changes to agents
+- Subject references affected file/folder
+- `Co-Authored-By: Claude` line
 
 ### Versioning (semver)
-- **Patch** — content tweaks, typos, doc updates
-- **Minor** — new skill, new agent instruction, new MCP server
-- **Major** — new agent, pipeline reorganization, breaking artifact-format changes
+- Patch: typos, doc tweaks
+- Minor: new skill / protocol / check / agent instruction
+- Major: primitive change, agent removed/added, breaking artifact-format change
 
 ## Architecture Decisions
 
-- **5 agents flat, 1 level deep.** Claude Code subagents can't spawn subagents. Only the main-thread orchestrator has the `Agent` tool.
-- **Short agent prompts.** 2000-word prompts get partially ignored.
-- **Generator-evaluator separation.** The evaluator is independent from the implementor to prevent self-evaluation bias.
-- **Research from real docs.** Architect uses Context7 / DeepWiki / Exa MCPs, not training data.
-- **Task-size classification.** The orchestrator can inline Micro tasks but must dispatch for anything larger. Smoke-mode evaluator exists so "inline" still gets an independent review.
-- **Prompt edits over enforcement hooks.** When an agent breaks a rule, the fix is a clearer prompt, not a JSON state file or a PreToolUse blocker.
+- **Four primitives, nothing more.** Actor / Artifact / Skill / Check. See `docs/redesign/primitives.md`.
+- **Approved artifacts are immutable.** Amendments via `work.md § Plan Revisions` supersession.
+- **Orchestrator owns coordinator state.** Subagents return structured updates.
+- **Codified > scripted.** Tests are committed code, not ad-hoc curl pipelines.
+- **`${CLAUDE_PLUGIN_ROOT}` for all plugin-internal references.** Survives marketplace caching.
+- **Prompt edits over enforcement hooks.** When a rule fails, fix the prompt or convert to a Check — don't add a PreToolUse blocker.
 
 ## Testing Changes
 
 The test suite lives in `~/workspace/test-agents/`:
-- **W1** — greenfield backend (Todo API)
-- **W2** — fullstack with parallel dispatch (Blog dashboard)
-- **W3** — brownfield (extend W2)
-- **W4** — session recovery
+- W1 — greenfield backend (Todo API)
+- W2 — fullstack with parallel dispatch (Blog dashboard)
+- W3 — brownfield (extend W2)
+- W4 — session recovery
 
 ```bash
 cd ~/workspace/test-agents/W1-todo-api
@@ -129,16 +154,16 @@ claude
 # paste prompt from PROMPT.md
 ```
 
-Check `.coding-agent/agent-log.txt` for the dispatch sequence (the `SubagentStart` hook writes to it).
+Check `.coding-agent/session.md § Action Log` for the dispatch sequence.
 
-## Known Issues
+## Known issues
 
-- `${user_config.exa_api_key}` in `.mcp.json` — plugin configs can't currently resolve this reference. Users must set `EXA_API_KEY` in their shell environment.
-- No automated CI for the plugin repo itself. The `validate.sh` script is the gate.
+- `${user_config.exa_api_key}` in `.mcp.json` — plugin configs can't resolve this. Users set `EXA_API_KEY` in shell env.
+- No automated CI. `validate.sh` is the gate.
 
-## Development Notes
+## Notes
 
-- Agent/skill changes are picked up on next session start — no reload command needed
-- `.coding-agent/` is runtime state, gitignored, not source
-- Test failures in the test suite usually reveal prompt ambiguity — fix the prompt, not the test
-- Past design decisions and retrospectives live in `docs/`
+- Agent/skill/protocol changes picked up on next session start
+- `.coding-agent/` in user projects is runtime state, gitignored
+- Test failures usually reveal prompt ambiguity — fix the prompt, not the test
+- Past design retrospectives in `docs/`

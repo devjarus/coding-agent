@@ -1,148 +1,89 @@
-# coding-agent — Claude Code Plugin
+# coding-agent — Claude Code Plugin (v2.0)
 
-A multi-agent software development system. 5 agents, 56 skills, 7 MCP servers. The **orchestrator** drives the pipeline, dispatching architect, implementor, evaluator, and debugger as subagents — all 1 level deep.
+A multi-agent software development system, redesigned from first principles around four primitives.
 
-## Architecture
+## The Four Primitives
 
-```
-Orchestrator (main thread) — state machine, dispatches, validates, never writes code
-  │
-  ├── Architect — asks user → spec.md (Gate 1) → plan.md with eval criteria (Gate 2)
-  ├── Implementor(s) — writes code by domain, tests first, applies specialist skills
-  ├── Evaluator — independent review, builds, runs tests, tests running app
-  └── Debugger — root-cause analysis when bugs survive fix attempts
-```
+| Primitive | Definition | Examples |
+|-----------|------------|----------|
+| **Actor** | Produces work | User, Orchestrator, Architect, Implementor, Evaluator, Debugger |
+| **Artifact** | Durable on-disk state, typed, one writer | `intent.md`, `spec.md`, `plan.md`, `work.md`, `review.md`, `diagnosis.md`, `session.md`, `learnings.md` |
+| **Skill** | Scoped knowledge an Actor loads to adapt | domain-specialist, practice, protocol-helper, general |
+| **Check** | Deterministic verification, no LLM | `intent-approved.sh`, `ui-evidence.sh`, `close-out-complete.sh`, etc. |
 
-**Constraints:**
-- Subagents cannot spawn subagents → all dispatches are 1 level deep
-- Plugin agents cannot use mcpServers/hooks/permissionMode in frontmatter → all MCP in `.mcp.json`
-- Subagents cannot use Agent(Explore) → they use Read/Glob/Grep directly
-- Only the orchestrator has the Agent tool
+See `docs/redesign/primitives.md` for formal definitions, invariants, and what's deliberately not a primitive.
 
-## Orchestrator State Machine
+## The Five Agents
 
-The orchestrator classifies every request by size before dispatching:
+| Agent | Model | Role | Owns |
+|-------|-------|------|------|
+| **orchestrator** | claude-opus-4-7 | Tech lead — state machine, dispatcher, check runner | `work.md`, `session.md`, `cache.json`, `CURRENT`, `learnings.md` |
+| **architect** | opus | Staff eng — spec & plan author, MCP researcher | `spec.md`, `plan.md` (immutable after approval) |
+| **implementor** | sonnet | Engineer — code + tests, returns structured updates | source files, test files |
+| **evaluator** | opus | QA — runs committed tests, drives Playwright/sim, writes review.md | `review.md`, `screenshots/` |
+| **debugger** | opus | SRE — root cause analysis, full or inspection mode | `diagnosis.md` |
 
-| Size | Pipeline |
-|------|----------|
-| Micro (≤2 files, ≤30 lines, no new logic) | Orchestrator writes directly → tests → commit |
-| Small (2-5 files, clear scope) | Implementor → Evaluator (lightweight) |
-| Medium (design decisions needed) | Architect (plan) → Implementor → Evaluator |
-| Large (new feature, architectural) | Architect (spec+plan) → Implementor → Evaluator |
+Subagents return a structured YAML payload; orchestrator parses and applies to `work.md`. No multi-writer state.
 
-```
-Classify → Dispatch by size
-  → Implementor → Evaluator (mandatory after every dispatch)
-  → review.md FAIL → Fix Round 1 → Round 2 (Debugger) → Round 3 (Escalate)
-  → review.md PASS → Fix minor findings → Reflect → Generate docs → Commit
-```
+## The Nine Protocols
 
-Pipeline complete + new message → reflect, archive, classify, restart.
+Named workflows that span agents. Each lives in `protocols/<name>.md` as the authoritative reference. Agent prompts cross-reference; they do not redescribe.
 
-## Artifact Protocol
+| Protocol | Owner | When |
+|----------|-------|------|
+| `intake` | Orchestrator | every user request |
+| `spec-writing` | Architect | medium/large features |
+| `plan-writing` | Architect | medium/large features |
+| `implementation` | Orchestrator | once plan approved |
+| `review` | Evaluator | implementation complete |
+| `fix-round` | Orchestrator | review FAIL (3 rounds before escalation) |
+| `close-out` | Orchestrator | review PASS, before commit (8 steps) |
+| `redirect` | Orchestrator | user message during active pipeline |
+| `recovery` | Orchestrator | dispatch threshold or pivot |
 
-| Artifact | Producer | Consumed by |
-|----------|----------|-------------|
-| `spec.md` | Architect | Implementor, Evaluator |
-| `plan.md` | Architect | Implementor, Evaluator |
-| `progress.md` | Orchestrator | Orchestrator |
-| `review.md` | Evaluator | Orchestrator |
-| `diagnosis.md` | Debugger | Implementor |
-| `handoff.md` | Orchestrator | Implementor, Debugger (what was tried, why it failed, what's ruled out) |
-| `session-state.md` | Orchestrator | Orchestrator (session checkpoint for recovery after /clear) |
-| `in-flight.md` | Orchestrator | Orchestrator (one-line breadcrumb during multi-step inline edits; recovery after mid-work compaction) |
-| `learnings.md` | Orchestrator | Future sessions (gotchas, decisions, patterns) |
-| `README.md` | Implementor (project-docs) | Humans |
-| `ARCHITECTURE.md` | Implementor (project-docs) | Humans, Agents (ASCII diagrams) |
-| `AGENTS.md` | Implementor (project-docs) | All agents |
+## Artifacts
 
-## Agents
+| Category | Mutability | Files |
+|----------|-----------|-------|
+| **Intent** | immutable (after approval) | `intent.md` |
+| **Plan** | immutable (after approval) | `spec.md`, `plan.md` |
+| **Work** | single-writer-mutable (orchestrator) | `work.md` (merges deviations, revisions, decisions, nits, handoff, findings) |
+| **Findings** | immutable (once written) | `review.md`, `diagnosis.md` |
+| **Memory** | append-only or single-writer-mutable | `learnings.md`, `session.md` (composite), `profile.md` (global), `AGENTS.md`, `ARCHITECTURE.md` |
 
-| Agent | Model | Key Behavior |
-|-------|-------|-------------|
-| **orchestrator** | opus | State machine. Dispatches only. Never writes code/specs/reviews. |
-| **architect** | opus | MUST ask user before writing. MUST get approval before returning. Verifies dependencies. |
-| **implementor** | sonnet | Tests first (including integration). No silent error suppression. Pins dependency versions. |
-| **evaluator** | opus | Builds first. Runs tests. Tests running app (Playwright/simulator). Runtime mandatory. |
-| **debugger** | opus | Reproduce → isolate → trace → diagnose. Writes diagnosis.md, never code. |
+States: `draft → approved → active → archived`.
+**Approved artifacts are never edited.** Amendments live in `work.md § Plan Revisions` with `Supersedes:` pointer.
 
-## Skills (58)
+## Path conventions
 
-### Implementor skill routing by domain
+- **Plugin internals** (protocols, checks, templates, docs): `${CLAUDE_PLUGIN_ROOT}/...`
+- **User project artifacts**: `.coding-agent/...` (relative to project root)
+- **Global memory**: `~/.coding-agent/profile.md`
 
-| Domain | Specialist Skills |
-|--------|------------------|
-| frontend | react-specialist, nextjs-specialist, css-tailwind-specialist, testing-specialist, ui-design, ui-excellence, tanstack, generative-ui-specialist, assistant-chat-ui, agent-ui-rendering, react-patterns, composition-patterns, accessibility, performance |
-| mobile | ios-swiftui-specialist, ios-testing-debugging |
-| backend | nodejs-specialist, python-specialist, go-specialist, typescript-specialist, agent-frameworks-specialist, llm-integration, api-design, auth-patterns |
-| data | postgres-specialist, redis-specialist, migration-safety |
-| infra | aws-specialist, docker-specialist, docker-best-practices, terraform-specialist, deployment-patterns, ci-cd-patterns |
+## Skills (~58)
 
-### Practices (applied across domains)
+Categories: domain-specialist, practice, protocol-helper, general. Each declares `scope`, `trigger`, `category` in frontmatter (schema being progressively backfilled).
 
-| Skill | Applied By |
-|-------|-----------|
-| tdd | Implementor (preloaded) |
-| test-doubles-strategy | Implementor (preloaded) — when to use unit/integration/e2e; mock vs real per dependency |
-| code-review | Implementor, Evaluator (preloaded) |
-| security-checklist | Implementor, Evaluator (preloaded) |
-| config-management | Implementor |
-| observability | Implementor |
-| error-handling | Implementor |
-| e2e-testing | Evaluator |
-| integration-testing | Implementor |
-| dependency-evaluation | Architect |
-| shared-contracts | Implementor |
-| release | Orchestrator |
-| publish-ready | Implementor (before public release) |
-| ci-testing-standard | Implementor (after first feature ships) |
-| service-architecture | Implementor (apps with external clients/services) |
-| project-detection | Architect |
-| load-bearing-markers | Implementor, Orchestrator (preloaded) — protect non-obvious fixes across refactors |
-
-### Pipeline skills (preloaded into agents)
-
-| Skill | Preloaded In |
-|-------|-------------|
-| coordination-templates | Orchestrator |
-| context-management | Orchestrator |
-| ideation-council | Architect |
-| project-docs | Implementor (after review PASS) |
-| research-cache | — (optional, architect saves findings) |
-
-### General
-
-debugging, documentation, git-workflow
+Implementor's skill manifest comes from `plan.md` (per task, declared by the Architect). Orchestrator passes it verbatim — no magic routing.
 
 ## MCP Servers (`.mcp.json`)
 
 | Server | Purpose |
 |--------|---------|
-| context7 | Library documentation (architect, implementor) |
-| exa | Web search — blog posts, release notes, migration guides (architect) |
+| context7 | Library docs (architect, implementor) |
+| exa | Web search (architect) |
+| deepwiki | Repo deep-dives (architect) |
 | playwright | Browser UI testing (evaluator) |
 | chrome-devtools | Console/network inspection (evaluator) |
-| deepwiki | Dependency research (architect) |
 | xcodebuild | iOS build/test/debug (evaluator) |
 | ios-simulator | iOS simulator control (evaluator) |
-
-## Compact Instructions
-
-When compaction fires (auto or manual), preserve:
-- Active feature slug from `.coding-agent/CURRENT` and its current pipeline phase
-- Open findings from the latest `review.md` (if in fix rounds)
-- Contents of `handoff.md` and `session-state.md` (if they exist)
-- Key decisions from `progress.md`'s decisions log
-- The user's most recent message and intent
-
-Drop:
-- Completed dispatch transcripts (subagent prompts + returns from finished stages)
-- Resolved findings from prior review rounds
-- File contents already captured in artifacts on disk
-- Discovery Q&A from spec phase (requirements are in spec.md)
 
 ## Development
 
 ```bash
-./scripts/validate.sh && claude plugin validate .
+./scripts/validate.sh
 ```
+
+## Migration from v1
+
+v2 is a clean break — no backwards compatibility. Old `.coding-agent/features/<slug>/` directories from v1 still exist as historical archives but are not consumed by v2 protocols. Profile (`~/.coding-agent/profile.md`) and global learnings remain compatible.

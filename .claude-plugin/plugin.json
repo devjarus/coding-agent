@@ -1,7 +1,7 @@
 {
   "name": "coding-agent",
-  "version": "1.0.0",
-  "description": "Multi-agent software development system — 5 agents (orchestrator, architect, implementor, evaluator, debugger) dispatch structured pipelines from idea to shipped code. Includes 54 specialist skills, deterministic pipeline gates, and real runtime testing via Playwright/simulator MCPs.",
+  "version": "2.0.0",
+  "description": "Multi-agent software development system. 5 agents, ~58 skills, 9 named protocols, 10 deterministic checks. First-principles redesign around 4 primitives (Actor / Artifact / Skill / Check). Real runtime testing via Playwright / iOS-simulator MCPs.",
   "author": {
     "name": "Suraj",
     "email": "devjarus91@gmail.com"

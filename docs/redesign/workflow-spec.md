@@ -517,7 +517,7 @@ INTAKE → INLINE-EDIT → SMOKE ──pass──> COMMIT-GATE → DONE
 | `SMOKE` | PASS | `COMMIT-GATE` | Append action-log `micro-smoke-pass` |
 | `SMOKE` | FAIL | `RETRY-INLINE` | Append action-log `micro-smoke-fail`. One retry only. |
 | `RETRY-INLINE` | PASS | `COMMIT-GATE` | (one retry max) |
-| `RETRY-INLINE` | FAIL | `ESCALATE-TO-TOUCH-UP` | Misclassified — promote to Touch-up flow with `intent.md` and feature dir. |
+| `RETRY-INLINE` | FAIL | `ESCALATE-TO-TOUCH-UP` | Misclassified. Operational meaning: revert any uncommitted edits (`git checkout --` on the changed files); generate a feature slug; create `features/<slug>/`; write `CURRENT`; promote intent from action-log to a real `intent.md` (mode: `touch-up`); enter Touch-up state machine at `INTAKE`. Append action-log `micro-escalated → touch-up`. |
 | `COMMIT-GATE` | User approves push | `DONE` | Commit + push; append action-log `micro-done`. No close-out (no feature dir). |
 | `COMMIT-GATE` | User declines push | `DONE` (local only) | Commit local; update `session.md § Checkpoint.pending_pushes` |
 | any | User pivots | (cancelled) | Append action-log `micro-cancelled`; revert if uncommitted (orchestrator runs `git checkout --` on the changed files); route through Redirect |
@@ -564,7 +564,7 @@ INTAKE → IMPLEMENT → VERIFY ──pass──> COMMIT-GATE → DONE
 | `VERIFY` | Smoke Evaluator PASS | `COMMIT-GATE` | Append action-log `touch-up-verified` |
 | `VERIFY` | Smoke Evaluator FAIL | `FIX-ROUND-1` | Update `work.md § Findings` with smoke output; append action-log `touch-up-fix-round-1` |
 | `FIX-ROUND-1` | Implementor returns + Smoke PASS | `COMMIT-GATE` | (one fix round only for touch-up; second failure is escalation) |
-| `FIX-ROUND-1` | Implementor returns + Smoke FAIL | `ESCALATE-TO-SMALL` | Touch-up was misclassified; promote to Small. Append action-log `touch-up-escalated`. |
+| `FIX-ROUND-1` | Implementor returns + Smoke FAIL | `ESCALATE-TO-SMALL` | Touch-up was misclassified. Operational meaning: keep `intent.md` and `work.md` as-is; mode in `intent.md` flips to `small`; orchestrator dispatches Architect for `plan-writing` (no `spec.md` needed for Small — touch-up's intent is sufficient); resume normal Implementation → Review pipeline. Append action-log `touch-up-escalated → small`. |
 | `COMMIT-GATE` | User approves push | `DONE` | Commit + push; run minimal close-out (clear `CURRENT`, append to `learnings.md` only if a real lesson was learned, archive feature dir, append action-log `touch-up-done`) |
 | `COMMIT-GATE` | User declines push | `DONE` (local only) | Commit local; mark `pending_pushes` in session.md checkpoint |
 | any | User pivots / new request | (suspended) | Append action-log `touch-up-suspended`; route through Redirect Protocol |

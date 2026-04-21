@@ -1,248 +1,245 @@
 # coding-agent
 
-> A Claude Code plugin for building software end-to-end — from idea to shipped code.
+> A Claude Code plugin for shipping software end-to-end. Multi-agent pipeline with deterministic gates, codified testing, and real runtime verification.
 
-**5 agents** · **58 skills** · **7 MCP servers**
+**v2.0** · **5 agents** · **~58 skills** · **9 protocols** · **10 checks** · **7 MCP servers**
 
-The plugin turns a vague prompt like "build me a blog with comments" into a structured pipeline: research → spec (you approve) → plan with evaluation criteria (you approve) → parallel implementation by domain → independent review with real UI testing → commit.
+Turns a vague prompt like *"build me a blog with comments"* into a structured pipeline:
 
-## Why
+```
+intake → spec (you approve) → plan (you approve) → implement (parallel where safe)
+       → review (real Playwright/sim, runs your test suites)
+       → close-out (distill learnings, archive, update docs)
+       → commit (you approve push)
+```
 
-Most AI coding agents happily generate 500 lines that compile but break at runtime. They skip the design step, hallucinate library APIs, never actually launch the app to verify the UI, silently swallow errors, and forget everything about the project the moment you come back tomorrow.
+## Why v2
 
-coding-agent is a reaction to those failures:
+v1 grew through accretion: every recurring failure became more prose, more artifacts, more rules. Result: thorough but slow, and the same prose rules kept being violated. v2 is a first-principles redesign around four primitives.
 
-- **Separate agents for separate jobs** — the builder is different from the reviewer (generator-evaluator separation prevents self-evaluation bias)
-- **Deterministic gates** — scripts verify each pipeline stage, not prompts
-- **Real runtime testing** — the evaluator builds the project, starts the servers, and drives the UI via Playwright or iOS simulator
-- **Research from real docs** — architect uses Context7/DeepWiki/Exa to fetch current library docs, not training data
-- **Human gates where they matter** — you approve the spec and plan before any code is written
-- **Knowledge persists** — AGENTS.md and learnings.md mean session #2 already knows the project
+| Symptom in v1 | v2 fix |
+|---|---|
+| Prose rules ignored after 5 dispatches | Replaced with deterministic Checks (bash scripts) |
+| 9+ artifact types scattered | Collapsed to 5 categories with explicit mutability classes |
+| Approved spec/plan rewritten mid-implementation | Immutable; amendments live in `work.md § Plan Revisions` with `Supersedes:` pointer |
+| Evaluator skipped Playwright | `ui-evidence.sh` check verifies `screenshots/` non-empty before PASS |
+| Multi-writer races on `progress.md` | One Orchestrator-owned `work.md`; subagents return structured updates |
+| No audit trail for inline Micro edits | `session.md § Action Log` (append-only) — every Orchestrator action logged |
+| Test scripts evaporated after review | Codified > scripted: Evaluator runs your committed test suites; missing test = FAIL |
+| No memory across sessions | `session.md` checkpoint + action log enable resume |
+
+## The Four Primitives
+
+| Primitive | Definition | Examples |
+|-----------|------------|----------|
+| **Actor** | Produces work | User + 5 agent types |
+| **Artifact** | Durable on-disk state, typed, one writer per | `intent.md`, `spec.md`, `plan.md`, `work.md`, `review.md`, `diagnosis.md`, `session.md`, `learnings.md` |
+| **Skill** | Scoped knowledge an Actor loads | domain-specialist / practice / protocol-helper / general |
+| **Check** | Deterministic verification (bash, no LLM) | `intent-approved`, `ui-evidence`, `close-out-complete`, `no-raw-print`, etc. |
+
+Everything else (Protocol, Session, Pipeline) composes from these. Full design: `docs/redesign/primitives.md`.
+
+## The Five Agents
+
+| Agent | Model | Role | Owns |
+|-------|-------|------|------|
+| **orchestrator** | claude-opus-4-7 | Tech lead — state machine, dispatcher, check runner | `work.md`, `session.md`, `cache.json`, `CURRENT`, `learnings.md` |
+| **architect** | opus | Staff eng — `spec.md` & `plan.md`, MCP-driven research | `spec.md`, `plan.md` (immutable after approval) |
+| **implementor** | sonnet | Engineer — code + tests + structured returns | source/test files |
+| **evaluator** | opus | QA — runs your test suites, drives Playwright/iOS-sim | `review.md`, `screenshots/` |
+| **debugger** | opus | SRE — root cause, full or inspection mode | `diagnosis.md` |
+
+Subagents return a structured YAML payload; orchestrator parses + applies to `work.md`. No multi-writer files.
 
 ## Quick Start
 
 ### Install
 
 ```bash
-# Clone into Claude Code's plugins directory
 git clone https://github.com/devjarus/coding-agent ~/.claude/plugins/coding-agent
-
-# Or use --plugin-dir flag
+# or
 claude --plugin-dir /path/to/coding-agent
 ```
 
-### Enable in a project
+### Per-project setup (one command)
 
-Create `.claude/settings.local.json` (gitignored — local to your machine):
+```bash
+${CLAUDE_PLUGIN_ROOT}/scripts/setup.sh
+```
+
+Writes a recommended `.claude/settings.local.json` (broad permissions, all plugin MCPs enabled) into the current project. Edit afterward to taste.
+
+### Recommended `.claude/settings.local.json` (manually)
 
 ```json
 {
   "agent": "coding-agent:orchestrator",
   "permissions": {
     "allow": [
-      "Bash(*)",
-      "Read(**)",
-      "Write(**)",
-      "Edit(**)",
-      "MultiEdit(**)",
-      "Glob(**)",
-      "Grep(**)",
-      "WebSearch",
-      "WebFetch(*)",
-      "Agent(*)",
-      "AskUserQuestion",
-      "Skill(*)",
-      "mcp__context7__*",
-      "mcp__exa__*",
-      "mcp__deepwiki__*",
-      "mcp__playwright__*",
-      "mcp__chrome-devtools__*",
-      "mcp__xcodebuild__*",
-      "mcp__ios-simulator__*"
+      "Bash(*)", "Read(**)", "Write(**)", "Edit(**)", "MultiEdit(**)",
+      "Glob(**)", "Grep(**)", "WebSearch", "WebFetch(*)",
+      "Agent(*)", "AskUserQuestion", "Skill(*)",
+      "mcp__*"
     ]
   },
   "enableAllProjectMcpServers": true,
   "enabledMcpjsonServers": [
-    "context7",
-    "exa",
-    "deepwiki",
-    "playwright",
-    "chrome-devtools"
+    "context7", "exa", "deepwiki",
+    "playwright", "chrome-devtools"
   ]
 }
 ```
 
-This grants the orchestrator and all subagents (architect, implementor, evaluator, debugger) full access to non-destructive tools + all plugin MCP servers. Agents won't prompt you for permission on every command.
-
-**iOS projects** — also add `xcodebuild` and `ios-simulator` to `enabledMcpjsonServers`.
-
-**Minimal alternative** — if you prefer to be prompted for destructive operations only:
-
-```json
-{
-  "agent": "coding-agent:orchestrator",
-  "permissions": {
-    "allow": [
-      "Read(**)",
-      "Glob(**)",
-      "Grep(**)",
-      "Bash(npm *)",
-      "Bash(pnpm *)",
-      "Bash(node *)",
-      "Bash(git status*)",
-      "Bash(git diff*)",
-      "Bash(git log*)",
-      "Bash(curl *)",
-      "WebSearch",
-      "Agent(*)"
-    ]
-  }
-}
-```
+iOS: add `xcodebuild` and `ios-simulator` to `enabledMcpjsonServers`.
 
 ### Use it
 
 ```
 You: "Build a todo API with Express and SQLite"
 
-Orchestrator (classifies: Large feature → full pipeline)
-  ↓
-Architect asks: "Should tasks have tags? Priority levels? User auth?"
-You answer → Architect writes spec.md → You approve
-Architect writes plan.md with evaluation criteria per wave → You approve
-  ↓
-Implementor (parallel waves): foundation → CRUD endpoints → validation → tests
-  ↓
-Evaluator: builds, runs tests, curls endpoints, writes review.md with findings
-  ↓
-PASS → Commit + generate README.md, ARCHITECTURE.md, AGENTS.md
+Orchestrator: classifies (medium feature) → AskUserQuestion approve path
+You: approve
+
+Architect (spec): asks discovery + tech-stack tradeoffs in one prompt
+You: confirm
+Architect: prints spec.md in chat → AskUserQuestion approve
+You: approve (Gate 2)
+
+Architect (plan): per-task skill manifests, per-wave test tiers (unit + integration + e2e), explicit parallel: blocks
+You: approve (Gate 3)
+
+Implementor: parallel where safe, serial otherwise. Returns structured updates.
+Orchestrator: applies updates to work.md.
+
+Evaluator: runs `npm test`, `npm run test:integration`, no UI so skips runtime
+Returns review.md PASS
+
+Orchestrator: close-out (8 steps) — archives feature, distills learnings, updates AGENTS.md
+Shows diff + commit message → AskUserQuestion approve push
+You: approve push (Gate 4)
 ```
 
-## Architecture
+## The Nine Protocols
+
+Lifted out of agent prompts into one source of truth each:
+
+| Protocol | Owner | When |
+|----------|-------|------|
+| `intake` | Orchestrator | every user request |
+| `spec-writing` | Architect | medium/large features |
+| `plan-writing` | Architect | medium/large features |
+| `implementation` | Orchestrator | once plan approved |
+| `review` | Evaluator | implementation complete |
+| `fix-round` | Orchestrator | review FAIL (3 rounds before user escalation) |
+| `close-out` | Orchestrator | review PASS, before commit (8 steps) |
+| `redirect` | Orchestrator | new user message during active pipeline |
+| `recovery` | Orchestrator | dispatch threshold or pivot |
+
+See `protocols/`.
+
+## The Ten Checks
+
+Deterministic bash scripts — no LLM. A failed check blocks the transition. Replaces ~70 prose "MUST" rules.
+
+| Check | Verifies |
+|---|---|
+| `active-feature-consistent` | CURRENT empty OR points to a non-archived feature |
+| `intent-approved` | intent.md has `approved_by: user` footer |
+| `spec-approved` | spec.md approved + has Tech Stack / Test Infra / Requirements sections |
+| `plan-approved` | plan.md approved + tasks have `skills:` and `evaluation:` |
+| `revisions-resolved` | no `Status: pending` revisions in work.md |
+| `ui-evidence` | UI projects have non-empty `screenshots/` with descriptive filenames |
+| `no-raw-print` | no `console.log` / `print()` / `fmt.Println` in production code |
+| `close-out-complete` | all 8 close-out steps ran |
+| `action-logged` | session.md action log has corresponding entry |
+
+Plus the existing plugin-self validator: `./scripts/validate.sh`.
+
+## Artifact lifecycle
 
 ```
-Orchestrator (main thread) — state machine, dispatches, validates, never writes code
-  │
-  ├── Architect — asks user → spec.md (Gate 1) → plan.md with eval criteria (Gate 2)
-  ├── Implementor(s) — writes code by domain, tests first, applies specialist skills
-  ├── Evaluator — independent review, builds, runs tests, tests running app
-  └── Debugger — root-cause analysis when bugs survive fix attempts
+draft ──(author signs)──> approved ──(work begins)──> active ──(close-out)──> archived
 ```
 
-### 5 Agents
+| Mutability | Rule |
+|------------|------|
+| **immutable** | Never written after state transition. Examples: approved `spec.md`/`plan.md`, archived feature dirs |
+| **append-only** | Writes add content, never modify or delete. One writer. Example: `learnings.md` |
+| **single-writer-mutable** | One owner writes; others return structured updates. Example: `work.md` |
+| **composite** | Multi-section file, each section declares its own class. Example: `session.md` (Checkpoint + Action Log) |
 
-| Agent | Model | Role |
-|-------|-------|------|
-| **orchestrator** | opus | State machine. Classifies tasks by size. Dispatches subagents. Only agent with the `Agent` tool. |
-| **architect** | opus | Research + design. Must ask the user discovery questions before writing. Two blocking approval gates. Uses Context7/DeepWiki/Exa MCP for real docs. |
-| **implementor** | sonnet | Writes code by domain (frontend/backend/data/mobile/infra). Tests first (TDD). Mandatory structured logging. Applies specialist skills. |
-| **evaluator** | opus | Independent reviewer. Builds project, runs tests, tests running app via Playwright/simulator MCP. Writes review.md with findings. |
-| **debugger** | opus | Root-cause analysis when a bug survives a fix attempt. Reproduce → isolate → trace → diagnose. Writes diagnosis.md, never code. |
+**Approved artifacts are immutable forever.** Amendments live in `work.md § Plan Revisions` with `Supersedes: <file> §<section>` pointer. Original signature stays meaningful.
 
-### Task Size Classification
+## Skills (~58)
 
-The orchestrator classifies every request before dispatching:
+Implementor's skill manifest is declared per task in `plan.md` by the Architect. Orchestrator passes it verbatim. No magic routing.
 
-| Size | Heuristic | Pipeline |
-|------|-----------|----------|
-| **Micro** | ≤2 files, ≤30 lines, no new logic | Orchestrator writes directly → tests → commit |
-| **Small** | 2-5 files, clear scope | Implementor → Evaluator (lightweight) |
-| **Medium** | Design decisions needed | Architect (plan only) → Implementor → Evaluator |
-| **Large** | New feature, architectural | Full pipeline (spec+plan+implement+review) |
+Categories:
+- **Domain specialists**: react, next, postgres, swiftui, etc. (32)
+- **Practices**: tdd, test-doubles-strategy, observability, security-checklist, etc. (24)
+- **General**: debugging, git-workflow (2)
 
-**Bright line:** if you're about to touch >2 files OR write >30 new lines of logic → dispatch an Implementor.
-
-## Skills (58)
-
-Skills are scoped knowledge modules. Implementor routes by domain:
-
-### Domain Specialists
-
-| Domain | Skills |
-|--------|--------|
-| **Frontend** | react-specialist, nextjs-specialist, css-tailwind-specialist, testing-specialist, ui-design, ui-excellence, tanstack, generative-ui-specialist, assistant-chat-ui, react-patterns, composition-patterns, accessibility, performance |
-| **Mobile** | ios-swiftui-specialist, ios-testing-debugging |
-| **Backend** | nodejs-specialist, python-specialist, go-specialist, typescript-specialist, agent-frameworks-specialist, llm-integration, api-design, auth-patterns |
-| **Data** | postgres-specialist, redis-specialist, migration-safety |
-| **Infra** | aws-specialist, docker-specialist, docker-best-practices, terraform-specialist, deployment-patterns, ci-cd-patterns |
-
-### Cross-Cutting Practices
-
-| Skill | Purpose |
-|-------|---------|
-| **observability** | Structured logging for Java/Node/Python/Go/Swift, framework patterns, cloud platforms (CloudWatch, Datadog, OpenTelemetry) |
-| **config-management** | Typed config, validation, composition root, lightweight dependency injection |
-| **service-architecture** | Singleton clients, connection pools, retry/timeout wrappers, graceful shutdown |
-| **publish-ready** | package.json exports, LICENSE, GitHub templates, release workflows (inspired by Next.js, Vite, tRPC patterns) |
-| **project-docs** | Generates README.md, ARCHITECTURE.md (ASCII diagrams), AGENTS.md from real codebase |
-| **context-management** | When to compact/clear/rewind; handoff.md, session-state.md, in-flight.md artifacts |
-| **load-bearing-markers** | LOAD-BEARING / F-NNN / HACK markers so refactors don't silently regress non-obvious fixes |
-| **agent-ui-rendering** | LLM-driven UI via typed JSON spec (@json-render) — for AI-agent output, not general UI |
-| **ci-testing-standard** | Auto-generates CI workflow + test scripts + pre-commit hooks after first feature ships |
-| **research-cache** | Persistent research knowledge base — prevents redundant re-research |
-| **tdd** | Test-first development (RED / GREEN / REFACTOR) |
-| **test-doubles-strategy** | Decide unit vs integration vs e2e; mock vs fake vs real per dependency. DI enables the choice |
-| **code-review**, **security-checklist** | Quality gates applied by implementor and evaluator |
+See `CLAUDE.md` for the full table.
 
 ## MCP Servers
 
-Configured in `.mcp.json`, available to all agents:
+| Server | Used by | Purpose |
+|--------|---------|---------|
+| context7 | architect, implementor | Current library docs (memory is stale; use this) |
+| exa | architect | Web search for blog posts, release notes, migration guides |
+| deepwiki | architect | GitHub repo deep-dives |
+| playwright | evaluator | Browser UI testing |
+| chrome-devtools | evaluator | Console + network inspection |
+| xcodebuild | evaluator (iOS) | Build/test/debug |
+| ios-simulator | evaluator (iOS) | Simulator control |
 
-| Server | Purpose |
-|--------|---------|
-| **context7** | Current library documentation (architect, implementor) |
-| **exa** | Web search — blog posts, release notes, migration guides (architect) |
-| **deepwiki** | GitHub repo deep-dives (architect) |
-| **playwright** | Browser UI testing (evaluator) |
-| **chrome-devtools** | Console/network inspection (evaluator) |
-| **xcodebuild** | iOS build/test/debug (evaluator) |
-| **ios-simulator** | iOS simulator control (evaluator) |
+## Architecture (high-level)
 
-## Artifacts
+```
+              User
+                │
+                ▼
+         ┌────────────┐    AskUserQuestion gates: Intent, Spec, Plan, Push
+         │Orchestrator│ ◄──┐
+         └─────┬──────┘    │
+               │ dispatches│
+   ┌───────────┼───────────┤    structured-return YAML
+   ▼           ▼           ▼   │
+┌────────┐ ┌─────────┐ ┌─────┐ │
+│Architect│ │Implem'r│ │Eval'r│┘
+└─────┬───┘ └────┬────┘ └──┬──┘
+      │          │         │
+      │  reads/  │  reads  │ runs npm test, Playwright,
+      │  writes  │  writes │ writes review.md + screenshots/
+      ▼          ▼         ▼
+   ┌─────────────────────────┐
+   │  features/<slug>/       │ ← user's project (.coding-agent/)
+   │   intent.md spec.md     │
+   │   plan.md  work.md      │
+   │   review.md screenshots/│
+   └────────┬────────────────┘
+            │ close-out distills
+            ▼
+   ┌─────────────────────────┐
+   │ .coding-agent/          │
+   │   learnings.md  session.md │
+   │   CURRENT  cache.json   │
+   └─────────────────────────┘
+```
 
-The pipeline produces these files in `.coding-agent/`:
-
-| Artifact | Producer | Purpose |
-|----------|----------|---------|
-| `spec.md` | Architect | Requirements (FR-*), technical approach, non-goals, technical risks |
-| `plan.md` | Architect | Tasks by domain/wave, evaluation criteria per wave |
-| `progress.md` | Orchestrator | Task status tracking |
-| `review.md` | Evaluator | PASS/FAIL status, findings with file:line, build result, runtime verification |
-| `diagnosis.md` | Debugger | Root cause, evidence, recommended fix (when invoked) |
-| `learnings.md` | Orchestrator | Gotchas, architecture decisions, patterns — for future sessions |
-| `research/` | Architect | Cached library findings, codebase patterns |
-
-Plus project-root files generated after first PASS:
-- `README.md`, `ARCHITECTURE.md` (ASCII diagrams), `AGENTS.md`
-
-## Design Decisions
-
-- **5 agents, 1 level deep** — Claude Code subagents can't spawn other subagents. Only the main-thread orchestrator has the `Agent` tool.
-- **Generator-evaluator separation** — reviewer is independent from builder to prevent self-evaluation bias.
-- **Short agent prompts** — each agent is under ~800 words so they actually read their instructions. Long prompts get skipped.
-- **Deterministic gates** — scripts verify pipeline stages, not prompt instructions.
-- **Task sizing** — micro-tasks the orchestrator does directly; anything larger is dispatched. This was the biggest fix learned from real use.
-- **Mandatory runtime testing** — the evaluator builds the project and drives the UI. "Code that compiles" ≠ "code that works."
-- **Research from real docs** — architect uses MCP tools to fetch current library documentation, not training data.
+Detailed: `docs/redesign/workflow-spec.md` and `ARCHITECTURE.md`.
 
 ## Status
 
-Used on real projects: blog platforms, a deep research agent, an iOS app. Each iteration has been shaped by real failures — see `docs/` for retrospectives and design evolution.
+Used on real projects: blog platforms, deep research agent, iOS apps, AI agent systems. v2 is a clean break from v1 (no migration; v1 archives stay readable but aren't consumed).
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+See [CONTRIBUTING.md](CONTRIBUTING.md). Design docs in `docs/redesign/`.
 
 ## Acknowledgments
 
-Inspiration and patterns from:
-
-- **[skills.sh](https://skills.sh)** — the agent skills ecosystem. Specifically inspired by: `anthropics/skills/frontend-design`, `vercel-labs/web-design-guidelines`, `wshobson/agents/mobile-ios-design`, `avdlee/swiftui-expert-skill`, `twostraws/swiftui-pro`, `jezweb/claude-skills/tanstack-query`
-- **[Anthropic's official skills](https://github.com/anthropics/skills)** — the scripts-in-skill-folder pattern, progressive disclosure via `rules/` subdirectories
-- **[Anthropic's harness design principles](https://www.anthropic.com/research/building-effective-agents)** — generator-evaluator separation, sprint contracts, file-based handoffs
-- **[Top OSS projects](https://github.com/vercel/next.js)** — Next.js, Vite, shadcn/ui, Tailwind CSS, tRPC — patterns for the `publish-ready` skill
-
-See [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md) for the full list.
+See [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md). Inspiration from skills.sh, Anthropic's official skills, and harness design principles.
 
 ## License
 
