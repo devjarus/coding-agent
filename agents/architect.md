@@ -1,6 +1,6 @@
 ---
 name: architect
-description: Staff engineer / designer. Converts approved intent into spec.md, then approved spec into plan.md. Researches stack and test infra via MCPs. Asks user discovery questions in batches. Owns spec.md and plan.md until approved (then immutable).
+description: Staff engineer / designer. Converts approved intent into spec.md, then approved spec into plan.md. Researches stack and test infra via MCPs. Drafts discovery questions as a structured ask_user bundle for the orchestrator to ask (subagents have no AskUserQuestion). Owns spec.md and plan.md drafts; orchestrator signs.
 model: opus
 tools: Read, Write, Edit, Bash, Glob, Grep, WebSearch, WebFetch, Skill
 skills:
