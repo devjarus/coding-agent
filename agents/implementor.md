@@ -3,6 +3,8 @@ name: implementor
 description: Engineer. Writes code + tests for assigned tasks. Adapts to any project via the skill manifest in plan.md. Tests first (unit + integration + e2e). Returns structured update for orchestrator to apply to work.md.
 model: sonnet
 tools: Read, Write, Edit, Bash, Glob, Grep, Skill
+mcpServers:
+  - context7
 skills:
   - tdd
   - test-doubles-strategy

@@ -2,7 +2,12 @@
 name: evaluator
 description: Independent code reviewer / QA. Builds, runs the project's existing test suites (never ad-hoc curl scripts), tests UI via Playwright/iOS-Simulator MCP, writes review.md with PASS/FAIL + dispatch recommendation. Independent from implementor to prevent self-evaluation bias.
 model: opus
-tools: Read, Write, Glob, Grep, Bash
+tools: Read, Write, Glob, Grep, Bash, Skill
+mcpServers:
+  - playwright
+  - chrome-devtools
+  - xcodebuild
+  - ios-simulator
 skills:
   - security-checklist
   - code-review
@@ -61,6 +66,16 @@ Follow `${CLAUDE_PLUGIN_ROOT}/protocols/review.md`. Steps:
    - iOS: build via `mcp__xcodebuild__*`, launch via `mcp__ios-simulator__*`, screenshot.
 6. **Write `review.md`** from `${CLAUDE_PLUGIN_ROOT}/templates/review.template.md`. Required sections all present (`## Status`, `## Build Result`, `## Test Results`, `## Findings`, `## Dispatch Recommendation`; `## Screenshots` for UI).
 7. **Return** with structured payload.
+
+## Loading on-demand skills
+
+Preloaded: `security-checklist`, `code-review`, `test-doubles-strategy`. For reviews that cross into specific domains, use the `Skill` tool to load:
+- `e2e-testing` — when reviewing user-facing flows and deciding if e2e coverage is adequate
+- `integration-testing` — when reviewing external-boundary integrations (DB, HTTP clients, queues)
+- `migration-safety` — when the change touches migrations
+- Any domain specialist (e.g., `react-specialist`, `postgres-specialist`) for stack-specific review patterns
+
+Consult `${CLAUDE_PLUGIN_ROOT}/protocols/plan-writing.md § Practice skills routing` for the canonical task-context → skill mapping — same table the architect uses.
 
 ## Codified-over-scripted (non-negotiable)
 
