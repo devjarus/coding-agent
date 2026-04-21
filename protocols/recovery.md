@@ -60,6 +60,28 @@ On session start:
 - **Orchestrator never auto-runs `/compact` or `/clear`.** Always proposes via `AskUserQuestion`.
 - **Cache preflights** (`.coding-agent/cache.json`) — MCP availability, UI detection, stack — refreshed once per session, read on every dispatch decision.
 
+## Context Health Signals
+
+Watch for these in `work.md` task states and `session.md` Action Log — they tell you to escalate or compact before the next dispatch:
+
+| Signal | Meaning | Action |
+|--------|---------|--------|
+| 3+ `failed` tasks in `work.md § Tasks` | Multiple approaches failing | Populate `work.md § Handoff`, dispatch Debugger (full mode) |
+| Same task toggling `in-progress` → `failed` repeatedly | Stuck in a loop | Suggest `/compact` to user, then dispatch Debugger |
+| 5+ `dispatch` events in action log since last compact | Session getting deep | Suggest `/compact` with phase-steered text before next dispatch |
+
+## Rewind Advisory (user-only)
+
+`Esc Esc` rewind is user-only. When the orchestrator notices it's about to re-dispatch because a previous dispatch took the wrong approach (not incomplete — actually wrong strategy), suggest rewind rather than silent correction:
+
+```
+AskUserQuestion("The last dispatch took the wrong approach.
+You can press Esc Esc to rewind to before that dispatch, and I'll re-prompt
+with a different strategy. Otherwise I'll re-dispatch with corrections.")
+```
+
+Advisory only — continue normally if user declines.
+
 ## Checks fired
 
 | Check | When |

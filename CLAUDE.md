@@ -60,11 +60,33 @@ States: `draft → approved → active → archived`.
 - **User project artifacts**: `.coding-agent/...` (relative to project root)
 - **Global memory**: `~/.coding-agent/profile.md`
 
-## Skills (~58)
+## Skills (54)
 
-Categories: domain-specialist, practice, protocol-helper, general. Each declares `scope`, `trigger`, `category` in frontmatter (schema being progressively backfilled).
+Categories: domain-specialist (technology-specific), practice (cross-cutting engineering discipline), general (universal). v2 collapsed the old "protocol-helper" category — that content now lives in `protocols/*.md` + `templates/*.md`.
 
 Implementor's skill manifest comes from `plan.md` (per task, declared by the Architect). Orchestrator passes it verbatim — no magic routing.
+
+### Practice skills by task context (architect's routing guide)
+
+When writing the plan, architect consults this table to pick practice skills per task, in addition to domain specialists.
+
+| Task context | Practice skills to include |
+|--------------|----------------------------|
+| Every task (always) | `tdd`, `test-doubles-strategy`, `code-review`, `security-checklist` |
+| Task writes production logic | `observability`, `error-handling` |
+| Task touches configuration | `config-management` |
+| Task introduces external client (DB, API, cache, queue) | `service-architecture` |
+| Task defines a cross-service contract | `shared-contracts` |
+| Task has integration boundary | `integration-testing` |
+| Task has user-facing flow | `e2e-testing` |
+| Task touches a new dependency | `dependency-evaluation` |
+| Task migrates data or schema | `migration-safety` |
+| Feature is a published library | `publish-ready` |
+| First feature in greenfield project | `ci-testing-standard` (invoked by close-out, not implementor) |
+| Refactoring existing files | `load-bearing-markers` |
+| Multi-perspective research needed (architect only) | `ideation-council` |
+| Generating project docs | `project-docs` |
+| Cutting a release | `release` |
 
 ## MCP Servers (`.mcp.json`)
 

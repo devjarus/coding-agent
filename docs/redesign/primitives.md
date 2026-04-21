@@ -145,7 +145,7 @@ A Skill is scoped knowledge an Actor loads to adapt. The Implementor producing a
 |----------|---------|----------|
 | **Domain specialist** | Stack knowledge for a specific technology | `react-specialist`, `nodejs-specialist`, `postgres-specialist`, `ios-swiftui-specialist` |
 | **Practice** | Cross-cutting engineering discipline | `tdd`, `test-doubles-strategy`, `observability`, `security-checklist` |
-| **Protocol helper** | Executes part of a multi-Actor Protocol | `coordination-templates`, `context-management` |
+| **Protocol helper** | Executes part of a multi-Actor Protocol | (v2 collapsed these into `protocols/*.md` + `templates/*.md`; no skill instances currently — protocols ARE the helpers) |
 | **General** | Widely applicable, not tied to a stack or practice | `debugging`, `git-workflow` |
 
 ### Skill manifest

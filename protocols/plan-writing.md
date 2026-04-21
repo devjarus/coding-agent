@@ -10,7 +10,7 @@
 2. **Decompose** into waves (foundation → vertical slices) with tasks (T-N).
 3. **For each task, declare:**
    - `domain_tags`: e.g. `[backend, nodejs, security]`
-   - `skills`: derived from tags — every task MUST list applicable specialist skills + practice skills (`tdd` always, `test-doubles-strategy` always)
+   - `skills`: consult `${CLAUDE_PLUGIN_ROOT}/CLAUDE.md § Practice skills by task context` for the routing table (always-include: `tdd`, `test-doubles-strategy`, `code-review`, `security-checklist`; conditional by context). Also add domain specialists matching `domain_tags`.
    - `acceptance`: testable statements
    - `evaluation`: three rows — `Unit:`, `Integration:`, `E2E: <what or "N/A — reason">`
 4. **Mark parallelism explicitly.** Default serial. Add a `parallel: [T-3, T-4]` line per wave only when tasks touch disjoint files AND have no ordering dependency.

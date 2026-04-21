@@ -20,6 +20,7 @@
    `learnings.md` is `append-only` — newest section at top, older below; never truncated.
 3. **Update AGENTS.md** if a new project-wide convention was established (logger module, test path, shared adapter).
 4. **Update ARCHITECTURE.md** if a new service/db/queue or cross-module dependency was introduced.
+4.5. **Ensure CI exists (first feature only).** If this was the project's first feature AND there's no `.github/workflows/` (or GitLab/Bitbucket equivalent), dispatch Implementor with `ci-testing-standard` skill to scaffold: test script, CI workflow running lint+typecheck+tests+build on push/PR, optional pre-commit hook. Skip if CI already exists and covers what the evaluator ran.
 5. **Clear CURRENT.** `: > .coding-agent/CURRENT`
 6. **Update session.md Checkpoint:**
    ```

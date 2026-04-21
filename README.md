@@ -2,7 +2,7 @@
 
 > A Claude Code plugin for shipping software end-to-end. Multi-agent pipeline with deterministic gates, codified testing, and real runtime verification.
 
-**v2.0** · **5 agents** · **~58 skills** · **9 protocols** · **10 checks** · **7 MCP servers**
+**v2.0** · **5 agents** · **56 skills** · **9 protocols** · **10 checks** · **7 MCP servers**
 
 Turns a vague prompt like *"build me a blog with comments"* into a structured pipeline:
 
@@ -170,7 +170,7 @@ draft ──(author signs)──> approved ──(work begins)──> active ─
 
 **Approved artifacts are immutable forever.** Amendments live in `work.md § Plan Revisions` with `Supersedes: <file> §<section>` pointer. Original signature stays meaningful.
 
-## Skills (~58)
+## Skills (56)
 
 Implementor's skill manifest is declared per task in `plan.md` by the Architect. Orchestrator passes it verbatim. No magic routing.
 
