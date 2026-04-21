@@ -27,9 +27,11 @@ Read `.coding-agent/CURRENT` to get the slug. Your task lives in `features/<CURR
 4. **Probe conventions.** Before editing existing files, read 2–3 peer files to confirm naming, import style, error handling. AGENTS.md may be stale — code is truth.
 5. **Grep for load-bearing markers.** Before refactoring any file, run `grep -nE '// *(LOAD-BEARING|HACK|FIXME|F-[0-9]+)'`. Preserve those lines verbatim.
 6. **Write tests first** (per `tdd` skill):
+   - **Discover the project's test-path convention first.** Read `vitest.config.*` / `jest.config.*` / `pyproject.toml [tool.pytest]` / `go test ./...` convention / `swift test` target config to find the active `include` / `testMatch` / `testpaths` pattern. **Placing tests outside the config's patterns silently skips them** and inflates PASS counts. If the project's convention is `tests/**/*.test.js`, do NOT drop tests into `src/__tests__/` by habit.
    - Unit test for the behavior — must fail first
    - Integration test for the call chain — must hit a real boundary (DB via testcontainers, HTTP via msw, etc. as plan.md `Test Infrastructure` declares)
    - E2E test if user-facing surface (Playwright / Cypress / XCUITest)
+   - **Belt-and-braces pattern** when a feature combines multiple transforms (trim + lowercase + dedupe, validate + sanitize + persist, etc.) — write at least one test that exercises all transforms together. Catches implementations that get each step right in isolation but fail the combination.
 7. **Implement.** Make tests pass. Follow existing patterns. Reuse utilities.
 8. **Self-check** before returning:
    - Run `bash ${CLAUDE_PLUGIN_ROOT}/checks/no-raw-print.sh "$PWD"` on your changed files
@@ -104,3 +106,4 @@ Future agents grep for these before refactoring. See the `load-bearing-markers` 
 - **Tests first, always.** A passing implementation without a failing-then-passing test isn't TDD.
 - **Coverage gap = FAIL.** If your task requires e2e and you didn't write one (and didn't justify `N/A`), that is a finding the evaluator will flag.
 - **Do not write ad-hoc scripts to "test" things.** If you need to verify behavior, codify it as a test. Scripts under `scripts/` are exceptional and must carry a `# Why not a test:` comment.
+- **Delete obsolete-by-intent artifacts — don't amend around them.** If you find a test, stub, mock, or code path that directly contradicts the approved intent (e.g., a pre-existing test asserting behavior the feature explicitly reverses), delete it. Do NOT write "amendment" code that tries to satisfy both the obsolete assertion and the new intent. List the deletion in your `work_updates.decisions` so the orchestrator can record it. The `load-bearing-markers` rule is the counterpart — preserve non-obvious FIXES, delete obsolete-by-intent CONTRADICTIONS.
