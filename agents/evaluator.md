@@ -8,6 +8,8 @@ mcpServers:
   - chrome-devtools
   - xcodebuild
   - ios-simulator
+  - context7
+  - exa
 skills:
   - security-checklist
   - code-review

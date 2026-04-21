@@ -5,6 +5,7 @@ model: sonnet
 tools: Read, Write, Edit, Bash, Glob, Grep, Skill
 mcpServers:
   - context7
+  - exa
 skills:
   - tdd
   - test-doubles-strategy
