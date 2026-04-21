@@ -75,10 +75,16 @@ On approval, Orchestrator writes `intent.md`:
 
 ```markdown
 ---
-mode: feature
-size: medium
+artifact: intent
+feature: notifications-v1
+writer: orchestrator
+mutability: immutable
+state: approved
 approved_by: user
 approved_at: 2026-04-20T14:32:00Z
+supersedes: null
+mode: feature
+size: medium
 ---
 
 # Intent
@@ -135,9 +141,14 @@ Architect researches the right test tools for each external dep via MCPs (Contex
 
 ```markdown
 ---
+artifact: spec
 feature: notifications-v1
+writer: architect
+mutability: immutable
+state: approved
 approved_by: user
 approved_at: 2026-04-20T14:45:00Z
+supersedes: null
 ---
 
 # Spec
@@ -182,9 +193,14 @@ Architect writes `plan.md` with per-task Skill manifests and per-wave Test requi
 
 ```markdown
 ---
+artifact: plan
 feature: notifications-v1
+writer: architect
+mutability: immutable
+state: approved
 approved_by: user
 approved_at: 2026-04-20T15:10:00Z
+supersedes: null
 ---
 
 # Plan
@@ -260,6 +276,15 @@ evaluation:
 Orchestrator maintains `work.md` in the feature directory. Sections:
 
 ```markdown
+---
+artifact: work
+feature: notifications-v1
+writer: orchestrator
+mutability: single-writer-mutable
+state: active
+supersedes: null
+---
+
 # Work Ledger
 
 ## Tasks
@@ -408,7 +433,7 @@ User says: *"now add feature B"*.
 
 ### Checks
 
-- `one-active-feature` — `CURRENT` must be empty OR point to a feature whose `review.md` is missing (i.e., still active). Not allowed to have two active.
+- `active-feature-consistent` — `CURRENT` is either empty OR points to a feature directory whose artifacts are in `active` or `draft` state. If `CURRENT` points to a directory whose artifacts are all `archived`, close-out failed to clear `CURRENT` — Orchestrator self-repairs by clearing `CURRENT`. (We never have two active features by construction: close-out runs and clears `CURRENT` before any next-feature dispatch.)
 
 ---
 
@@ -475,23 +500,108 @@ Orchestrator: commits, pushes, appends action-log entry | micro | commit <sha> |
 - `spec-approved`, `plan-approved` — no spec/plan
 - `close-out-complete` — no feature dir to close out
 
+### Micro state machine
+
+```
+INTAKE → INLINE-EDIT → SMOKE ──pass──> COMMIT-GATE → DONE
+                         │
+                         └──fail──> RETRY-INLINE ──pass──> COMMIT-GATE
+                                       │
+                                       └──fail──> ESCALATE-TO-TOUCH-UP or USER
+```
+
+| From | Event | To | Side effect |
+|------|-------|-----|-------------|
+| `INTAKE` | User approves restate | `INLINE-EDIT` | Append action-log `micro-start` |
+| `INLINE-EDIT` | Edits applied | `SMOKE` | Append action-log `micro-edits-applied` |
+| `SMOKE` | PASS | `COMMIT-GATE` | Append action-log `micro-smoke-pass` |
+| `SMOKE` | FAIL | `RETRY-INLINE` | Append action-log `micro-smoke-fail`. One retry only. |
+| `RETRY-INLINE` | PASS | `COMMIT-GATE` | (one retry max) |
+| `RETRY-INLINE` | FAIL | `ESCALATE-TO-TOUCH-UP` | Misclassified — promote to Touch-up flow with `intent.md` and feature dir. |
+| `COMMIT-GATE` | User approves push | `DONE` | Commit + push; append action-log `micro-done`. No close-out (no feature dir). |
+| `COMMIT-GATE` | User declines push | `DONE` (local only) | Commit local; update `session.md § Checkpoint.pending_pushes` |
+| any | User pivots | (cancelled) | Append action-log `micro-cancelled`; revert if uncommitted (orchestrator runs `git checkout --` on the changed files); route through Redirect |
+
+### Micro resume
+
+If session restarts and last action-log event is `micro-edits-applied` or `micro-smoke-fail` with no follow-up:
+1. Orchestrator reads action log tail
+2. Finds last `micro-start` with no terminal event (`micro-done` or `micro-cancelled`)
+3. Reads the description of the in-flight micro
+4. Surfaces: *"Resuming micro: `<description>`. Last event: `<action-log line>`. State of working tree: clean / modified. Continue / abandon (revert) / commit-as-is?"*
+
+### Micro abandonment
+
+If User abandons:
+- Orchestrator runs `git checkout --` on the files mentioned in the latest `micro-edits-applied` action-log entry
+- Appends action-log `micro-cancelled`
+- No artifacts to clean up
+
 ---
 
-## Touch-up flow (short)
+## Touch-up flow — explicit state machine
+
+Touch-up is for small targeted changes (2–5 files, clear scope, no design decisions). Distinct from Micro (orchestrator inlines) and Small (Implementor + lightweight Evaluator with full plan). Touch-up has its own minimal feature dir with `intent.md` only.
+
+### States
 
 ```
-User: "fix the login button color to match brand"
-Orchestrator: [classifies: touch-up, micro] → restate → AskUserQuestion
-User: approves
-Orchestrator: writes intent.md (skips spec.md and plan.md per touch-up mode)
-Implementor: one edit, one test update
-Evaluator: smoke mode (tests + typecheck + grep)
-Orchestrator: diff + AskUserQuestion to commit
-User: approves push
-Commit + push
+INTAKE → IMPLEMENT → VERIFY ──pass──> COMMIT-GATE → DONE
+                       │
+                       └──fail──> FIX-ROUND-1 ──pass──> COMMIT-GATE
+                                       │
+                                       └──fail──> ESCALATE-TO-SMALL or USER
 ```
 
-No spec, no plan, no waves. Intent is the only gate.
+### State transitions
+
+| From | Event | To | Side effect |
+|------|-------|-----|-------------|
+| `INTAKE` | User approves restate | `IMPLEMENT` | Write `intent.md` (immutable, approved); create `features/<slug>/`; set `CURRENT`; append action-log `touch-up-start` |
+| `IMPLEMENT` | Implementor returns `status: complete` | `VERIFY` | Append action-log `touch-up-implemented` |
+| `IMPLEMENT` | Implementor returns `status: needs-input` | (paused) | Orchestrator surfaces question via `AskUserQuestion`; resume on answer |
+| `IMPLEMENT` | Implementor returns `status: blocked` | `ESCALATE-TO-SMALL` or `USER` | If blocker is design-level → escalate. If technical (missing dep) → AskUserQuestion. |
+| `VERIFY` | Smoke Evaluator PASS | `COMMIT-GATE` | Append action-log `touch-up-verified` |
+| `VERIFY` | Smoke Evaluator FAIL | `FIX-ROUND-1` | Update `work.md § Findings` with smoke output; append action-log `touch-up-fix-round-1` |
+| `FIX-ROUND-1` | Implementor returns + Smoke PASS | `COMMIT-GATE` | (one fix round only for touch-up; second failure is escalation) |
+| `FIX-ROUND-1` | Implementor returns + Smoke FAIL | `ESCALATE-TO-SMALL` | Touch-up was misclassified; promote to Small. Append action-log `touch-up-escalated`. |
+| `COMMIT-GATE` | User approves push | `DONE` | Commit + push; run minimal close-out (clear `CURRENT`, append to `learnings.md` only if a real lesson was learned, archive feature dir, append action-log `touch-up-done`) |
+| `COMMIT-GATE` | User declines push | `DONE` (local only) | Commit local; mark `pending_pushes` in session.md checkpoint |
+| any | User pivots / new request | (suspended) | Append action-log `touch-up-suspended`; route through Redirect Protocol |
+
+### Required artifacts
+
+- `features/<slug>/intent.md` (immutable, approved) — only artifact required
+- `features/<slug>/work.md` (single-writer-mutable) — created on entry to IMPLEMENT; holds findings if VERIFY fails
+- No `spec.md`, no `plan.md` — touch-up is exempt
+- `screenshots/` only if `IMPLEMENT` touched UI files
+
+### Resume after restart
+
+If session restarts and last session ended mid-touch-up:
+1. Orchestrator reads `session.md § Checkpoint` — if `phase` ∈ {`touch-up-implement`, `touch-up-verify`, `touch-up-fix-round-1`, `touch-up-commit-gate`}, this is a resumable touch-up
+2. Reads `CURRENT` for the slug, reads `intent.md` and `work.md`
+3. Reads action log tail to find the last touch-up event
+4. Resumes at the next state per the table above
+5. Surfaces to User: *"Resuming touch-up `<slug>`: `<intent line>`. Last event: `<action-log line>`. Continue / abandon / restart?"*
+
+### Abandonment
+
+If User chooses to abandon a touch-up:
+- Append action-log `touch-up-abandoned`
+- Mark `intent.md` `state: abandoned` in frontmatter (extends the state vocab for this case)
+- Move `features/<slug>/` to `features/<slug>.abandoned/`
+- Clear `CURRENT`
+- No close-out distillation; the feature dir is retained for forensics but never read again
+
+### Checks specific to touch-up
+
+| Check | Verifies |
+|-------|---------|
+| `touch-up-has-intent` | `features/<slug>/intent.md` exists with `state: approved` before IMPLEMENT |
+| `touch-up-no-spec` | No `spec.md` or `plan.md` in the touch-up feature dir (architectural guard) |
+| `touch-up-fix-rounds` | At most one `touch-up-fix-round-1` event between `touch-up-start` and `touch-up-done` (escalation otherwise) |
+| `touch-up-resumable` | If `session.md § Checkpoint.phase` is a touch-up state, `CURRENT` and `intent.md` exist |
 
 ---
 

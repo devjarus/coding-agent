@@ -267,9 +267,9 @@ When the User sends a new message while a pipeline is active (not after close-ou
 
 | Kind | Signals | Action |
 |------|---------|--------|
-| **Feedback on current work** | References in-flight tasks, fixes, corrections | Fold into current fix-round or active wave as additional findings |
-| **Scope change** | Adds a requirement, removes one, changes tradeoff | Treat as plan-revision: Architect re-dispatched, plan.md updated, re-approved |
-| **Pivot** | Entirely new feature, previous feature abandoned | Write session.md checkpoint, ask: "abandon current feature or close it out first?" |
+| **Feedback on current work** | References in-flight tasks, fixes, corrections | Fold into current fix-round or active wave as additional findings in `work.md`. No new artifact. |
+| **Scope change** | Adds a requirement, removes one, changes a tradeoff | Append a `revision` entry to `work.md § Plan Revisions` with `Supersedes:` pointing to the affected `plan.md` or `spec.md` section. **`plan.md` and `spec.md` are never edited.** Orchestrator classifies the revision (approve inline / dispatch Architect to think it through / escalate to User). If Architect is dispatched, Architect proposes amendments by appending to the same `work.md § Plan Revisions` block (Architect does NOT touch `plan.md`). User approves the revision through `AskUserQuestion`; Orchestrator marks `status: approved` in `work.md`. |
+| **Pivot** | Entirely new feature, previous feature abandoned | Write `session.md` checkpoint, append action-log entry `pivot-requested`, AskUserQuestion: "abandon current feature (mark `state: abandoned` in work.md, archive feature dir as `<slug>/abandoned`) or close out first (run review + close-out protocol)?" |
 
 ### Implementation
 
