@@ -1,6 +1,6 @@
 ---
 name: ui-excellence
-description: Creates polished, distinctive UIs that don't look like generic AI output. Covers visual hierarchy, typography, color systems, spacing, animation, empty states, loading patterns, responsive design, and dark mode. Apply when building any user-facing interface.
+description: Polished, distinctive UIs that don't look like generic AI output. Visual hierarchy, typography, color, spacing, animation, empty/loading states, responsive, dark mode. Apply to any user-facing interface.
 ---
 
 # UI Excellence

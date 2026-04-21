@@ -1,6 +1,6 @@
 ---
 name: deployment-patterns
-description: Cloud-agnostic deployment patterns — containerization, hosting strategy selection, environment management, CI/CD pipelines, zero-downtime deploys, and production readiness. Use when deploying any application to any cloud provider or self-hosted infrastructure.
+description: Cloud-agnostic deployment patterns — containerization, hosting selection, env management, CI/CD, zero-downtime deploys, production readiness. Applies to any cloud or self-hosted infra.
 ---
 
 # Deployment Patterns

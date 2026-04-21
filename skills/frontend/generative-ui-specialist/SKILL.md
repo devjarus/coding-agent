@@ -1,6 +1,6 @@
 ---
 name: generative-ui-specialist
-description: Deep expertise in building generative UI — LLM-driven dynamic interfaces using Vercel AI SDK, JSON-based component rendering, streaming UI, and agent-driven frontends. Use when building chat interfaces, AI dashboards, or any UI where components are generated or selected by an LLM at runtime.
+description: Building generative UI — LLM-driven dynamic interfaces via Vercel AI SDK, JSON component rendering, streaming UI, agent-driven frontends. For chat interfaces, AI dashboards, runtime-composed UIs.
 ---
 
 # Generative UI Specialist

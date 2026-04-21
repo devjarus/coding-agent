@@ -1,19 +1,19 @@
 ---
 name: ideation-council
-description: Multi-perspective ideation pattern — the brainstormer assesses the user's query and dispatches parallel Explore subagents with relevant perspective lenses (product, architecture, deployment, security, data, cost). Dynamic — only dispatches perspectives the query actually needs.
+description: Multi-perspective ideation. Architect researches the query through relevant lenses (product, architecture, security, data, cost) in its own context using Glob/Grep/Context7/Exa/DeepWiki. Only runs the perspectives the query actually needs.
 ---
 
 # Ideation Council
 
 ## When to Apply
 
-- Brainstormer Step 1b (brownfield) or Step 4b (greenfield after approach chosen)
-- Any time the brainstormer needs to research before forming recommendations
+- Architect Step 1 research (brownfield or greenfield, before writing spec)
 - User asks a broad question that benefits from multiple viewpoints
+- Spec requires tradeoff reasoning across domains (security ↔ cost, architecture ↔ deployment)
 
 ## How It Works
 
-The brainstormer assesses the query and researches **only the relevant** perspectives. Each perspective focuses on a specific concern. The brainstormer synthesizes findings into a unified recommendation.
+The **architect** assesses the query and researches **only the relevant** perspectives in its own context — it does NOT dispatch subagents (only the orchestrator has the Agent tool in this plugin). Each perspective is a focused research mode using Glob/Grep + MCP servers. The architect synthesizes findings into a unified recommendation for the spec.
 
 ## Perspectives (rules/perspective-prompts.md)
 

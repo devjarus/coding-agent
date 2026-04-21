@@ -10,8 +10,8 @@ Handles the full release pipeline: detect project type, determine version bump f
 ## When to Apply
 
 - User says "release", "cut a release", "bump version", "publish", "tag a release"
-- After Reviewer passes and human approves the final output
-- Impl Coordinator or Infra lead initiating a release after implementation is complete
+- After Evaluator passes and user approves the final output
+- Orchestrator or Infra lead initiating a release after implementation is complete
 
 ## Process
 

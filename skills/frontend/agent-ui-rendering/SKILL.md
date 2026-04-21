@@ -1,6 +1,6 @@
 ---
 name: agent-ui-rendering
-description: LLM-driven UI via typed JSON spec rendering. For AI-agent systems where the LLM needs to produce rich, interactive output (reports, dashboards, tool results) beyond markdown. Uses @json-render with a Zod-validated component catalog — the LLM picks from a constrained set of components, the renderer maps spec → React. Not for general product UI.
+description: LLM-driven UI via typed JSON spec. For AI agents that produce rich output (reports, dashboards, tool results) beyond markdown. Uses @json-render with a Zod-validated catalog. Not for general product UI.
 ---
 
 # Agent UI Rendering

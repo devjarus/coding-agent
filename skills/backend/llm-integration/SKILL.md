@@ -1,6 +1,6 @@
 ---
 name: llm-integration
-description: Best practices for integrating LLM providers (Anthropic, OpenAI, Google, AWS Bedrock, Ollama) into backend applications. Covers client setup, streaming, error handling, token management, context compaction, caching, observability, cost control, and provider abstraction. Use when connecting any backend to an LLM API.
+description: Integrating LLM providers (Anthropic, OpenAI, Google, Bedrock, Ollama) into backends. Client setup, streaming, errors, token management, compaction, caching, observability, cost, provider abstraction.
 ---
 
 # LLM Integration

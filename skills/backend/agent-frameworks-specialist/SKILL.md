@@ -1,6 +1,6 @@
 ---
 name: agent-frameworks-specialist
-description: Deep expertise in building AI agents using LangChain, LangGraph, LangChain Deep Agents (deepagents), OpenAI Agents SDK, Claude Agent SDK (claude_agent_sdk), Strands Agents, CrewAI, AutoGen, and Mastra. Covers agent architecture, tool use, multi-agent orchestration, memory, observability, and deployment. Use when building any AI agent system.
+description: Building AI agents with LangChain, LangGraph, deepagents, OpenAI Agents SDK, Claude Agent SDK, Strands, CrewAI, AutoGen, Mastra. Covers architecture, tool use, multi-agent orchestration, memory, observability, deployment.
 ---
 
 # Agent Frameworks Specialist

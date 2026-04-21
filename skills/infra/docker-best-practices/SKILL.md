@@ -1,6 +1,6 @@
 ---
 name: docker-best-practices
-description: Docker containerization expert — multi-stage builds, security hardening, Compose orchestration, image optimization, dev workflows, and production deployment. Use when writing, reviewing, or debugging Dockerfiles, docker-compose files, or container configurations.
+description: Docker containerization — multi-stage builds, security hardening, Compose orchestration, image optimization, dev workflows, production deployment. Apply to Dockerfiles, docker-compose, container configs.
 ---
 
 # Docker Best Practices

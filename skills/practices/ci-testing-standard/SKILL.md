@@ -1,6 +1,6 @@
 ---
 name: ci-testing-standard
-description: Every project ships with automated test coverage — CI workflow, test scripts, pre-commit hooks. Auto-detects platform (GitHub Actions, GitLab CI, Bitbucket Pipelines) and stack (Node, Python, Go, Swift, Rust). Apply after first feature ships to ensure changes never break silently.
+description: Ship every project with a working CI pipeline (test + lint + typecheck + build). Auto-detects platform (GitHub/GitLab/Bitbucket) and stack (Node/Python/Go/Swift/Rust). Apply after the first feature ships.
 ---
 
 # CI & Testing Standard

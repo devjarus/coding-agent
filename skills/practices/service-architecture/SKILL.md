@@ -1,6 +1,6 @@
 ---
 name: service-architecture
-description: Patterns for structuring applications with external clients, services, and infrastructure — singletons, client factories, connection pools, retry wrappers, graceful shutdown, and service layer organization. Apply when an app connects to databases, APIs, caches, queues, or any external system.
+description: Patterns for apps with external clients — singleton clients, factories, connection pools, retry/timeout wrappers, graceful shutdown, service-layer organization. Apply when an app talks to DBs/APIs/caches/queues.
 ---
 
 # Service Architecture

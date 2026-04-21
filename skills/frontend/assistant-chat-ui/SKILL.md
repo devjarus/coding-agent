@@ -1,6 +1,6 @@
 ---
 name: assistant-chat-ui
-description: Patterns for building AI assistant UIs with chat, tool rendering, and rich components. Uses assistant-ui + Vercel AI SDK + json-render + shadcn + TanStack Query. Use when building any chat-based AI assistant interface, agent dashboard, or conversational UI with tool visualization.
+description: Patterns for AI assistant UIs — chat, tool rendering, rich components. Uses assistant-ui + Vercel AI SDK + json-render + shadcn + TanStack Query. For chat interfaces, agent dashboards, conversational UIs.
 ---
 
 # Assistant Chat UI
