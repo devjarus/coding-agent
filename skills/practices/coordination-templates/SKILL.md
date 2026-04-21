@@ -13,52 +13,63 @@ For the canonical template, see `${CLAUDE_PLUGIN_ROOT}/templates/work.template.m
 
 ## work.md Structure (v2)
 
+Canonical schema — matches `${CLAUDE_PLUGIN_ROOT}/templates/work.template.md`:
+
 ```markdown
-# Implementation Progress
+---
+artifact: work
+feature: <slug>
+writer: orchestrator
+mutability: single-writer-mutable
+state: active
+supersedes: null
+---
 
-## Domain Status
-| Domain | Status | Tasks Assigned | Tasks Done | Blocker |
-|--------|--------|----------------|------------|---------|
+# Work Ledger
 
-## Task Status
-| Task ID | Title | Domain | Status | Depends On | Notes |
-|---------|-------|--------|--------|------------|-------|
-
-## Active Blockers
-_None_
+## Tasks
+| ID | Title | State | Assignee | Started | Finished |
+|----|-------|-------|----------|---------|----------|
 
 ## Decisions Log
-| When | Decision | Rationale |
-|------|----------|-----------|
+| When | Who | Decision | Why |
+|------|-----|----------|-----|
 
-## Plan Amendments
+## Deviations (trivial — no approval needed)
 _None_
 
-## Deviations
+## Plan Revisions (material — supersede plan.md sections; plan.md immutable)
+_None_
+
+## Findings (mid-implementation)
+_None_
+
+## Nits (deferred fixes)
+_None_
+
+## Handoff (for fix rounds — populated only when transferring between agents)
 _None_
 ```
 
-Status values — domains: `not-started`, `in-progress`, `complete`, `blocked`. Tasks: `ready`, `in-progress`, `complete`, `blocked`, `failed`, `needs-revision`.
+Task states: `ready`, `in-progress`, `complete`, `blocked`, `failed`, `needs-revision`.
 
-## Plan Revisions (in plan.md, not work.md)
+## Plan Revisions — supersession rule
 
-When an implementor hits a blocker or discovers the plan's approach won't work mid-wave, they append a revision block to `features/<CURRENT>/plan.md`:
+Approved `plan.md` is immutable forever. When an implementor hits a blocker or discovers the plan's approach won't work mid-wave, they return a structured `revisions:` entry; the orchestrator appends it to `work.md § Plan Revisions`:
 
 ```markdown
-## Plan Revisions
-
-### Revision <N> — <YYYY-MM-DD> — by <implementor|architect> (wave <W>, task <T-ID>)
-- **Original:** <quote or ref to original wave/criterion>
-- **New:** <what the approach/criterion becomes>
-- **Why:** <discovery, blocker, ops constraint — be specific>
+### R-1 — <YYYY-MM-DD> — by <implementor|architect> (wave <W>, task <T-ID>)
+- **Supersedes:** plan.md §<section reference>
+- **Change:** <what the new behavior is>
+- **Why:** <reason>
 - **Downstream impact:** <which tasks/criteria change, or "none">
-- **Status:** pending orchestrator approval | approved by orchestrator | approved by architect | rejected
+- **Status:** pending | approved by orchestrator | approved by architect | approved by user | rejected
 ```
 
 **Rules:**
-- Trivial deviations (rename, refactor within the same design) go in work.md's `### Deviations`, NOT plan.md.
-- Anything that touches evaluation criteria, task contracts, or downstream waves is a **material** revision — it goes in `work.md § Plan Revisions`, NOT in plan.md. Approved plan.md is immutable forever.
-- Evaluator reads the revisions log as authoritative; approved revisions supersede original plan.md wave text.
+- Trivial deviations (rename, refactor within the same design) go in `work.md § Deviations`, NOT `§ Plan Revisions`.
+- Material changes (evaluation criteria, task contracts, downstream waves) go in `§ Plan Revisions`. `plan.md` itself is never edited.
+- Evaluator reads `plan.md` for the original contract AND `work.md § Plan Revisions` for approved amendments. Approved revisions supersede original wave text.
 - Orchestrator must resolve any `Status: pending` revision before dispatching the next wave — otherwise downstream work inherits an inconsistent plan.
 
 ## Session Recovery (v2)

@@ -136,4 +136,4 @@ Multi-round fix sessions accumulate fastest: each round = implementor dispatch +
 
 ### Counter tracking
 
-Track dispatches informally — a one-line note in `work.md`'s decisions log is enough. After the user runs `/compact` or `/clear`, reset the count. If you don't know whether the user compacted, assume the count did NOT reset.
+Track dispatches via the `dispatches_since_compact` counter in `session.md § Checkpoint` (overwrite on every dispatch). Major transitions also append one line to `session.md § Action Log` (e.g., `compact-suggested`, `recovery | checkpoint written`). After the user runs `/compact` or `/clear`, the next session start reads the checkpoint; orchestrator should reset `dispatches_since_compact: 0` if the prior session closed cleanly. If ambiguous, assume the count did NOT reset — a false-positive compact suggestion is cheaper than context rot.
