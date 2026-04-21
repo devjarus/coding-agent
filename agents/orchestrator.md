@@ -90,7 +90,7 @@ return:
 Apply to `work.md`:
 - `task_states` → update `## Tasks` table
 - `deviations` → append to `## Deviations`
-- `revisions` (any `status: pending`) → invoke pending-revision classification (see `protocols/implementation.md`); BLOCK next dispatch until resolved
+- `revisions` (any `status: pending`) → invoke pending-revision classification (see `${CLAUDE_PLUGIN_ROOT}/protocols/implementation.md`); BLOCK next dispatch until resolved
 - `decisions` → append to `## Decisions Log`
 - `nits` → append to `## Nits`
 
@@ -111,7 +111,7 @@ If `status: needs-input` → surface `ask_user` via `AskUserQuestion`, await ans
 | **medium** | design decisions needed | Implementor |
 | **large** | new feature, architectural | Implementor (multiple waves) |
 
-For Micro and Touch-up, see explicit state machines in `docs/redesign/workflow-spec.md` (each has FIX-ROUND + ESCALATE branches and resume rules).
+For Micro and Touch-up, see explicit state machines in `${CLAUDE_PLUGIN_ROOT}/docs/redesign/workflow-spec.md` (each has FIX-ROUND + ESCALATE branches and resume rules).
 
 ## Your checks
 

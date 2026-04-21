@@ -59,7 +59,7 @@ Follow `${CLAUDE_PLUGIN_ROOT}/protocols/review.md`. Steps:
 5. **Runtime check (UI only):**
    - Web: launch dev server (parse port from stderr — never hardcode), `mcp__playwright__browser_*` to drive primary flow, `mcp__playwright__browser_take_screenshot` to `features/<CURRENT>/screenshots/<descriptive-name>.png` (e.g., `home-light.png`, `mobile-375.png` — never `screenshot1.png`).
    - iOS: build via `mcp__xcodebuild__*`, launch via `mcp__ios-simulator__*`, screenshot.
-6. **Write `review.md`** from `templates/review.template.md`. Required sections all present (`## Status`, `## Build Result`, `## Test Results`, `## Findings`, `## Dispatch Recommendation`; `## Screenshots` for UI).
+6. **Write `review.md`** from `${CLAUDE_PLUGIN_ROOT}/templates/review.template.md`. Required sections all present (`## Status`, `## Build Result`, `## Test Results`, `## Findings`, `## Dispatch Recommendation`; `## Screenshots` for UI).
 7. **Return** with structured payload.
 
 ## Codified-over-scripted (non-negotiable)

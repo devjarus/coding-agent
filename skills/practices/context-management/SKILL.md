@@ -17,7 +17,7 @@ When a subagent returns and you're about to act, choose one:
 |--------|-------------|
 | **Continue** | Context is clean, next step is clear, dispatch count < 5 |
 | **Suggest compact** | Dispatch count >= 5, or switching feature phases — ask user via AskUserQuestion |
-| **Write session-state.md + suggest clear** | Round 3 escalation, major pivot, or 2+ features completed in one session |
+| **Update session.md Checkpoint + suggest clear** | Round 3 escalation, major pivot, or 2+ features completed in one session |
 | **Delegate to subagent** | Next chunk of work will produce intermediate output you won't need again (only the conclusion) |
 
 ## When to Suggest Compact
@@ -37,14 +37,14 @@ Use AskUserQuestion with the trigger reason and a ready-to-paste compact command
 AskUserQuestion("Context is getting heavy (6 dispatches since start, entering fix round).
 Suggest running:
 
-/compact focus on open findings from review.md and handoff.md. Drop resolved findings and completed dispatch transcripts.
+/compact focus on open findings from review.md and work.md § Handoff. Drop resolved findings and completed dispatch transcripts.
 
 Want to compact before I continue?")
 ```
 
 The steering text matters — it tells autocompact (or a manual /compact) what to preserve. Tailor it to the current phase:
 - After spec approval: `focus on spec.md requirements and plan.md tasks. Drop discovery Q&A with user.`
-- After fix round: `focus on open findings from review.md and handoff.md. Drop resolved findings and first implementor's transcript.`
+- After fix round: `focus on open findings from review.md and work.md § Handoff. Drop resolved findings and first implementor's transcript.`
 - After commit: `keep only learnings.md entry and user's last message. Drop all feature artifacts — they're on disk.`
 
 **After suggesting, do not assume the user ran it.** Continue with the next dispatch regardless. The suggestion is advisory.
@@ -59,36 +59,31 @@ The steering text matters — it tells autocompact (or a manual /compact) what t
 
 ### What the orchestrator does (file I/O — this works)
 
-Write `.coding-agent/features/<CURRENT>/session-state.md` before suggesting:
+Update `.coding-agent/session.md § Checkpoint` (mutable section) before suggesting:
 
 ```markdown
-## Session State — <YYYY-MM-DD HH:MM>
-
-### Current Phase
-[classify/spec/plan/implement/evaluate/fix-round-N]
-
-### What's Done
-[Completed stages, committed work]
-
-### What's In Progress
-[Current stage, dispatched agent, pending action]
-
-### What Was Tried and Failed
-[Approaches attempted, why they failed — critical for avoiding repeat failures]
-
-### Key Context
-[Constraints, decisions, user preferences that must survive the clear]
-
-### Next Action
-[Exact next step for the fresh session to take]
+## Checkpoint
+active_feature: <slug>
+phase: <classify|spec|plan|implement|review|fix-round-N|close-out|idle>
+last_completed: <slug @ ISO-timestamp or none>
+dispatches_since_compact: <N>
+pending_pushes: <N>
+resume_hint: "pick up at <explicit next step>"
 ```
+
+Also append to `## Action Log`:
+```
+<ISO-ts> | recovery | checkpoint written | reason: <signal>
+```
+
+If in fix rounds, ensure `work.md § Handoff` has: what was tried, why it failed, what's ruled out.
 
 Then tell the user:
 
 ```
-AskUserQuestion("I've written a session checkpoint to session-state.md.
+AskUserQuestion("I've checkpointed session.md and updated work.md § Handoff.
 Context is deep — suggest running /clear and starting fresh.
-The new session will read session-state.md to resume where we left off.")
+The new session reads session.md § Checkpoint + Action Log + work.md to resume.")
 ```
 
 ## When to Suggest Rewind (guidance for users)
@@ -135,7 +130,7 @@ Don't count tokens. Use dispatch count as a proxy:
 |------------------------------------------------------------|--------|
 | 1-4 | Continue normally |
 | 5-7 | Suggest compact to user before next dispatch |
-| 8+ | Write session-state.md + suggest clear |
+| 8+ | Update session.md Checkpoint + suggest clear |
 
 Multi-round fix sessions accumulate fastest: each round = implementor dispatch + evaluator dispatch + orchestrator reads review.md. Two fix rounds = 6+ dispatches. Suggest compact after Round 1 if entering Round 2.
 

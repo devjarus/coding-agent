@@ -29,7 +29,7 @@ Approval gates only work in the main-thread orchestrator's conversation. See `sp
 
 - Spec must remain immutable. If during plan writing the spec is found to need changes, dispatch a separate `redirect` flow — do not edit `spec.md`.
 - Test tiers are mandatory: `Unit` and `Integration` always; `E2E` if user-facing surface, otherwise `N/A` with reason.
-- Do not invent skills. If a needed skill doesn't exist in `skills/`, surface this as a finding before plan approval — propose adding the skill (separate, smaller workflow), don't proceed without coverage.
+- Do not invent skills. If a needed skill doesn't exist in `${CLAUDE_PLUGIN_ROOT}/skills/`, surface this as a finding before plan approval — propose adding the skill (separate, smaller workflow), don't proceed without coverage.
 
 ## Checks fired
 

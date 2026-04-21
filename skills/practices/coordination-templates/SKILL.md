@@ -57,29 +57,27 @@ When an implementor hits a blocker or discovers the plan's approach won't work m
 
 **Rules:**
 - Trivial deviations (rename, refactor within the same design) go in work.md's `### Deviations`, NOT plan.md.
-- Anything that touches evaluation criteria, task contracts, or downstream waves is a **material** revision and goes in plan.md.
-- Evaluator reads the revisions log as authoritative; approved revisions supersede original wave text.
+- Anything that touches evaluation criteria, task contracts, or downstream waves is a **material** revision — it goes in `work.md § Plan Revisions`, NOT in plan.md. Approved plan.md is immutable forever.
+- Evaluator reads the revisions log as authoritative; approved revisions supersede original plan.md wave text.
 - Orchestrator must resolve any `Status: pending` revision before dispatching the next wave — otherwise downstream work inherits an inconsistent plan.
 
-## Session Recovery
+## Session Recovery (v2)
 
-When resuming after `/clear` or a new session, read in this order:
-1. `.coding-agent/features/<CURRENT>/session-state.md` — where we left off, what was tried
-2. `.coding-agent/features/<CURRENT>/handoff.md` — what failed and what's ruled out (if in fix rounds)
-3. `.coding-agent/features/<CURRENT>/work.md` — task completion status
-4. `.coding-agent/features/<CURRENT>/spec.md` + `plan.md` — requirements and tasks
+When resuming after `/compact`, `/clear`, or a new session, read in this order:
+1. `.coding-agent/session.md § Checkpoint` — phase, active_feature, last_completed, resume_hint
+2. `.coding-agent/session.md § Action Log` tail — last ~20 entries for context
+3. `.coding-agent/features/<CURRENT>/work.md` — task ledger (including `§ Handoff` and `§ Plan Revisions` if present)
+4. `.coding-agent/features/<CURRENT>/spec.md` + `plan.md` — requirements and tasks (immutable)
 5. `.coding-agent/learnings.md` — project-level gotchas
 
-This ordering is deliberate: session-state.md and handoff.md tell you what happened recently (high value, small file), so you avoid re-reading large artifacts unnecessarily.
-
-**Precedence when both `session-state.md` and `handoff.md` exist:** session-state.md is the more recent checkpoint — its `Current Phase` field tells you where you are. Read it first. Only read handoff.md if the phase is a fix round; otherwise handoff.md is historical and can be skipped.
+**v2 difference from v1:** `handoff.md`, `session-state.md`, `in-flight.md`, `nits.md` do NOT exist as separate files. All collapsed into `work.md` sections (`§ Handoff`, `§ Nits`) or `session.md` (`§ Checkpoint`, `§ Action Log`).
 
 ## Context Health Signals
 
-Watch for these in work.md updates:
+Watch for these in `work.md` task states and `session.md` Action Log:
 
 | Signal | Meaning | Action |
 |--------|---------|--------|
-| 3+ `failed` tasks | Multiple approaches failing | Write handoff.md, consider debugger |
-| Same task toggling `in-progress` → `failed` repeatedly | Stuck in a loop | Compact, then dispatch debugger |
-| 5+ dispatches logged in decisions log | Session getting deep | Compact with steering before next dispatch |
+| 3+ `failed` tasks in `work.md § Tasks` | Multiple approaches failing | Populate `work.md § Handoff`, dispatch Debugger |
+| Same task toggling `in-progress` → `failed` repeatedly | Stuck in a loop | Suggest /compact to user, then Debugger full mode |
+| 5+ `dispatch` events in action log since last compact | Session getting deep | Suggest /compact with phase-steered text before next dispatch |
