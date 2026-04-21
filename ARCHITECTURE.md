@@ -312,6 +312,34 @@ coding-agent/
 
 **Never use `../` relative paths** — they break after marketplace caching copies the plugin into `~/.claude/plugins/cache/`.
 
+## Subagent tool & MCP access (why `tools:` is unset on subagents)
+
+Claude Code plugin subagents have two constraints that shape their frontmatter:
+
+1. **`mcpServers:` frontmatter is IGNORED in plugin subagents.** Per [subagents docs](https://code.claude.com/docs/en/subagents.md): plugin agents drop the `mcpServers:`, `hooks:`, and `permissionMode:` fields at load time. This field only works for project-level (`.claude/agents/`) or user-level (`~/.claude/agents/`) subagents.
+2. **`tools:` is an allowlist that FILTERS OUT MCPs.** If a subagent frontmatter sets `tools: Read, Write, Bash, ...`, MCP tools are NOT included unless the field is omitted. There's no way to pattern-match MCP names inside `tools:`.
+
+The combination means: **a plugin subagent that needs MCP access must omit the `tools:` field entirely.** It then inherits the full parent-session tool set — MCPs included.
+
+### Applied in this plugin
+
+| Agent | `tools:` frontmatter | MCP access | Reason |
+|-------|---------------------|-----------|--------|
+| orchestrator | Explicit: `Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion` | None (doesn't need them) | Only orchestrator dispatches (needs `Agent`) and asks user (needs `AskUserQuestion`); both are exclusive to the main thread. |
+| architect | Omitted | Context7, Exa, DeepWiki inherit | Stack research, test-infra research |
+| implementor | Omitted | Context7, Exa inherit | Library API verification |
+| evaluator | Omitted | Playwright, Chrome DevTools, Xcodebuild, iOS Simulator, Context7, Exa inherit | UI runtime testing (REQUIRED for `ui-evidence` check) |
+| debugger | Omitted | Context7 inherits | Real library docs when diagnosing |
+
+### Tradeoff
+
+Omitting `tools:` means subagents inherit all parent tools including `Agent` and `AskUserQuestion`. The "only orchestrator dispatches" and "only orchestrator asks user" invariants are now enforced by **prompt-level discipline** (each subagent's Hard Rules section), not by tool-level filtering. Subagents explicitly told:
+
+- *"Do not dispatch other subagents via Agent tool even if inherited."*
+- *"Do not call AskUserQuestion even if inherited. Return ask_user.questions in your structured payload."*
+
+This is the cost of needing MCPs at all. If a future version of Claude Code lifts one of the two constraints (supports `mcpServers:` in plugin subagents, OR allows MCP patterns in `tools:`), the tool-level restrictions should come back.
+
 ## Model tier
 
 | Agent | Model |
