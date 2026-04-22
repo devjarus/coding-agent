@@ -4,7 +4,7 @@ This file tells agents (and humans) how to work on the coding-agent plugin itsel
 
 ## What This Is
 
-A Claude Code plugin: 5 agents + ~58 skills + 9 named protocols + 10 deterministic checks + 7 artifact templates + 7 MCP servers. All Markdown + Bash. No build step.
+A Claude Code plugin: 5 agents + 54 skills + 9 named protocols + 9 deterministic checks + 8 artifact templates + 7 MCP servers. All Markdown + Bash. No build step.
 
 ## Project Structure (v2)
 

@@ -272,13 +272,13 @@ coding-agent/
 ├── .mcp.json                            ← 7 MCP servers
 ├── agents/                              ← 5 rewritten prompts (each ~150 lines)
 │   ├── orchestrator.md  architect.md  implementor.md  evaluator.md  debugger.md
-├── skills/                              ← ~58 scoped-knowledge modules
+├── skills/                              ← 54 scoped-knowledge modules
 │   ├── frontend/  backend/  data/  mobile/  infra/  general/  practices/
 ├── protocols/                           ← 9 named workflows (one source of truth each)
 │   ├── intake.md   spec-writing.md   plan-writing.md   implementation.md
 │   ├── review.md   fix-round.md   close-out.md   redirect.md   recovery.md
 │   └── README.md
-├── checks/                              ← 10 deterministic verification scripts
+├── checks/                              ← 9 deterministic verification scripts (+ lib.sh helper)
 │   ├── lib.sh
 │   ├── intent-approved.sh   spec-approved.sh   plan-approved.sh
 │   ├── ui-evidence.sh   no-raw-print.sh   close-out-complete.sh

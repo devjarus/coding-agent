@@ -5,6 +5,57 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] — 2026-04-22 — Post-2.0 hardening from real acceptance runs
+
+Patch release tracking fixes from S1–S7 acceptance scenarios in `test-agents/v2-runs/`. No primitive changes; behavior corrections, vocabulary disambiguation, and skill-set tightening.
+
+### Removed (skill count: 58 → 54)
+
+- **`coordination-templates`** — 100% redundant with `templates/work.template.md` + `protocols/implementation.md` + `protocols/recovery.md`. Unique "Context Health Signals" table moved to `protocols/recovery.md`.
+- **`context-management`** — overlapping with `protocols/recovery.md` + `templates/session.template.md`. Unique subagent-delegation heuristic moved to `agents/orchestrator.md`; rewind advisory to `protocols/recovery.md`.
+- **`research-cache`** — vestigial v1; never read in v2 (architect writes research inline into `spec.md § Test Infrastructure`).
+- **`project-detection`** — vestigial v1; covered by architect's discovery Q&A + AGENTS.md probe.
+
+### Added
+
+- **`templates/learnings.template.md`** — canonical schema for `.coding-agent/learnings.md` with worked example. First-ever write now has consistent shape.
+- **`protocols/plan-writing.md § Practice skills routing`** — moved out of `CLAUDE.md`. CLAUDE.md is plugin docs for humans; runtime references should live in protocols. Architect consumes the table at runtime via `${CLAUDE_PLUGIN_ROOT}/protocols/plan-writing.md`.
+- **`protocols/close-out.md` step 4.5** — dispatch implementor with `ci-testing-standard` skill on first-feature greenfield. Restores v1 behavior lost in v2 rewrite.
+- **`agents/debugger.md` preloaded skills** — `observability` + `debugging` (was empty; debugger body uses log reading + general debugging methodology).
+- **`docs/redesign/primitives.md § Avoid vocabulary collision`** — explicit 3-row reference table disambiguating artifact `state:`, task `task-state`, and review `## Status`. Prevents the `state: complete` vs `state: active` confusion that broke the close-out check on review.md.
+- **`ARCHITECTURE.md § Subagent tool & MCP access`** — explains why subagents have no `tools:` field (plugin subagents lose MCP access if `tools:` is set).
+
+### Fixed
+
+- **Architect approval-gate forging.** Subagents have no real `AskUserQuestion` reach; it lives in the subagent's isolated context. Architect was signing `approved_by: user` on spec.md/plan.md without the user actually seeing the question. Fixed: architect writes drafts only; orchestrator owns ALL user approval gates; structured `ask_user.questions` bundle for discovery.
+- **`mcpServers:` ignored in plugin subagents.** Removed `mcpServers:` from architect/implementor/evaluator/debugger frontmatter (silent no-op in plugins). Removed restrictive `tools:` field from those four — they now inherit parent session tools (including all MCPs from `.mcp.json`). Explicit "do not dispatch" + "do not call AskUserQuestion" rules added to each subagent's prompt body to compensate.
+- **Intent immutability vs escalation.** Workflow-spec said "mode flips to small" on Touch-up→Small escalation but template declared `mutability: immutable`. Fixed: escalation does NOT edit `intent.md`; it adds `plan.md` to the existing feature dir. The signed user contract stays truthful at original mode/size.
+- **`revisions-resolved.sh` regex too strict.** Old regex required bare `^Status: pending` line; missed common markdown variants like `- **Status:** pending user decision`. New regex strips `**` markers and matches with optional bullet prefix; supports prose suffixes after `pending`. Tested against 5 variants.
+- **State-vocabulary collision (the real bug behind the close-out check failure).** Three "state" concepts conflated: artifact `state:` (lifecycle), task `task-state` in `work.md § Tasks` (work progress), and review `## Status` (PASS/FAIL). Evaluator wrote `state: complete` on review.md — task-state vocab in artifact-state field. Fixed in `protocols/implementation.md` + `protocols/review.md` + `agents/evaluator.md` + `templates/review.template.md`; reference table added to `docs/redesign/primitives.md`.
+- **Architect's description claimed "Asks user discovery questions in batches."** Contradicted the AskUserQuestion-removal fix. Updated to "Drafts discovery questions as a structured ask_user bundle for the orchestrator to ask."
+- **Architect didn't read learnings.md until PLAN phase.** Past gotchas affect stack + test-infra picks in SPEC. Added Step 1.5 in spec phase: read `learnings.md` before identifying unknowns.
+
+### Implementor process additions (from S2 run)
+
+- **Test-path discovery** before writing tests. Read `vitest.config.*` / `jest.config.*` / `pyproject.toml [tool.pytest]` for active include/testMatch pattern. Placing tests outside config patterns silently skips them.
+- **Belt-and-braces combination test** required when a feature combines multiple transforms. Catches implementations correct in isolation but missing the combination.
+- **Delete obsolete-by-intent artifacts.** Counterpart to `load-bearing-markers`: preserve non-obvious fixes; delete tests/stubs/mocks that contradict approved intent.
+
+### Acceptance test suite (`test-agents/V2-ACCEPTANCE-TESTS.md`)
+
+- S2 redesigned: replaced `expect(1).toBe(2)` sabotage (obsolete-by-intent) with belt-and-braces realistic mistake.
+- S4 fixed: predecessor-slug references corrected; Feature→Feature vs Micro→Feature variant vocabularies separated.
+- S7 expanded to 3 sub-tests: Layer 1 preflight (S7a), Layer 1 self-policing under prompt pressure (S7b), Layer 2 isolation test with hand-crafted tainted review.md (S7c).
+- New scenario-authoring rules: never sabotage with intent-contradicting tests; discover test-path first; treat env breakage as gotcha not FAIL; test defense-in-depth layers in isolation.
+- `audit.sh` works against any `.coding-agent/` tree, validates all primitive invariants.
+
+### Infra
+
+- `scripts/setup.sh` notes the parallel-implementor Bash permission caveat: write `.claude/settings.json` (project-shared) when patterns must propagate to parallel subagent batches. `settings.local.json` may not propagate reliably.
+- Test-agents folder now has comprehensive `.claude/settings.json` at root + each `v2-runs/S*/` scenario.
+
+---
+
 ## [2.0.0] — 2026-04-20 — First-principles redesign
 
 Clean break from v1. No backwards compatibility with v1 artifacts. v1 feature directories remain readable but v2 protocols do not consume them. Profile (`~/.coding-agent/profile.md`) and global learnings remain compatible.
