@@ -3,7 +3,7 @@ artifact: review
 feature: <slug>
 writer: evaluator
 mutability: immutable
-state: active
+state: active                    # ARTIFACT lifecycle: draft|approved|active|archived. Use `active` here. Close-out flips to `archived`. Do NOT confuse with task-state (in work.md § Tasks: ready|in-progress|complete|blocked|failed) or review status (## Status section: PASS|FAIL).
 supersedes: null
 mode: full                       # full | lightweight | smoke
 ---

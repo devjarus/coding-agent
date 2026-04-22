@@ -61,6 +61,18 @@ draft ──(author signs)──> approved ──(work begins)──> active ─
 
 Memory category is always `active` (never transitions). Spec and Plan go `draft → approved`. Work goes `active → archived`. Findings go `draft → active` (reviewed, not approved by user in the same sense).
 
+#### Avoid vocabulary collision: three "state" concepts
+
+The word "state" appears in three distinct vocabularies in this plugin. Don't confuse them:
+
+| Vocabulary | Field name | Values | Where it lives |
+|------------|-----------|--------|---------------|
+| **Artifact lifecycle state** | `state:` (frontmatter) | `draft / approved / active / archived` | Every artifact's frontmatter |
+| **Task state** | `task-state` (column in table) | `ready / in-progress / complete / blocked / failed / needs-revision` | `work.md § Tasks` table |
+| **Review status** | `Status:` (heading body) | `PASS / FAIL` | `review.md ## Status` section |
+
+The vocabularies do NOT overlap. A task with `task-state: complete` lives in a `work.md` whose frontmatter says `state: active`. A review with `## Status: PASS` lives in a `review.md` whose frontmatter says `state: active` (until close-out flips to `archived`). When in doubt, the artifact frontmatter `state:` always uses the lifecycle vocabulary — the other two never appear there.
+
 ### Mutability class
 
 Every Artifact declares its mutability class in frontmatter. Three classes, no ambiguity:

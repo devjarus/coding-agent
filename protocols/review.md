@@ -1,6 +1,6 @@
 # Protocol — Review
 
-**Entry:** Implementation complete (all wave tasks `state: complete`).
+**Entry:** Implementation complete (all wave tasks reach `task-state: complete` in `work.md § Tasks`).
 **Exit:** `review.md` exists with `## Status` PASS or FAIL and `## Dispatch Recommendation`.
 **Owner:** Evaluator.
 

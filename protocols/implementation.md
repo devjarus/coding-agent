@@ -1,7 +1,7 @@
 # Protocol — Implementation
 
 **Entry:** `plan.md` approved.
-**Exit:** All tasks in plan reach `state: complete` in `work.md`.
+**Exit:** All tasks in plan reach `task-state: complete` in `work.md § Tasks` table. (Note: `task-state` is distinct from artifact frontmatter `state:` — tasks use `ready/in-progress/complete/blocked/failed`; artifacts use `draft/approved/active/archived`.)
 **Owner:** Orchestrator (dispatches Implementor).
 
 ## Steps
