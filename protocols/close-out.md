@@ -7,17 +7,20 @@
 ## Steps (8)
 
 1. **Freeze artifacts.** For every `.md` in `features/<CURRENT>/`, set frontmatter `state: archived`. After this step, the directory is read-only.
-2. **Distill to learnings.** Append a dated section to `.coding-agent/learnings.md`:
+2. **Distill to learnings.** Prepend a dated section to `.coding-agent/learnings.md` (the file uses template `${CLAUDE_PLUGIN_ROOT}/templates/learnings.template.md` — create from template if missing):
    ```markdown
    ## YYYY-MM-DD — <slug>
+
    ### Decisions
-   - <stack choice + rejected alternative + why>
+   - <stack choice> — chose X over Y because Z
+
    ### Gotchas
-   - <workarounds, library bugs, mental-model corrections>
+   - <library bug / API quirk / mental-model correction>
+
    ### Patterns
-   - <reusable patterns introduced>
+   - <reusable pattern introduced> — file:line reference
    ```
-   `learnings.md` is `append-only` — newest section at top, older below; never truncated.
+   `learnings.md` is `append-only` — newest section at top (below the file header), older below; never truncated, never edited after writing. Existing dated sections are immutable. If you find a past entry is wrong or outdated, ADD a correcting entry in today's section — do NOT edit the old one.
 3. **Update AGENTS.md** if a new project-wide convention was established (logger module, test path, shared adapter).
 4. **Update ARCHITECTURE.md** if a new service/db/queue or cross-module dependency was introduced.
 4.5. **Ensure CI exists (first feature only).** If this was the project's first feature AND there's no `.github/workflows/` (or GitLab/Bitbucket equivalent), dispatch Implementor with `ci-testing-standard` skill to scaffold: test script, CI workflow running lint+typecheck+tests+build on push/PR, optional pre-commit hook. Skip if CI already exists and covers what the evaluator ran.

@@ -32,7 +32,8 @@ Read `.coding-agent/CURRENT` to get the slug. All your output lives at `.coding-
 Follow `${CLAUDE_PLUGIN_ROOT}/protocols/spec-writing.md` step by step. Key behaviors:
 
 1. **Read profile first.** Skip questions the profile already answers.
-2. **Identify unknowns.** For each decision the profile doesn't cover (stack choice, persistence, delivery, auth pattern, etc.), write it down. Do NOT ask the user directly — you have no `AskUserQuestion` tool. Return the unknowns as a structured `ask_user:` bundle in your return payload (schema below). The orchestrator asks the real user and re-dispatches you with the answers in the prompt.
+1.5. **Read `.coding-agent/learnings.md`** (if it exists) before identifying unknowns. Past decisions and gotchas shape the questions you ask and the stack you propose. Example: if learnings.md says "chose Fastify over Express for WebSocket perf in notifications-v1," carry that forward — don't re-litigate; build on it. If learnings.md says "FCM tokens silently expire on Android 14 — handle token refreshed event," surface this as a Technical Risk in the new spec.
+2. **Identify unknowns.** For each decision the profile doesn't cover AND learnings.md doesn't already resolve, write it down. Do NOT ask the user directly — you have no `AskUserQuestion` tool. Return the unknowns as a structured `ask_user:` bundle in your return payload (schema below). The orchestrator asks the real user and re-dispatches you with the answers in the prompt.
 3. **Research test infra via MCPs.** For each external dep in the stack, query Context7 / Exa / DeepWiki. Memory is stale; use real docs. Record `Source consulted` per row in `## Test Infrastructure`.
 4. **Write `spec.md` with `state: draft`, `approved_by:` (blank), `approved_at:` (blank).** You do NOT approve it yourself.
 5. **Return to orchestrator.** The orchestrator prints the spec body in chat and calls `AskUserQuestion` for approval. You don't have that tool and you don't sign.

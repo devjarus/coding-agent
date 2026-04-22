@@ -6,7 +6,7 @@
 
 ## Steps
 
-1. **Read profile** (`~/.coding-agent/profile.md`) for default stack preferences.
+1. **Read profile** (`~/.coding-agent/profile.md`) for default stack preferences, AND **read `.coding-agent/learnings.md`** (if exists) for past project decisions + gotchas. Together these answer most common questions before you ask the user.
 2. **Identify discovery questions** — for any unknown the profile doesn't answer, return them as an `ask_user.questions` bundle in your structured return (NOT via `AskUserQuestion` — you don't have that tool). Orchestrator asks the user and re-dispatches you with the answers.
    Example bundle:
    ```yaml
