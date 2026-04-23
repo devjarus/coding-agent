@@ -13,34 +13,34 @@ coding-agent/
 ├── .claude-plugin/plugin.json    # plugin manifest
 ├── .mcp.json                     # MCP server config
 ├── agents/                       # 5 agent prompts (each ≤300 lines, references protocols)
-├── skills/                       # ~58 skill folders, each with SKILL.md
+├── skills/                       # 54 skill folders, each with SKILL.md
 │   ├── frontend/   backend/   data/   mobile/   infra/
 │   ├── general/   practices/
-├── protocols/                    # NEW — 9 named multi-actor workflows
+├── protocols/                    # 9 named multi-actor workflows
 │   ├── intake.md   spec-writing.md   plan-writing.md
 │   ├── implementation.md   review.md   fix-round.md
 │   ├── close-out.md   redirect.md   recovery.md
-├── checks/                       # NEW — deterministic verification scripts
+├── checks/                       # 9 deterministic verification scripts
 │   ├── lib.sh                    # shared helpers (sourced)
 │   ├── intent-approved.sh    spec-approved.sh    plan-approved.sh
 │   ├── ui-evidence.sh   no-raw-print.sh   close-out-complete.sh
 │   ├── action-logged.sh   active-feature-consistent.sh   revisions-resolved.sh
-├── templates/                    # NEW — artifact frontmatter templates
+├── templates/                    # 8 artifact frontmatter templates
 │   ├── intent.template.md   spec.template.md   plan.template.md
 │   ├── work.template.md   review.template.md   diagnosis.template.md
-│   ├── session.template.md
+│   ├── session.template.md   learnings.template.md
 ├── hooks/hooks.json              # SubagentStart logging + PostToolUse validation
 ├── scripts/
 │   ├── validate.sh               # plugin self-validator
 │   ├── post-edit-validate.sh     # called by PostToolUse hook
 │   └── setup.sh                  # writes recommended .claude/settings.local.json into target project
 ├── docs/
-│   ├── redesign/                 # v2 design docs (primitives, workflow-spec, lifecycle)
-│   └── ...
+│   ├── README.md                 # docs index
+│   └── concepts/                 # primitives, workflow, lifecycle (canonical design)
 ├── CHANGELOG.md
-├── CLAUDE.md
-├── README.md
-├── ARCHITECTURE.md
+├── CLAUDE.md                     # short redirect index
+├── README.md                     # project landing page
+├── ARCHITECTURE.md               # topology + diagrams
 └── AGENTS.md (this file)
 ```
 
@@ -63,7 +63,7 @@ Run every time you edit an agent, skill, protocol, check, or doc:
    - Add to `protocols/README.md` table OR `CLAUDE.md` checks list
    - Reference from the agent prompt(s) that use it via `${CLAUDE_PLUGIN_ROOT}/protocols/<name>.md`
 
-4. **If you added an artifact category**: update `docs/redesign/primitives.md` Artifact Categories table AND create `templates/<name>.template.md`.
+4. **If you added an artifact category**: update `docs/concepts/primitives.md` Artifact Categories table AND create `templates/<name>.template.md`.
 
 5. **Path conventions**:
    - Plugin internals: always `${CLAUDE_PLUGIN_ROOT}/...` (works in dev + marketplace cache)
@@ -132,7 +132,7 @@ Then update CLAUDE.md routing tables and run validate.sh.
 
 ## Architecture Decisions
 
-- **Four primitives, nothing more.** Actor / Artifact / Skill / Check. See `docs/redesign/primitives.md`.
+- **Four primitives, nothing more.** Actor / Artifact / Skill / Check. See [`docs/concepts/primitives.md`](docs/concepts/primitives.md).
 - **Approved artifacts are immutable.** Amendments via `work.md § Plan Revisions` supersession.
 - **Orchestrator owns coordinator state.** Subagents return structured updates.
 - **Codified > scripted.** Tests are committed code, not ad-hoc curl pipelines.
@@ -166,4 +166,4 @@ Check `.coding-agent/session.md § Action Log` for the dispatch sequence.
 - Agent/skill/protocol changes picked up on next session start
 - `.coding-agent/` in user projects is runtime state, gitignored
 - Test failures usually reveal prompt ambiguity — fix the prompt, not the test
-- Past design retrospectives in `docs/`
+- Canonical concepts and design rationale: [`docs/concepts/`](docs/concepts/)

@@ -1,89 +1,38 @@
-# coding-agent — Claude Code Plugin (v2.0)
+# coding-agent — plugin notes
 
-A multi-agent software development system, redesigned from first principles around four primitives.
+Claude Code reads this file at session start. It's intentionally short. Authoritative content lives elsewhere.
 
-## The Four Primitives
+## What this plugin is
 
-| Primitive | Definition | Examples |
-|-----------|------------|----------|
-| **Actor** | Produces work | User, Orchestrator, Architect, Implementor, Evaluator, Debugger |
-| **Artifact** | Durable on-disk state, typed, one writer | `intent.md`, `spec.md`, `plan.md`, `work.md`, `review.md`, `diagnosis.md`, `session.md`, `learnings.md` |
-| **Skill** | Scoped knowledge an Actor loads to adapt | domain-specialist, practice, protocol-helper, general |
-| **Check** | Deterministic verification, no LLM | `intent-approved.sh`, `ui-evidence.sh`, `close-out-complete.sh`, etc. |
+Multi-agent software development pipeline. **5 agents**, **54 skills**, **9 protocols**, **9 checks**, **8 templates**, **7 MCP servers**.
 
-See `docs/redesign/primitives.md` for formal definitions, invariants, and what's deliberately not a primitive.
+For users → [README.md](README.md)
 
-## The Five Agents
+## When working on this plugin
 
-| Agent | Model | Role | Owns |
-|-------|-------|------|------|
-| **orchestrator** | claude-opus-4-7 | Tech lead — state machine, dispatcher, check runner | `work.md`, `session.md`, `cache.json`, `CURRENT`, `learnings.md` |
-| **architect** | opus | Staff eng — spec & plan author, MCP researcher | `spec.md`, `plan.md` (immutable after approval) |
-| **implementor** | sonnet | Engineer — code + tests, returns structured updates | source files, test files |
-| **evaluator** | opus | QA — runs committed tests, drives Playwright/sim, writes review.md | `review.md`, `screenshots/` |
-| **debugger** | opus | SRE — root cause analysis, full or inspection mode | `diagnosis.md` |
+| You want to... | Read |
+|----------------|------|
+| Understand the design from scratch | [`docs/concepts/primitives.md`](docs/concepts/primitives.md) |
+| Walk through a real session step-by-step | [`docs/concepts/workflow.md`](docs/concepts/workflow.md) |
+| See artifact states and protocols | [`docs/concepts/lifecycle.md`](docs/concepts/lifecycle.md) |
+| See the topology with diagrams | [ARCHITECTURE.md](ARCHITECTURE.md) |
+| Add a skill, modify an agent, validate changes | [AGENTS.md](AGENTS.md) |
+| Understand how a specific agent works | `agents/<name>.md` |
+| See a specific protocol | `protocols/<name>.md` |
+| See a specific check's logic | `checks/<name>.sh` |
+| See an artifact template | `templates/<name>.template.md` |
 
-Subagents return a structured YAML payload; orchestrator parses and applies to `work.md`. No multi-writer state.
+## Conventions Claude should follow in this repo
 
-## The Nine Protocols
+- **Validate before commit:** `./scripts/validate.sh`
+- **Plugin-internal references** use `${CLAUDE_PLUGIN_ROOT}/...` (survives marketplace caching)
+- **User project artifacts** use `.coding-agent/...` (relative to project root)
+- **Approved artifacts are immutable.** Never edit `intent.md`, `spec.md`, `plan.md` after `state: approved`. Amendments go in `work.md § Plan Revisions` with `Supersedes:` pointer.
+- **Only the orchestrator dispatches.** Subagents never call `Agent` even if inherited.
+- **Only the orchestrator owns user gates.** Subagents never call `AskUserQuestion`; they return `ask_user.questions` for the orchestrator to surface.
+- **Prompt edits over enforcement hooks.** When a rule fails, fix the prompt or convert to a check — don't add PreToolUse blockers.
+- **Tests committed > scripts.** Evaluator runs your test suites; missing tests are findings, not gaps to paper over with bash.
 
-Named workflows that span agents. Each lives in `protocols/<name>.md` as the authoritative reference. Agent prompts cross-reference; they do not redescribe.
+## Versioning
 
-| Protocol | Owner | When |
-|----------|-------|------|
-| `intake` | Orchestrator | every user request |
-| `spec-writing` | Architect | medium/large features |
-| `plan-writing` | Architect | medium/large features |
-| `implementation` | Orchestrator | once plan approved |
-| `review` | Evaluator | implementation complete |
-| `fix-round` | Orchestrator | review FAIL (3 rounds before escalation) |
-| `close-out` | Orchestrator | review PASS, before commit (8 steps) |
-| `redirect` | Orchestrator | user message during active pipeline |
-| `recovery` | Orchestrator | dispatch threshold or pivot |
-
-## Artifacts
-
-| Category | Mutability | Files |
-|----------|-----------|-------|
-| **Intent** | immutable (after approval) | `intent.md` |
-| **Plan** | immutable (after approval) | `spec.md`, `plan.md` |
-| **Work** | single-writer-mutable (orchestrator) | `work.md` (merges deviations, revisions, decisions, nits, handoff, findings) |
-| **Findings** | immutable (once written) | `review.md`, `diagnosis.md` |
-| **Memory** | append-only or single-writer-mutable | `learnings.md`, `session.md` (composite), `profile.md` (global), `AGENTS.md`, `ARCHITECTURE.md` |
-
-States: `draft → approved → active → archived`.
-**Approved artifacts are never edited.** Amendments live in `work.md § Plan Revisions` with `Supersedes:` pointer.
-
-## Path conventions
-
-- **Plugin internals** (protocols, checks, templates, docs): `${CLAUDE_PLUGIN_ROOT}/...`
-- **User project artifacts**: `.coding-agent/...` (relative to project root)
-- **Global memory**: `~/.coding-agent/profile.md`
-
-## Skills (54)
-
-Categories: domain-specialist (technology-specific), practice (cross-cutting engineering discipline), general (universal). v2 collapsed the old "protocol-helper" category — that content now lives in `protocols/*.md` + `templates/*.md`.
-
-Implementor's skill manifest comes from `plan.md` (per task, declared by the Architect). Orchestrator passes it verbatim — no magic routing. The architect's routing table (which practice skills match which task context) lives at `${CLAUDE_PLUGIN_ROOT}/protocols/plan-writing.md § Practice skills routing` — that's the runtime source of truth consumed by the architect. This CLAUDE.md section is plugin documentation for humans, not an agent runtime reference.
-
-## MCP Servers (`.mcp.json`)
-
-| Server | Purpose |
-|--------|---------|
-| context7 | Library docs (architect, implementor) |
-| exa | Web search (architect) |
-| deepwiki | Repo deep-dives (architect) |
-| playwright | Browser UI testing (evaluator) |
-| chrome-devtools | Console/network inspection (evaluator) |
-| xcodebuild | iOS build/test/debug (evaluator) |
-| ios-simulator | iOS simulator control (evaluator) |
-
-## Development
-
-```bash
-./scripts/validate.sh
-```
-
-## Migration from v1
-
-v2 is a clean break — no backwards compatibility. Old `.coding-agent/features/<slug>/` directories from v1 still exist as historical archives but are not consumed by v2 protocols. Profile (`~/.coding-agent/profile.md`) and global learnings remain compatible.
+Semver. See [CHANGELOG.md](CHANGELOG.md) for the full trail.

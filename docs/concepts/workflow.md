@@ -1,6 +1,6 @@
 # Workflow Spec
 
-The canonical session flow for the redesigned plugin, expressed in terms of the four primitives (`docs/redesign/primitives.md`). This is the authoritative reference for how a feature ships from request to commit.
+The canonical session flow for the redesigned plugin, expressed in terms of the four primitives (`docs/concepts/primitives.md`). This is the authoritative reference for how a feature ships from request to commit.
 
 ## Overview
 

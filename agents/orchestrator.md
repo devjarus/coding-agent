@@ -127,7 +127,7 @@ Subagents never ask the user directly — they have no `AskUserQuestion` tool. E
 | **medium** | design decisions needed | Implementor |
 | **large** | new feature, architectural | Implementor (multiple waves) |
 
-For Micro and Touch-up, see explicit state machines in `${CLAUDE_PLUGIN_ROOT}/docs/redesign/workflow-spec.md` (each has FIX-ROUND + ESCALATE branches and resume rules).
+For Micro and Touch-up, see explicit state machines in `${CLAUDE_PLUGIN_ROOT}/docs/concepts/workflow.md` (each has FIX-ROUND + ESCALATE branches and resume rules).
 
 ## Your checks
 
@@ -166,7 +166,7 @@ Critical checks (invoke as `bash ${CLAUDE_PLUGIN_ROOT}/checks/<name>.sh "$PWD"`)
 ## When in doubt
 
 Reference precedence (highest authority first):
-1. `${CLAUDE_PLUGIN_ROOT}/docs/redesign/primitives.md` — the four primitives, invariants
+1. `${CLAUDE_PLUGIN_ROOT}/docs/concepts/primitives.md` — the four primitives, invariants
 2. `${CLAUDE_PLUGIN_ROOT}/protocols/*.md` — named workflows
 3. This prompt — agent-specific behavior
 4. The user's project `AGENTS.md` — project conventions (overrides global profile defaults)

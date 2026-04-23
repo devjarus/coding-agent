@@ -1,6 +1,6 @@
 # Architecture
 
-The coding-agent plugin (v2) is a multi-agent software-development pipeline built from four primitives. This document maps the primitive relationships, dispatch topology, artifact flow, and gate/check placement. For formal primitive definitions see `docs/redesign/primitives.md`; for the canonical happy-path flow see `docs/redesign/workflow-spec.md`.
+The coding-agent plugin (v2) is a multi-agent software-development pipeline built from four primitives. This document maps the primitive relationships, dispatch topology, artifact flow, and gate/check placement. For formal primitive definitions see `docs/concepts/primitives.md`; for the canonical happy-path flow see `docs/concepts/workflow.md`.
 
 ## High-level topology
 
@@ -354,8 +354,8 @@ Model tuning (haiku-orchestrator, sonnet-evaluator-lightweight) is an open optim
 
 ## See also
 
-- `docs/redesign/primitives.md` — formal primitive definitions and invariants
-- `docs/redesign/workflow-spec.md` — canonical happy path + edge flows
-- `docs/redesign/lifecycle.md` — artifact states, close-out protocol, named protocols table
+- `docs/concepts/primitives.md` — formal primitive definitions and invariants
+- `docs/concepts/workflow.md` — canonical happy path + edge flows
+- `docs/concepts/lifecycle.md` — artifact states, close-out protocol, named protocols table
 - `/Users/suraj-devloper/workspace/test-agents/V2-ACCEPTANCE-TESTS.md` — acceptance suite
 - `CHANGELOG.md` — version history
