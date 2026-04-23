@@ -211,6 +211,7 @@ Edit `~/.coding-agent/profile.md` to set your stack defaults — architect reads
 | [AGENTS.md](AGENTS.md) | Working on the plugin itself (meta-dev guide) |
 | [CONTRIBUTING.md](CONTRIBUTING.md) | Contributing back |
 | [CHANGELOG.md](CHANGELOG.md) | Version history |
+| [docs/retrospective.md](docs/retrospective.md) | Why the design looks this way — v1 failure modes and how v2 addresses them |
 
 ---
 

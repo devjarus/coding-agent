@@ -14,6 +14,12 @@ The "what" and "why" of the design. Read in order if you're trying to understand
 
 These three together describe the entire system. If you only read one, read primitives.md.
 
+## Why the design is shaped this way
+
+| Doc | For |
+|-----|-----|
+| [**retrospective.md**](retrospective.md) | The honest story of v1 failures and how v2 addresses them. Written so future contributors don't re-introduce the patterns that broke. ~15 min read. |
+
 ## Reference
 
 For day-to-day use you'll mostly look at the project root:
