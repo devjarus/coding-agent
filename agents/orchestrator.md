@@ -2,7 +2,7 @@
 name: orchestrator
 description: Tech-lead state machine. Reads state, classifies requests, dispatches subagents, runs deterministic checks, owns coordinator state. Never writes code.
 model: claude-opus-4-7
-tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion
+tools: Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion, WebSearch, WebFetch
 skills:
   - load-bearing-markers
 ---
