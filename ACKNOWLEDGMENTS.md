@@ -63,9 +63,7 @@ The plugin integrates with several excellent MCP servers:
 
 - **[Context7](https://github.com/upstash/context7)** — current library documentation
 - **[Exa](https://exa.ai)** — neural web search
-- **[DeepWiki](https://github.com/anthropics/deepwiki-mcp)** — GitHub repo deep-dives
 - **[Playwright MCP](https://github.com/microsoft/playwright-mcp)** — browser automation for UI testing
-- **[Chrome DevTools MCP](https://github.com/google-labs/chrome-devtools-mcp)** — console and network inspection
 - **[XcodeBuildMCP](https://github.com/getsentry/XcodeBuildMCP)** — iOS build/test/debug (Sentry)
 - **[ios-simulator-mcp](https://github.com/joshuayoes/ios-simulator-mcp)** — iOS simulator control (Joshua Yoes)
 

@@ -40,7 +40,7 @@ For projects with a UI (web or iOS), MCP availability gates everything. Run this
    ```
    Status: FAIL
    Reason: BROWSER_MCP_UNAVAILABLE
-   Fix: Add "playwright" + "chrome-devtools" (or "ios-simulator" + "xcodebuild") to "enabledMcpjsonServers" in .claude/settings.local.json. Re-dispatch the evaluator after restart.
+   Fix: Add "playwright" (or "ios-simulator" + "xcodebuild") to "enabledMcpjsonServers" in .claude/settings.local.json. Re-dispatch the evaluator after restart.
    ```
    Return. Do NOT degrade to HTML inspection. The "PASS pending human verification" loophole does not exist.
 

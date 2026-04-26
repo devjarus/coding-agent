@@ -177,9 +177,7 @@ You:    "Build A. Now add B. Now fix C."
 |--------|---------|---------|
 | `context7` | architect, implementor, debugger, evaluator | Current library docs (memory is stale) |
 | `exa` | architect, implementor, evaluator | Web search for release notes, migration guides |
-| `deepwiki` | architect | GitHub repo deep-dives |
 | `playwright` | evaluator | Browser UI testing (required for UI PASS) |
-| `chrome-devtools` | evaluator | Console + network inspection |
 | `xcodebuild` | evaluator (iOS) | Build/test |
 | `ios-simulator` | evaluator (iOS) | Simulator control |
 

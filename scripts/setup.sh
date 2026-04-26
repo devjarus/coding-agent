@@ -35,7 +35,7 @@ if [[ -f "$SETTINGS" ]]; then
 fi
 
 # Build MCP server list
-MCP_LIST='"context7", "exa", "deepwiki", "playwright", "chrome-devtools"'
+MCP_LIST='"context7", "exa", "playwright"'
 if [[ $HAS_IOS -eq 1 ]]; then
   MCP_LIST="$MCP_LIST, \"xcodebuild\", \"ios-simulator\""
 fi
@@ -112,7 +112,7 @@ echo "What this configured:"
 echo "  • defaultMode: acceptEdits (no prompts for Read/Edit/Write/Bash/MCP)"
 echo "  • Dangerous ops still prompt: git push, git reset --hard, rm -rf, sudo, publish"
 echo "  • Unrecoverable ops blocked: rm -rf /, rm -rf ~"
-echo "  • MCPs enabled: context7, exa, deepwiki, playwright, chrome-devtools"
+echo "  • MCPs enabled: context7, exa, playwright"
 if [[ $HAS_IOS -eq 1 ]]; then
   echo "                    + xcodebuild, ios-simulator (iOS detected)"
 fi

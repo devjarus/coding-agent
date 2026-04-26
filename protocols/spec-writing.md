@@ -23,7 +23,6 @@
 3. **Test infrastructure research** — for each external dep in the stack, query MCPs and decide test tool:
    - `mcp__context7__query-docs` for SDK / framework test patterns
    - `mcp__exa__web_search_exa` for `<dep> testing 2026`
-   - `mcp__deepwiki__*` for repo-specific guidance
    - Record each as a row in `## Test Infrastructure` (tool + tradeoff + source consulted).
 4. **Draft `spec.md`** from `${CLAUDE_PLUGIN_ROOT}/templates/spec.template.md`. Include all required sections:
    - `## Tech Stack` (chosen + alternatives + tradeoff per row)
