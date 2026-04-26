@@ -83,6 +83,20 @@ Event types: `session-start`, `intake`, `dispatch`, `dispatch-returned`, `artifa
 
 If you act without logging, the `action-logged` check fails. Log first, act second.
 
+### Action log compaction
+
+`session.md` is read on every session start. An unbounded action log bloats every resume. Keep it short:
+
+1. Increment `dispatches_since_compact` in the Checkpoint block on every `dispatch` event you append.
+2. When the counter reaches **8**, before your next append, compact:
+   - Summarize all entries older than the last 3 into a single line:
+     `<ISO-timestamp> | compact | cycles N–M: <X dispatches, Y gates, Z checks>` (counts derived from the entries you're collapsing).
+   - Delete those older entries; keep the last 3 raw entries plus prior `compact` lines.
+   - Reset `dispatches_since_compact: 0`.
+3. Append a `compact` event itself does not increment the counter.
+
+Prior `compact` lines are immutable — never collapse a compact line into another compact line; they're already summaries.
+
 ## Your structured-update parsing
 
 Subagents return a YAML block in their final message. Parse it and apply:
