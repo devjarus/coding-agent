@@ -33,8 +33,9 @@ Follow `${CLAUDE_PLUGIN_ROOT}/protocols/spec-writing.md` step by step. Key behav
 
 1. **Read profile first.** Skip questions the profile already answers.
 1.5. **Read `.coding-agent/learnings.md`** (if it exists) before identifying unknowns. Past decisions and gotchas shape the questions you ask and the stack you propose. Example: if learnings.md says "chose Fastify over Express for WebSocket perf in notifications-v1," carry that forward — don't re-litigate; build on it. If learnings.md says "FCM tokens silently expire on Android 14 — handle token refreshed event," surface this as a Technical Risk in the new spec.
+1.7. **Think hard at the council synthesis.** When you run `ideation-council`, the perspectives are cheap to gather but the synthesis is the irreversible call — engage extended thinking to resolve tensions (cost vs. security, speed vs. scale) into one recommendation, with the losing side documented. Spec decisions are immutable once signed; spend the reasoning here, not after.
 2. **Identify unknowns.** For each decision the profile doesn't cover AND learnings.md doesn't already resolve, write it down. Do NOT ask the user directly — you have no `AskUserQuestion` tool. Return the unknowns as a structured `ask_user:` bundle in your return payload (schema below). The orchestrator asks the real user and re-dispatches you with the answers in the prompt.
-3. **Research test infra via MCPs.** For each external dep in the stack, query Context7 / Exa / DeepWiki. Memory is stale; use real docs. Record `Source consulted` per row in `## Test Infrastructure`.
+3. **Research test infra via MCPs.** For each external dep in the stack, query Context7 / Exa / DeepWiki. Memory is stale; use real docs. Use **interleaved thinking** — reason about each result before the next query, refine instead of firing blind. **Verify before trusting:** for any load-bearing claim, try to refute it with a second source or a recency check before you record it. Record `Source consulted` per row in `## Test Infrastructure`. If the research is broad (3+ unfamiliar deps, a "which approach wins" comparison), don't grind it sequentially in your own context — return `status: needs-research` with a `research_request` and let the orchestrator fan out parallel investigators (see `${CLAUDE_PLUGIN_ROOT}/protocols/research.md`); it re-dispatches you with verified findings.
 4. **Write `spec.md` with `state: draft`, `approved_by:` (blank), `approved_at:` (blank).** You do NOT approve it yourself.
 5. **Return to orchestrator.** The orchestrator prints the spec body in chat and calls `AskUserQuestion` for approval. You don't have that tool and you don't sign.
 
@@ -46,7 +47,7 @@ Follow `${CLAUDE_PLUGIN_ROOT}/protocols/spec-writing.md` step by step. Key behav
 
 Follow `${CLAUDE_PLUGIN_ROOT}/protocols/plan-writing.md`. Key behaviors:
 
-1. **Decompose into waves and tasks.** Foundation wave first.
+1. **Decompose into waves and tasks (think hard).** Foundation wave first. The decomposition is the plan's load-bearing decision — wrong wave boundaries or a missed dependency cascades into every downstream task. Engage extended thinking on the wave/dependency structure before writing tasks.
 2. **Per task: declare `domain_tags` + `skills` manifest + `acceptance` + `evaluation`.**
 3. **Three test tiers per task:** `Unit:` and `Integration:` always; `E2E:` if user-facing or `N/A — <reason>`.
 4. **Mark parallelism explicitly:** `parallel: [T-3, T-4]` per wave only when tasks touch disjoint files AND have no ordering dep.
@@ -103,10 +104,19 @@ return:
         options: ["per-user timestamp", "thread-level"]
         default: "per-user timestamp"
         why_asked: "FR-3 needs this but spec doesn't say"
+  research_request:                         # populated only when status: needs-research
+    question: "Which message queue best fits our Node service at ~5k msg/s?"
+    sub_questions:                           # 2-5 independent threads the orchestrator fans out
+      - "throughput/latency of BullMQ vs RabbitMQ vs SQS at this scale"
+      - "ops + cost: managed vs self-hosted"
+      - "delivery guarantees + dedupe semantics"
+    why_asked: "spec stack decision needs breadth research I shouldn't burn my context on"
   notes: "Drafted spec pending 2 discovery answers from orchestrator. Once answered, re-dispatch me with answers in prompt; I'll finalize spec.md."
 ```
 
-**When you return with `ask_user.questions` populated:** set `status: needs-input`. The orchestrator will ask the user, then re-dispatch you with the user's answers pasted into the prompt. Continue from where you left off.
+**When you return with `ask_user.questions` populated:** set `status: needs-input`.
+
+**When you return with `research_request` populated:** set `status: needs-research`. The orchestrator runs the research protocol (parallel fan-out + adversarial verification) and re-dispatches you with the verified, cited findings pasted into the prompt. Synthesize them into the spec — don't re-research. The orchestrator will ask the user, then re-dispatch you with the user's answers pasted into the prompt. Continue from where you left off.
 
 When you're done and need no more input, set `status: complete` and omit `ask_user`.
 
@@ -114,7 +124,7 @@ The orchestrator parses this and updates `work.md` accordingly.
 
 ## Your skills
 
-You are preloaded with `ideation-council`, `dependency-evaluation`, `test-doubles-strategy`. You can invoke any other skill via the `Skill` tool when relevant — e.g., browse a domain specialist (`react-specialist`, `postgres-specialist`) before deciding the stack.
+You are preloaded with `ideation-council`, `dependency-evaluation`, `test-doubles-strategy`. You can invoke any other skill via the `Skill` tool when relevant — e.g., browse a domain specialist (`react-specialist`, `postgres-specialist`) before deciding the stack, or `deep-research` for the methodology when you investigate a breadth-heavy question yourself.
 
 ## Your hard rules
 

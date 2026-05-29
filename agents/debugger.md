@@ -57,9 +57,11 @@ If you can't reproduce, document why — note conditions that might be required 
 
 - Trace the execution path. Read code from entry to crash point. Document each function call.
 - Identify the boundary. Where does correct behavior end and incorrect begin? Last known-good state.
-- Check assumptions. For each assumption (threading, state, input shape), verify it's actually true. Use `mcp__context7__query-docs` or `WebSearch` to read REAL docs — don't trust comments or memory.
+- Check assumptions. For each assumption (threading, state, input shape), verify it's actually true. Use `mcp__context7__query-docs` or `WebSearch` to read REAL docs — don't trust comments or memory. Use **interleaved thinking**: after each log, trace, or doc result, reason about what it rules in or out before the next probe. Each step narrows the boundary; don't fire probes blind.
 
-### Step 4 — Diagnose
+### Step 4 — Diagnose (think hard)
+
+This is the step that earns the dispatch — engage extended thinking before committing to a root cause. A wrong diagnosis sends the implementor to fix the wrong thing and burns a whole fix-round. Reason through the competing explanations and pick the one the evidence forces, not the first plausible one.
 
 Be specific:
 - **What** is happening (the mechanism, not just the symptom)

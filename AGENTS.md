@@ -13,11 +13,11 @@ coding-agent/
 ├── .claude-plugin/plugin.json    # plugin manifest
 ├── .mcp.json                     # MCP server config
 ├── agents/                       # 5 agent prompts (each ≤300 lines, references protocols)
-├── skills/                       # 54 skill folders, each with SKILL.md
+├── skills/                       # 55 skill folders, each with SKILL.md
 │   ├── frontend/   backend/   data/   mobile/   infra/
 │   ├── general/   practices/
-├── protocols/                    # 9 named multi-actor workflows
-│   ├── intake.md   spec-writing.md   plan-writing.md
+├── protocols/                    # 10 named multi-actor workflows
+│   ├── intake.md   research.md   spec-writing.md   plan-writing.md
 │   ├── implementation.md   review.md   fix-round.md
 │   ├── close-out.md   redirect.md   recovery.md
 ├── checks/                       # 9 deterministic verification scripts
@@ -25,10 +25,10 @@ coding-agent/
 │   ├── intent-approved.sh    spec-approved.sh    plan-approved.sh
 │   ├── ui-evidence.sh   no-raw-print.sh   close-out-complete.sh
 │   ├── action-logged.sh   active-feature-consistent.sh   revisions-resolved.sh
-├── templates/                    # 8 artifact frontmatter templates
+├── templates/                    # 9 artifact frontmatter templates
 │   ├── intent.template.md   spec.template.md   plan.template.md
 │   ├── work.template.md   review.template.md   diagnosis.template.md
-│   ├── session.template.md   learnings.template.md
+│   ├── research.template.md   session.template.md   learnings.template.md
 ├── hooks/hooks.json              # SubagentStart logging + PostToolUse validation
 ├── scripts/
 │   ├── validate.sh               # plugin self-validator
