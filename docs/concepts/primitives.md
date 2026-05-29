@@ -42,9 +42,10 @@ A durable output on disk. Typed, owned by exactly one Actor, with declared reade
 | **Plan** | How we'll do it, approved by User | `spec.md`, `plan.md` |
 | **Work** | Current state: task ledger, decisions, deviations, revisions, nits — one place | `work.md` |
 | **Findings** | What the Critic saw | `review.md`, `diagnosis.md` |
+| **Research** | Verified, cited research backing a decision | `research.md` |
 | **Memory** | Durable across features or sessions | `profile.md`, `learnings.md`, `AGENTS.md`, `ARCHITECTURE.md`, `session.md` |
 
-Five categories, five-to-seven files per active feature at most.
+Six categories, five-to-seven files per active feature at most. (`research.md` is optional — written only when a decision needs breadth-heavy investigation; otherwise research folds inline into `spec.md`.)
 
 ### States
 
@@ -236,6 +237,7 @@ A named, ordered sequence of `{Actor → Artifact} + Checks`. Lives in `protocol
 
 Named Protocols in this design:
 - `intake` — user request → Intent artifact → approval
+- `research` — lead decomposes → parallel investigators → adversarial verification → cited synthesis
 - `spec-writing` — Architect discovery → `spec.md` → approval
 - `plan-writing` — test-infra research → `plan.md` → approval
 - `implementation` — serial or parallel Implementor dispatch

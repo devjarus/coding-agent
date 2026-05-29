@@ -31,8 +31,8 @@ The **architect** assesses the query and researches **only the relevant** perspe
 ## Process
 
 1. **Assess** -- read the query and determine which perspectives are relevant
-2. **Research** -- use Glob/Grep for codebase, Context7 for library docs, Exa for web search, DeepWiki for dependencies
-3. **Synthesize** -- unified recommendation with tradeoffs and open questions
+2. **Research** -- use Glob/Grep for codebase, Context7 for library docs, Exa for web search, DeepWiki for dependencies. Use **interleaved thinking** -- reason about each result before the next query. For breadth-heavy lenses (a real stack comparison, an unfamiliar ecosystem), don't grind sequentially in your own context: return `status: needs-research` with a `research_request` so the orchestrator fans out parallel investigators and hands back verified, cited findings (see `${CLAUDE_PLUGIN_ROOT}/protocols/research.md`).
+3. **Synthesize (think hard)** -- this is the irreversible step; engage extended thinking. Unified recommendation with tradeoffs and open questions -- name a winner and why, don't average conflicting perspectives.
 
 ## Rules
 

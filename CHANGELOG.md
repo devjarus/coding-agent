@@ -5,6 +5,26 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.1.0] — 2026-05-29 — Thinking + research workflow
+
+Leverage recent Claude capabilities (adaptive/extended thinking, interleaved thinking, the multi-agent research pattern, context editing) across the plugin's thinking and research workflow.
+
+### Added (skill count: 54 → 55, protocols: 9 → 10, templates: 8 → 9)
+
+- **`protocols/research.md`** — orchestrator-led parallel research fan-out: decompose → dispatch concurrent investigators → adversarial verification → cited synthesis. Mirrors Anthropic's multi-agent research system (lead agent + 3–5 parallel subagents, interleaved thinking after tool results).
+- **`skills/practices/deep-research/SKILL.md`** — the decompose / fan-out / interleaved-think / verify / synthesize methodology, with anti-patterns.
+- **`templates/research.template.md`** — cited research artifact (findings + confidence, refuted/demoted claims, synthesis, open questions).
+- **`Research` artifact category** in `docs/concepts/primitives.md` (`research.md`, optional, append-only).
+- **Architect `research_request` return + `status: needs-research`** — escape hatch to offload breadth-heavy research to the orchestrator's fan-out, then synthesize verified findings.
+
+### Changed
+
+- **Orchestrator → `claude-opus-4-8`** (adaptive thinking) + new "Thinking & context discipline" section: steer thinking at irreversible decisions, lean on context editing / compaction, treat on-disk artifacts (`session.md`, `work.md`, `learnings.md`) as durable memory across compaction, discover MCP tools rather than enumerate them. Documented the parallel research fan-out dispatch pattern (multiple `Agent` calls in one message).
+- **Think-hard cues at irreversible decision points:** ideation-council synthesis, plan wave decomposition, debugger diagnosis, evaluator PASS verdict.
+- **Interleaved-thinking expectation** documented for architect research, debugger isolation, and the `debugging` skill — reason about each tool result before the next probe.
+- **Adversarial verification** added to `spec-writing` test-infra research — refute load-bearing claims (second source / recency check) before recording.
+- **`plan-writing.md § Practice skills routing`** — added `deep-research` row.
+
 ## [2.0.1] — 2026-04-22 — Post-2.0 hardening from real acceptance runs
 
 Patch release tracking fixes from S1–S7 acceptance scenarios in `test-agents/v2-runs/`. No primitive changes; behavior corrections, vocabulary disambiguation, and skill-set tightening.
