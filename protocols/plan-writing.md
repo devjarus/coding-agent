@@ -7,7 +7,7 @@
 ## Steps
 
 1. **Read** `spec.md` (the contract) and `learnings.md` (project gotchas).
-2. **Decompose** into waves (foundation → vertical slices) with tasks (T-N).
+2. **Decompose** into waves (foundation → vertical slices) with tasks (T-N). **Think hard here** — wave boundaries and cross-task dependencies are the plan's load-bearing decision; a missed dependency cascades into every downstream task. Engage extended thinking on the structure before writing tasks.
 3. **For each task, declare:**
    - `domain_tags`: e.g. `[backend, nodejs, security]`
    - `skills`: consult the Practice skills routing table below. Always-include: `tdd`, `test-doubles-strategy`, `code-review`, `security-checklist`. Conditional by context. Also add domain specialists matching `domain_tags`.
@@ -50,6 +50,7 @@ Used in step 3 (`skills:` per task). Rows are additive — all that match the ta
 | First feature in greenfield project | `ci-testing-standard` (invoked by close-out protocol, not by implementor) |
 | Refactoring existing files | `load-bearing-markers` (already preloaded to implementor; mention here for audit) |
 | Multi-perspective research (architect's own step 1) | `ideation-council` |
+| Breadth-heavy research / stack comparison (orchestrator-led fan-out, not a per-task implementor skill) | `deep-research` |
 | Generating project docs (orchestrator dispatches implementor with this during close-out) | `project-docs` |
 | Cutting a release | `release` |
 

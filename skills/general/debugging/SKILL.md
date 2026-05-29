@@ -4,6 +4,8 @@ description: A structured 4-step debugging process: reproduce, understand, hypot
 ---
 # Debugging
 
+> **Think between probes (interleaved thinking).** The four steps below are a reasoning loop, not a checklist to rush. After each log, test run, or doc lookup, reason about what it rules in or out before the next move — each step should narrow the search space.
+
 ## The 4-Step Process
 
 ### 1. Reproduce
