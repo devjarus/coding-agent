@@ -621,6 +621,42 @@ Third failure → escalate to User with `AskUserQuestion` and a session checkpoi
 
 ---
 
+## Diagnose-first flow (bug reports)
+
+When the user reports a symptom without a cause ("throws 500", "doesn't work", "missing"), intake does NOT classify size yet.
+
+```
+User: "delete throws 500"
+Orchestrator: dispatch Debugger (mode: inspection | full)
+Debugger:     writes diagnosis.md (root cause + fix recommendation) → returns
+Orchestrator: NOW classifies size against the diagnosis → micro/touch-up/small…
+              → Implementor fixes against diagnosis.md (not a guess)
+```
+
+Skip only when the user already named file + line + cause.
+
+## Deploy mode (operational, not a code change)
+
+A parallel mini-pipeline reached from intake's Deploy/ops variant. No feature dir, no `intent.md`, no spec/plan/review. Project declares HOW to deploy in `environments.md`; the plugin runs whatever's declared (no platform adapters).
+
+```
+User: "deploy to prod" | "rollback" | "bump env"
+Orchestrator: log `intake | deploy`
+  1. Intake    — deploy / rollback / env-change; target env (default production)
+  2. Preflight — read environments.md; run env-vars-present; pre-smoke if defined
+                 └─ fail → ABORT, surface to user
+  3. Approve   — show target + deploy_command + preflight; AskUserQuestion(proceed/cancel)
+                 └─ never execute a prod deploy without user go-ahead
+  4. Execute   — run deploy_command; capture exit + tail
+  5. Verify    — hit verify_urls
+                 └─ fail → append open-threads.md, surface, do NOT mark deployed
+  6. Record    — append deployments.md; update environments.md commit_running + last_verified
+```
+
+If `environments.md` is missing, ask once for `platform`, `deploy_command`, `env_list_command`, `expected_env_vars`, `verify_urls`, then write it from the template before proceeding.
+
+---
+
 ## Flow coverage summary
 
 | Flow | Covered? |
@@ -633,6 +669,8 @@ Third failure → escalate to User with `AskUserQuestion` and a session checkpoi
 | Plan revision mid-implementation | work.md revisions section + `revisions-resolved` check |
 | Long-running session | T=9 silent hygiene |
 | Parallel + one failure | T=5 parallel failure handling |
+| Bug report without a cause | Diagnose-first flow (debugger → diagnosis.md → classify) |
+| Deploy / rollback / env bump | Deploy mode (env-vars-present → approve → execute → verify → record) |
 
 ---
 
