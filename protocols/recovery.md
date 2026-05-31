@@ -31,7 +31,6 @@ Update `session.md § Checkpoint` (overwrites; mutable section):
 active_feature: <slug or none>
 phase: <current state machine state>
 last_completed: <slug @ ts or none>
-dispatches_since_compact: <N>
 pending_pushes: <N>
 resume_hint: "pick up at wave 2 T-4 (implementor was last dispatched 14:42)"
 ```

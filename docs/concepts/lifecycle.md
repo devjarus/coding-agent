@@ -104,7 +104,6 @@ state: active
 active_feature: none
 phase: idle                              # idle | intake | spec | plan | implement | review | fix-round | close-out
 last_completed: notifications-v1 @ 2026-04-20T16:42:00Z
-dispatches_since_compact: 0
 pending_pushes: 1 (commit 7b5f5e0)
 resume_hint: null                        # or "pick up at wave 2 T-4"
 
@@ -189,7 +188,6 @@ Overwrite the Checkpoint section only (the Action Log is append-only and untouch
 active_feature: none
 phase: idle
 last_completed: notifications-v1 @ 2026-04-20T16:42:00Z
-dispatches_since_compact: 0
 pending_pushes: 1 (commit 7b5f5e0)
 
 ## Action Log (append-only) — new entry

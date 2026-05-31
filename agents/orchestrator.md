@@ -132,17 +132,15 @@ If you act without logging, the `action-logged` check fails. Log first, act seco
 
 ### Action log compaction
 
-`session.md` is read on every session start. An unbounded action log bloats every resume. Keep it short:
+`session.md` is read on every session start. An unbounded action log bloats every resume. Keep it short — there is no counter to maintain; derive the trigger from the log itself:
 
-1. Increment `dispatches_since_compact` in the Checkpoint block on every `dispatch` event you append.
-2. When the counter reaches **8**, before your next append, compact:
-   - Summarize all entries older than the last 3 into a single line:
+1. When you go to append an entry, glance at the Action Log. If it already holds **more than 8 raw (non-`compact`) entries**, compact first:
+   - Summarize all raw entries older than the last 3 into a single line:
      `<ISO-timestamp> | compact | cycles N–M: <X dispatches, Y gates, Z checks>` (counts derived from the entries you're collapsing).
-   - Delete those older entries; keep the last 3 raw entries plus prior `compact` lines.
-   - Reset `dispatches_since_compact: 0`.
-3. Append a `compact` event itself does not increment the counter.
+   - Delete those collapsed entries; keep the last 3 raw entries plus every prior `compact` line.
+2. Prior `compact` lines are immutable — never collapse a `compact` line into another; they're already summaries, and they don't count toward the 8.
 
-Prior `compact` lines are immutable — never collapse a compact line into another compact line; they're already summaries.
+The log is its own counter: the number of raw entries since the last `compact` line IS the trigger. No `dispatches_since_compact` field to increment, reset, or let drift.
 
 ## Open threads — survive compaction
 
