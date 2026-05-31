@@ -8,24 +8,7 @@
     {
       "name": "coding-agent",
       "source": "./",
-      "description": "Multi-agent software development system. 5 agents, 55 skills, 10 named protocols, 15 deterministic checks, 12 artifact templates. First-principles redesign around 4 primitives (Actor / Artifact / Skill / Check). Real runtime testing via Playwright / iOS-simulator MCPs.",
-      "version": "2.1.0",
-      "author": {
-        "name": "Suraj",
-        "email": "devjarus91@gmail.com"
-      },
-      "homepage": "https://github.com/devjarus/coding-agent#readme",
-      "license": "MIT",
-      "keywords": [
-        "multi-agent",
-        "software-development",
-        "claude-code",
-        "coding-agent",
-        "pipeline",
-        "tdd",
-        "code-generation",
-        "agent-orchestration"
-      ]
+      "description": "Multi-agent software development system. 5 agents, 55 skills, 10 named protocols, 15 deterministic checks, 12 artifact templates. First-principles redesign around 4 primitives (Actor / Artifact / Skill / Check). Real runtime testing via Playwright / iOS-simulator MCPs."
     }
   ]
 }

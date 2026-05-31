@@ -50,7 +50,7 @@ fi
 # Nothing durable to surface -> stay silent.
 [ -n "$ctx" ] || exit 0
 
-header="coding-agent resume state (session source: ${SOURCE}). Before acting, read .coding-agent/session.md, work.md, and learnings.md per the orchestrator's session-start routine.${nl}${nl}"
+header="coding-agent resume state (session source: ${SOURCE}):${nl}${nl}"
 
 jq -n --arg c "${header}${ctx}" \
   '{hookSpecificOutput: {hookEventName: "SessionStart", additionalContext: $c}}'

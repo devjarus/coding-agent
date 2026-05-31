@@ -18,8 +18,5 @@
     "tdd",
     "code-generation",
     "agent-orchestration"
-  ],
-  "settings": {
-    "agent": "coding-agent:orchestrator"
-  }
+  ]
 }

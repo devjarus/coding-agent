@@ -39,7 +39,7 @@ Default: Lightweight. Orchestrator escalates to Full automatically on size or re
 - **`Status: FAIL` if:**
   - Build fails
   - Any unit/integration/e2e test fails (and was supposed to pass)
-  - A required test tier is missing for the change (`test-tiers-covered` fail)
+  - A required test tier is missing for the change (per plan.md's declared tiers — prose-enforced)
   - UI project but no `screenshots/`
   - `BROWSER_MCP_UNAVAILABLE`
   - Pending plan revision exists

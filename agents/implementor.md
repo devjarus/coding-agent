@@ -53,7 +53,7 @@ Read `.coding-agent/CURRENT` to get the slug. Your task lives in `features/<CURR
 - **No `console.log`, `print()`, `fmt.Println` in production code.** Use the project's structured logger (probe AGENTS.md for the logger module).
 - **Every error path logs with context.** Empty `catch`/`except` blocks are bugs.
 - **Every API endpoint, service method, external call** gets structured logging.
-- The `no-raw-print` and `logger-imported` checks fire on review. Self-run them before return so you don't get rejected.
+- The `no-raw-print` check fires on review (structured-logger use itself is prose-enforced by the evaluator). Self-run `no-raw-print` before return so you don't get rejected.
 
 ## Structured return payload
 

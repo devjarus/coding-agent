@@ -258,7 +258,7 @@ evaluation:
 
 ### Checks
 
-- `test-tiers-covered` — each wave's tasks have unit + integration rows; e2e if UI touched (or explicit `e2e: N/A` with reason)
+- Test-tier coverage (prose-enforced, not a script) — each wave's tasks have unit + integration rows; e2e if UI touched (or explicit `e2e: N/A` with reason)
 - `plan-approved` — footer present
 - `skills-match-domain` — every task's `skills:` row references real skills for its `domain_tags`
 

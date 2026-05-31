@@ -199,7 +199,7 @@ No LLM. Runs in <1s. Written in bash or a small scripting language — whatever 
 |------|-----------|---------|
 | **Input** | Before an Actor runs | `plan-approved` before Implementor dispatch |
 | **Output** | After an Actor returns | `review-has-required-sections` after Evaluator |
-| **Invariant** | Continuously (or on each dispatch) | `current-points-to-existing-feature` |
+| **Invariant** | Continuously (or on each dispatch) | `active-feature-consistent` |
 | **Evidence** | Guards a state transition | `ui-evidence` before `Status: PASS` on a UI feature |
 
 ### Checks that replace prose rules
@@ -213,14 +213,16 @@ Every prose rule that has failed twice becomes a Check. Starting list:
 | `spec-approved` | "Gate 1: user approves spec" |
 | `plan-approved` | "Gate 2: user approves plan" |
 | `test-infra-declared` | "Plan must include test infrastructure research" |
-| `test-tiers-covered` | "Each wave must require unit + integration + e2e" |
-| `tests-actually-committed` | "Evaluator invokes real tests, not curl scripts" |
+| `tests-actually-committed` | "Claimed artifacts exist + changed in git, not narrated" |
+| `review-passed` | "Commit only after the evaluator's review.md Status: PASS" |
 | `ui-evidence` | "UI projects require Playwright evidence" |
 | `no-raw-print` | "Use structured logging; no console.log in prod code" |
-| `logger-imported` | "New files must import project logger" |
+| `no-secrets-staged` | "No .env / private keys / tokens in a commit" |
 | `close-out-complete` | "Feature completion distills to learnings + clears CURRENT" |
 | `revisions-resolved` | "No pending plan revisions before next wave" |
-| `mcp-preflight` | "UI projects require Playwright/iOS MCP enabled" |
+| `active-feature-consistent` | "CURRENT points to a real, non-archived feature dir" |
+
+> Not every prose rule is codified yet — **test-tier coverage, logger-import, and UI MCP-preflight remain prose-enforced** (evaluator/implementor judgment), not scripts. Codify a rule only once it has failed twice.
 
 ### Invariants
 
