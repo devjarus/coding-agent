@@ -5,6 +5,24 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.3.0] — 2026-05-31 — Mechanical anti-fabrication enforcement
+
+Converts the most-violated anti-fabrication rules from prompt-discipline into mechanically-enforced checks — the filesystem and git become the source of truth, validated by scripts, so a careless orchestrator can't *commit* the error even when it narrates one. Driven by a live incident review (narrated "verified" while red 3×, silent Edit no-ops, guessed test counts).
+
+### Added (checks: 15 → 16)
+
+- **`scripts/run-and-record.sh`** — runs the project's verification and records the RESULT (exit code + parsed test counts + a source-tree hash) to `.coding-agent/last-verify.json`. Test counts in `work.md`/`review.md`/commit messages are now *read from this file*, never typed from memory — a number that wasn't measured can't be written.
+- **`checks/commit-gate.sh`** — one serialized commit gate: `review-passed` → `tests-actually-committed commit` → `no-secrets-staged` → `last-verify` green, stopping at the first failure. The orchestrator calls ONE script instead of hand-batching a dependency chain (the exact place it once parallel-batched and advanced on an uninspected result). `--allow-secrets` escape for the explicit user fixture-override only.
+- **`commit-msg` git hook** (installed into the consumer repo by `setup.sh`) — **rejects** any commit message claiming verification ("verified" / "passing" / "N tests pass") unless `.coding-agent/last-verify.json` is green (exit 0) and its recorded source tree still matches the working source (content-based, non-racy). "(verified)" stops being a word you can type and becomes a machine-checked fact. Degrades open if `jq` is absent; only fires on messages that make the claim.
+
+### Changed
+
+- **`agents/implementor.md` + `agents/evaluator.md`** — the self-check / test run now goes through `run-and-record.sh`; counts in `notes` and `review.md § Test Results` are quoted from the recorded file, not transcribed.
+- **`protocols/close-out.md` + `agents/orchestrator.md`** — commit gate is the single `commit-gate.sh` call; the message step forbids "verified/passing" narration and documents that the `commit-msg` hook enforces it. Checks list updated.
+- **`scripts/setup.sh`** — installs the `commit-msg` hook (backs up any existing one) as part of full setup.
+
+> Decision (overrides the earlier "prompts/checks over enforcement blockers" steer): after repeated fabrication incidents, the verification→commit path is now mechanically enforced. `.coding-agent/` stays fully gitignored (decision records are NOT tracked); durability across compaction rides on the PreCompact breadcrumb, not git.
+
 ## [2.2.1] — 2026-05-31 — Perf-regression fix + architecture-audit remediation
 
 A 5-dimension architecture/flow/perf audit (30 agents, 23 confirmed findings) traced the post-2.1 "feels slower / over-careful" regression to the anti-fabrication serialization invariant and fixed it, plus the confirmed prompt-conflict, ceremony, and config issues. All prompt edits + one regex — no new hooks or checks.

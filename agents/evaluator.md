@@ -52,10 +52,7 @@ Follow `${CLAUDE_PLUGIN_ROOT}/protocols/review.md`. Steps:
 
 1. **Read context:** `spec.md`, `plan.md`, `work.md` (especially `## Plan Revisions` — approved revisions supersede plan.md), prior `review.md` (regressions), `learnings.md`, changed files list.
 2. **Build:** `npm run build` (or project's actual command from AGENTS.md). Capture output.
-3. **Run committed tests:**
-   - `npm test` (unit)
-   - `npm run test:integration` (or equivalent — testcontainers, fastify.inject, etc.)
-   - `npm run test:e2e` (only if UI was touched)
+3. **Run committed tests — recorded, not transcribed:** `bash ${CLAUDE_PLUGIN_ROOT}/scripts/run-and-record.sh "$PWD" "<project test cmd>"`, e.g. `"npm test && npm run test:integration"` (add `&& npm run test:e2e` only if UI was touched). This runs the suite AND writes `.coding-agent/last-verify.json` (exit code + parsed counts). Your `## Test Results` section quotes the **recorded** counts/exit code — never numbers you typed from memory.
 4. **Static review:** spec compliance per FR, error handling (no silent suppression), structured logging present (`no-raw-print`), security patterns, regression check vs prior `review.md`.
 5. **Runtime check (UI only):**
    - Web: launch dev server (parse port from stderr — never hardcode), `mcp__playwright__browser_*` to drive primary flow, `mcp__playwright__browser_take_screenshot` to `features/<CURRENT>/screenshots/<descriptive-name>.png` (e.g., `home-light.png`, `mobile-375.png` — never `screenshot1.png`).

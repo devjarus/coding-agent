@@ -235,14 +235,14 @@ Critical checks (invoke as `bash ${CLAUDE_PLUGIN_ROOT}/checks/<name>.sh "$PWD"`)
 - `stack-justified`, `test-infra-declared` after the architect writes `spec.md` draft, before the spec-approval prompt
 - `spec-approved`, `plan-approved` before implementor dispatch
 - `tests-actually-committed "$PWD" wave <artifacts_written...>` on every returned task, BEFORE logging `dispatch-returned` or advancing the wave (blocks fabricated wave-complete)
-- `review-passed "$PWD" <slug>` at the commit gate, FIRST — requires the evaluator's `review.md` Status: PASS (real build+tests). Never substitute your own typecheck/build for it.
-- `tests-actually-committed "$PWD" commit` at the commit gate, BEFORE `no-secrets-staged` and before showing the diff (blocks a commit claim against a clean tree)
+- `commit-gate "$PWD" <slug>` at the commit gate, FIRST and as ONE call — internally serializes `review-passed` → `tests-actually-committed commit` → `no-secrets-staged` → `last-verify` green, stopping at the first failure. Do NOT hand-run these as separate parallel calls; the script is the serialization. Never substitute your own typecheck/build for the evaluator's `review-passed`.
 - `revisions-resolved` before next-wave dispatch
 - `ui-evidence` before review PASS on UI projects
 - `close-out-complete <slug>` before commit gate
-- `no-secrets-staged` at the commit gate, BEFORE showing diff for approval
 - `env-vars-present <repo_root> <env>` before deploy execute (deploy mode only)
 - `action-logged` continuously
+
+**Verification is recorded, never narrated.** Before claiming any test result, the Implementor/Evaluator runs `bash ${CLAUDE_PLUGIN_ROOT}/scripts/run-and-record.sh "$PWD" "<verify cmd>"`, which writes `.coding-agent/last-verify.json` (exit code + parsed counts + source-tree hash). Read your counts from that file; never type "verified" / "passing" / "N tests pass" from memory. The consumer-side `commit-msg` hook (installed by `setup.sh`) **rejects** a commit message making such a claim unless the record is green and current — so a fabricated verification cannot be committed.
 
 ## Your invariants (do not violate)
 

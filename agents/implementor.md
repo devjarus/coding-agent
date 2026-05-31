@@ -44,8 +44,7 @@ Read `.coding-agent/CURRENT` to get the slug. Your task lives in `features/<CURR
 7. **Implement.** Make tests pass. Follow existing patterns. Reuse utilities.
 8. **Self-check** before returning:
    - Run `bash ${CLAUDE_PLUGIN_ROOT}/checks/no-raw-print.sh "$PWD"` on your changed files
-   - Run the project's `npm test` / equivalent
-   - Run typecheck if applicable
+   - **Run + record verification:** `bash ${CLAUDE_PLUGIN_ROOT}/scripts/run-and-record.sh "$PWD" "<test [&& typecheck] cmd>"`. This runs the suite AND writes `.coding-agent/last-verify.json` (exit code + parsed counts + source-tree hash). Report counts in your `notes` **from that file**, never from memory. If it exits non-zero, the task is not complete — return `status: blocked` with the failure, don't claim green.
 9. **Return** with structured update payload (see below).
 
 ## Logging discipline (non-negotiable)

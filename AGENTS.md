@@ -4,7 +4,7 @@ This file tells agents (and humans) how to work on the coding-agent plugin itsel
 
 ## What This Is
 
-A Claude Code plugin: 5 agents + 55 skills + 10 named protocols + 15 deterministic checks + 12 artifact templates + 5 MCP servers. All Markdown + Bash. No build step.
+A Claude Code plugin: 5 agents + 55 skills + 10 named protocols + 16 deterministic checks + 12 artifact templates + 5 MCP servers. All Markdown + Bash. No build step.
 
 ## Project Structure (v2)
 
@@ -20,13 +20,14 @@ coding-agent/
 │   ├── intake.md   research.md   spec-writing.md   plan-writing.md
 │   ├── implementation.md   review.md   fix-round.md
 │   ├── close-out.md   redirect.md   recovery.md
-├── checks/                       # 15 deterministic verification scripts
+├── checks/                       # 16 deterministic verification scripts
 │   ├── lib.sh                    # shared helpers (sourced)
 │   ├── intent-approved.sh    spec-approved.sh    plan-approved.sh
 │   ├── ui-evidence.sh   no-raw-print.sh   close-out-complete.sh
 │   ├── action-logged.sh   active-feature-consistent.sh   revisions-resolved.sh
 │   ├── env-vars-present.sh   no-secrets-staged.sh   review-passed.sh
 │   ├── stack-justified.sh   test-infra-declared.sh   tests-actually-committed.sh
+│   ├── commit-gate.sh            # composite: review-passed→tests-committed→no-secrets→last-verify
 ├── templates/                    # 12 artifact frontmatter templates
 │   ├── intent.template.md   spec.template.md   plan.template.md
 │   ├── work.template.md   review.template.md   diagnosis.template.md
@@ -38,7 +39,8 @@ coding-agent/
 │   ├── post-edit-validate.sh     # called by PostToolUse hook
 │   ├── session-start-context.sh  # SessionStart hook — injects resume state (CURRENT, open-threads, action-log)
 │   ├── pre-compact-checkpoint.sh # PreCompact hook — durable compaction breadcrumb to agent-log.txt
-│   └── setup.sh                  # writes recommended .claude/settings.local.json into target project
+│   ├── run-and-record.sh         # runs verification, records exit+counts+tree → .coding-agent/last-verify.json
+│   └── setup.sh                  # writes .claude/settings.local.json + installs commit-msg hook (blocks fabricated "verified" claims)
 ├── docs/
 │   ├── README.md                 # docs index
 │   └── concepts/                 # primitives, workflow, lifecycle (canonical design)
