@@ -8,8 +8,8 @@
 
 | Signal | Threshold | Action |
 |--------|-----------|--------|
-| Dispatches since last `compact` | ≥ 12 | Suggest `/compact` to user with phase-specific steering text |
-| Phase transition (spec→plan, plan→implement) | always | Suggest compact if dispatches ≥ 5 since last compact |
+| Dispatches since last `compact` | ≥ 8 (the same point the action log self-compacts — see orchestrator.md § Action log compaction) | Suggest `/compact` to user with phase-specific steering text |
+| Phase transition (spec→plan, plan→implement) | always | Suggest compact at the boundary if the log has self-compacted this phase (don't track a separate count) |
 | Round 3 escalation | always | Write checkpoint; suggest `/clear` as one of the escalation options |
 | User pivots mid-pipeline | always | Write checkpoint even if user doesn't `/clear` |
 | Mid-edit on multi-step inline work (3+ Edits without dispatch) | always | Update `session.md § Checkpoint.resume_hint` after each step |
@@ -18,7 +18,7 @@
 
 `/compact` is **user-only**. Orchestrator cannot invoke it. Orchestrator's responsibility is to detect the signal and surface the suggestion via `AskUserQuestion` with a ready-to-paste steering string:
 
-> *"Context is heavy (12 dispatches since last compact). Suggest:*
+> *"Context is heavy (8 dispatches since last compact). Suggest:*
 > *`/compact focus on open findings from work.md and review.md. Drop completed dispatch transcripts.`*
 > *Run /compact now? (yes / not yet / never-this-session)"*
 
@@ -67,7 +67,7 @@ Watch for these in `work.md` task states and `session.md` Action Log — they te
 |--------|---------|--------|
 | 3+ `failed` tasks in `work.md § Tasks` | Multiple approaches failing | Populate `work.md § Handoff`, dispatch Debugger (full mode) |
 | Same task toggling `in-progress` → `failed` repeatedly | Stuck in a loop | Suggest `/compact` to user, then dispatch Debugger |
-| 5+ `dispatch` events in action log since last compact | Session getting deep | Suggest `/compact` with phase-steered text before next dispatch |
+| Dispatches since last compact ≥ 8 (see "When to trigger") | Session getting deep | Suggest `/compact` with phase-steered text before next dispatch |
 
 ## Rewind Advisory (user-only)
 
