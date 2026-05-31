@@ -5,6 +5,27 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.1] — 2026-05-31 — Perf-regression fix + architecture-audit remediation
+
+A 5-dimension architecture/flow/perf audit (30 agents, 23 confirmed findings) traced the post-2.1 "feels slower / over-careful" regression to the anti-fabrication serialization invariant and fixed it, plus the confirmed prompt-conflict, ceremony, and config issues. All prompt edits + one regex — no new hooks or checks.
+
+### Fixed
+
+- **Perf (root cause): per-task serialization collapsed to one observed boundary.** The anti-fabrication rule forced *verify → apply → check → dispatch* as **separate orchestrator turns on every returned task**, ~doubling round-trips (a 7-task feature went ~12-14 → ~28-32 turns). Reworked to a single boundary — the gating check's PASS must be observed in tool output before `Edit(complete)`, and the next dispatch must not share that check's tool block; parse + verify + apply `work_updates` + action-log now fuse into one turn. The b288581 anti-fabrication guarantee is fully intact (every claimed path still git-asserted before any `complete`).
+- **Perf: ground-truth gate batched per-wave.** On a parallel wave the gate now runs **once** at the all-returns barrier over concatenated `artifacts_written` (the check already loops a path list) instead of N serial per-task chains that eroded parallel-dispatch throughput.
+- **Validator cry-wolf:** `scripts/post-edit-validate.sh` now accepts full model IDs (`claude-opus-4-8`), mirroring `validate.sh` — no more spurious "invalid model" warning on every `orchestrator.md` edit.
+- **Conflicting prompts:** `review.md` described `tests-actually-committed` wrong ("verifies test files in plan.md") — corrected to the canonical "returned artifact paths exist + changed in git." Evaluator UI/screenshot/runtime-mandatory requirements + Refusals are now scoped to **lightweight/full** mode, so a smoke-mode UI tweak no longer over-escalates to full review.
+- **Unbounded thinking trimmed:** per-MCP-query interleaved thinking (`architect.md`, `research.md`) is now conditional on a surprising/contradicting result instead of firing on every query; routine approval-signing dropped from the orchestrator's think-hard list.
+- **Phantom checks reconciled:** `test-tiers-covered` / `logger-imported` / `mcp-preflight` / `current-points-to-existing-feature` had no scripts but were cited as runnable (even "self-run them"). Renamed the invariant example to the shipped `active-feature-consistent`, swapped phantom rows in `primitives.md` for shipped checks, and marked test-tier/logger/MCP-preflight as prose-enforced across `workflow.md`/`review.md`/`implementor.md`/`evaluator.md`.
+
+### Changed
+
+- **`plugin.json`** — removed the dead `settings.agent` block (not a manifest field; auto-selection works via the root settings.json `setup.sh` writes). **`marketplace.json`** — trimmed the plugin entry to inherit version/author from `plugin.json` (no more version drift).
+- **`recovery.md`** — unified three drifting compaction thresholds (12 / 5 / 5) to one derived `≥8` trigger, matching the action log's self-compaction point.
+- **`session-start-context.sh`** — trimmed the redundant "go read everything" header tail (the orchestrator's session-start routine already does this).
+- **`orchestrator.md`** — documented the intentional no-`mcp__*` tools allowlist so it isn't "fixed" away.
+- **Contributor docs:** `AGENTS.md` "After Making Changes" checklist now includes the CHANGELOG + version-bump step (with semver) and drops stale CLAUDE.md table refs; `CLAUDE.md` names the hygiene gate. So the repo self-maintains without prompting.
+
 ## [2.2.0] — 2026-05-31 — Deploy/ops primitives, lifecycle hooks, anti-fabrication hardening
 
 Everything between 2.1.0 and here: a deploy/ops capability, SessionStart/PreCompact hooks that make resume durable, and a hard line against fabricated progress — claims are now verified against git ground truth, and a failed Write/Edit is a hard stop for *both* the implementor and the orchestrator's own writes.
