@@ -268,25 +268,27 @@ All checks exit 0 (ok) or 1 (fail) with a JSON line to stdout. Failed checks blo
 
 ```
 coding-agent/
-├── .claude-plugin/plugin.json           ← manifest, v2.0.0
-├── .mcp.json                            ← 7 MCP servers
+├── .claude-plugin/plugin.json           ← manifest, v2.1.0
+├── .mcp.json                            ← 5 MCP servers
 ├── agents/                              ← 5 rewritten prompts (each ~150 lines)
 │   ├── orchestrator.md  architect.md  implementor.md  evaluator.md  debugger.md
-├── skills/                              ← 54 scoped-knowledge modules
+├── skills/                              ← 55 scoped-knowledge modules
 │   ├── frontend/  backend/  data/  mobile/  infra/  general/  practices/
-├── protocols/                           ← 9 named workflows (one source of truth each)
-│   ├── intake.md   spec-writing.md   plan-writing.md   implementation.md
+├── protocols/                           ← 10 named workflows (one source of truth each)
+│   ├── intake.md   research.md   spec-writing.md   plan-writing.md   implementation.md
 │   ├── review.md   fix-round.md   close-out.md   redirect.md   recovery.md
 │   └── README.md
-├── checks/                              ← 9 deterministic verification scripts (+ lib.sh helper)
+├── checks/                              ← 11 deterministic verification scripts (+ lib.sh helper)
 │   ├── lib.sh
 │   ├── intent-approved.sh   spec-approved.sh   plan-approved.sh
 │   ├── ui-evidence.sh   no-raw-print.sh   close-out-complete.sh
 │   ├── action-logged.sh   active-feature-consistent.sh   revisions-resolved.sh
-├── templates/                           ← artifact frontmatter stubs
+│   ├── env-vars-present.sh   no-secrets-staged.sh
+├── templates/                           ← 12 artifact frontmatter stubs
 │   ├── intent.template.md   spec.template.md   plan.template.md
 │   ├── work.template.md   review.template.md   diagnosis.template.md
-│   ├── session.template.md
+│   ├── research.template.md   session.template.md   learnings.template.md
+│   ├── deployments.template.md   environments.template.md   open-threads.template.md
 ├── hooks/hooks.json                     ← SubagentStart logging + PostToolUse validate
 ├── scripts/
 │   ├── setup.sh                         ← one-command per-project installer
@@ -326,9 +328,9 @@ The combination means: **a plugin subagent that needs MCP access must omit the `
 | Agent | `tools:` frontmatter | MCP access | Reason |
 |-------|---------------------|-----------|--------|
 | orchestrator | Explicit: `Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion` | None (doesn't need them) | Only orchestrator dispatches (needs `Agent`) and asks user (needs `AskUserQuestion`); both are exclusive to the main thread. |
-| architect | Omitted | Context7, Exa, DeepWiki inherit | Stack research, test-infra research |
+| architect | Omitted | Context7, Exa inherit | Stack research, test-infra research |
 | implementor | Omitted | Context7, Exa inherit | Library API verification |
-| evaluator | Omitted | Playwright, Chrome DevTools, Xcodebuild, iOS Simulator, Context7, Exa inherit | UI runtime testing (REQUIRED for `ui-evidence` check) |
+| evaluator | Omitted | Playwright, Xcodebuild, iOS Simulator, Context7, Exa inherit | UI runtime testing (REQUIRED for `ui-evidence` check) |
 | debugger | Omitted | Context7 inherits | Real library docs when diagnosing |
 
 ### Tradeoff

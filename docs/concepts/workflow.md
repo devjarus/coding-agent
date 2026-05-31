@@ -125,7 +125,7 @@ Architect reads the profile. For any unknown the profile can't answer, bundles a
 
 ### Step B — Test infrastructure research
 
-Architect researches the right test tools for each external dep via MCPs (Context7, Exa, DeepWiki). Records:
+Architect researches the right test tools for each external dep via MCPs (Context7, Exa). Records:
 
 ```markdown
 ## Test Infrastructure

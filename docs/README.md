@@ -28,10 +28,10 @@ For day-to-day use you'll mostly look at the project root:
 |------|------------------|
 | [`../ARCHITECTURE.md`](../ARCHITECTURE.md) | Topology diagrams, agent dispatch graph, artifact flow, model tier, MCP routing. The "where everything lives." |
 | [`../agents/`](../agents/) | The 5 agent prompts (orchestrator, architect, implementor, evaluator, debugger) |
-| [`../protocols/`](../protocols/) | The 9 named workflows agents reference at runtime |
-| [`../checks/`](../checks/) | The 9 deterministic verification scripts (+ `lib.sh`) |
-| [`../templates/`](../templates/) | The 8 artifact frontmatter templates |
-| [`../skills/`](../skills/) | 54 scoped knowledge modules (domain specialists + practices + general) |
+| [`../protocols/`](../protocols/) | The 10 named workflows agents reference at runtime |
+| [`../checks/`](../checks/) | The 11 deterministic verification scripts (+ `lib.sh`) |
+| [`../templates/`](../templates/) | The 12 artifact frontmatter templates |
+| [`../skills/`](../skills/) | 55 scoped knowledge modules (domain specialists + practices + general) |
 
 ## Contributing & operations
 

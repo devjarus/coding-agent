@@ -361,6 +361,6 @@ The lifecycle layer adds three things on top of primitives:
 
 1. **Artifact states** — draft → approved → active → archived, enforced via frontmatter Checks
 2. **Close-out Protocol** — automatic 8-step distillation on PASS, before commit
-3. **Named Protocols** — 9 workflows extracted from agent prompts into `protocols/*.md` so they are authored once, referenced everywhere
+3. **Named Protocols** — 10 workflows extracted from agent prompts into `protocols/*.md` so they are authored once, referenced everywhere
 
 Together with `primitives.md` and `workflow-spec.md`, this is the complete design. Implementation migrates existing agents to reference these.

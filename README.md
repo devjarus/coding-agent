@@ -4,7 +4,7 @@
 
 Drop-in multi-agent pipeline that turns `"build me a notifications system"` into shipped, tested, reviewed code — with human checkpoints at the decisions that matter and real runtime verification before anything ships.
 
-[![Version](https://img.shields.io/badge/version-2.0.1-blue)]() [![Agents](https://img.shields.io/badge/agents-5-green)]() [![Skills](https://img.shields.io/badge/skills-54-green)]() [![License](https://img.shields.io/badge/license-MIT-blue)]()
+[![Version](https://img.shields.io/badge/version-2.1.0-blue)]() [![Agents](https://img.shields.io/badge/agents-5-green)]() [![Skills](https://img.shields.io/badge/skills-55-green)]() [![License](https://img.shields.io/badge/license-MIT-blue)]()
 
 ---
 
@@ -14,7 +14,7 @@ Drop-in multi-agent pipeline that turns `"build me a notifications system"` into
 - **Human gates at the right spots.** You approve intent, spec, plan, and push. No agent fakes your signature.
 - **Runtime testing, not just typechecks.** The reviewer launches your app in a real browser (Playwright) or iOS simulator, takes screenshots, runs your committed test suites. "Compiles" isn't evidence.
 - **Memory across sessions.** Decisions, gotchas, and patterns survive. Tomorrow's architect reads yesterday's learnings. No cold starts.
-- **Research from real docs, not stale training data.** Architect queries Context7 / Exa / DeepWiki for current library APIs. No more `shadcn v2` flags in a v4 project.
+- **Research from real docs, not stale training data.** Architect queries Context7 / Exa for current library APIs. No more `shadcn v2` flags in a v4 project.
 - **Per-task skill manifest.** Architect picks the right specialist skills for each task. Implementor loads them on dispatch. No one-size-fits-all prompt.
 - **Zero-ceremony touch-ups.** Fix a button color? One intent gate, smoke review, commit. Full pipeline only when the work warrants it.
 

@@ -1,16 +1,13 @@
 ---
 name: e2e-testing
-description: End-to-end testing and visual validation using Playwright MCP and Chrome DevTools MCP. Use when verifying frontend UI, testing user flows, running Lighthouse audits, or validating application behavior in the browser.
+description: End-to-end testing and visual validation using Playwright MCP. Use when verifying frontend UI, testing user flows, inspecting network/console, capturing screenshots, or validating application behavior in the browser.
 ---
 
 # End-to-End Testing
 
-## Two MCP Servers, Two Purposes
+All browser verification runs through **Playwright MCP** (configured with `--caps=vision,testing,tracing`). It drives flows off the accessibility tree, asserts state, records traces, and inspects network + console — token-efficiently and cross-browser.
 
-| Server | Use For | Key Strength |
-|--------|---------|--------------|
-| **Playwright MCP** | Testing flows, assertions, generating locators, recording traces | Token-efficient (accessibility tree), cross-browser, built-in test assertions |
-| **Chrome DevTools MCP** | Performance profiling, Lighthouse audits, memory snapshots, debugging live sessions | Deep browser internals, network inspection, attach to existing sessions |
+> **No Lighthouse / heap profiling via MCP.** Deep performance profiling, Lighthouse scores, and memory snapshots are not available through an MCP server in this plugin. When a perf budget needs Lighthouse, run it as a committed script (e.g. `lighthouse` CLI / `@lhci/cli` in the project's test suite) and record the numbers as evidence — codified > ad-hoc.
 
 ## Playwright MCP — Testing Flows
 
@@ -52,54 +49,32 @@ Only use `--caps=vision` tools (xy-coordinate clicks) when the accessibility tre
 
 Use `browser_generate_locator` to get a Playwright-compatible locator string for any element on the page. Useful for writing persistent test scripts.
 
-## Chrome DevTools MCP — Performance & Debugging
+## Network Inspection
 
-### Lighthouse Audit
-
-Run `lighthouse_audit` on any page to get scores for:
-- Performance (LCP, FID, CLS)
-- Accessibility (contrast, ARIA, labels)
-- Best Practices (HTTPS, no errors)
-- SEO (meta tags, crawlability)
-
-Use after implementation to verify frontend quality metrics.
-
-### Performance Profiling
-
-1. `performance_start_trace` — begin recording
-2. Interact with the page (navigate, click, scroll)
-3. `performance_stop_trace` — stop and get trace data
-4. `performance_analyze_insight` — get analysis of bottlenecks
-
-### Memory Profiling
-
-`take_memory_snapshot` — detect memory leaks, especially in SPAs with route changes.
-
-### Network Inspection
-
-- `list_network_requests` — see all requests, filter by type
-- `get_network_request` — inspect specific request/response headers and body
+- `browser_network_requests` — see all requests for the page, filter by type
+- `browser_network_request` — inspect a specific request/response headers and body
 
 Useful for verifying API contracts between frontend and backend.
 
-### Console Monitoring
+## Console Monitoring
 
-- `list_console_messages` — catch client-side errors, warnings
-- `get_console_message` — inspect specific messages
+- `browser_console_messages` — catch client-side errors and warnings (filter by level)
+
+Catch unhandled exceptions and React warnings during a flow.
 
 ## Testing Patterns
 
 ### Smoke Test (after scaffolding)
 1. Start the dev server
 2. Navigate to localhost
-3. Verify the page loads (no console errors, main content visible)
+3. Verify the page loads (`browser_console_messages` shows no errors, main content visible)
 4. Take a screenshot as baseline
 
 ### Feature Verification (after implementation)
 1. Navigate to the feature
 2. Walk through the happy path (fill forms, click buttons, verify results)
 3. Test error states (invalid input, network errors)
-4. Verify accessibility (Lighthouse audit)
+4. Verify accessibility from the snapshot (labels, roles, focus order) and check contrast manually
 5. Take screenshots for review
 
 ### Visual Regression
@@ -110,15 +85,15 @@ Useful for verifying API contracts between frontend and backend.
 
 ### API Integration Test
 1. Navigate to a page that calls the API
-2. `list_network_requests` — verify correct endpoints are called
-3. `get_network_request` — verify request/response shapes match spec
-4. Check no unexpected errors in console
+2. `browser_network_requests` — verify correct endpoints are called
+3. `browser_network_request` — verify request/response shapes match spec
+4. Check no unexpected errors via `browser_console_messages`
 
 ## Which Agents Use What
 
-| Agent | Playwright MCP | Chrome DevTools MCP |
-|-------|---------------|-------------------|
-| Frontend Lead | Testing flows, assertions | Lighthouse audit after review |
-| Frontend Specialists | Verify their component works in browser | Debug rendering issues |
-| Reviewer | Verify spec compliance visually, run Lighthouse | Performance profiling, network contract validation |
-| Debugger utility | — | Console errors, network inspection |
+| Agent | Playwright MCP |
+|-------|---------------|
+| Frontend Lead | Testing flows, assertions, screenshots |
+| Frontend Specialists | Verify their component works in browser |
+| Reviewer | Verify spec compliance visually, network contract validation, console-error checks |
+| Debugger utility | Console errors, network inspection |

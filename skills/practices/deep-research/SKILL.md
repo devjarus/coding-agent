@@ -34,7 +34,6 @@ One investigator per sub-question, dispatched together. Isolated contexts mean i
 Tool per job:
 - **Glob/Grep** — what the codebase already does
 - **Context7** — current library/framework/API docs (memory is stale)
-- **DeepWiki** — open-source repo internals & patterns
 - **Exa** — neural web search for comparisons, benchmarks, postmortems
 - **WebSearch/WebFetch** — current events, vendor docs, pricing
 

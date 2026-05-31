@@ -21,7 +21,7 @@ Skip for single-fact lookups (one Context7 query inline) or anything `profile.md
 1. **Plan (lead, think hard).** Engage extended thinking. Decompose the question into 2–5 *independent* sub-questions that can be investigated without each other's results. Over-decomposition wastes subagents; one sub-question per distinct unknown. Write the decomposition to the action log.
 2. **Fan out in parallel.** Dispatch one subagent per sub-question **in a single message** (multiple `Agent` calls) so they run concurrently — Explore for codebase sweeps, architect for design/stack judgment. Each subagent:
    - gets its own isolated context (separation of concerns reduces path dependency),
-   - calls research tools in parallel where possible (Context7 / Exa / DeepWiki / WebSearch),
+   - calls research tools in parallel where possible (Context7 / Exa / WebSearch),
    - uses **interleaved thinking** — reason about each tool result before the next query, refine rather than fire blind,
    - returns a brief: each claim paired with its source and a confidence (high / medium / low).
 3. **Verify adversarially (lead).** Do not trust briefs on arrival. For every load-bearing or low-confidence claim, try to *refute* it: a second source, a counter-example, "is this version-current?". Demote or drop claims that don't survive. Record refuted claims — they are evidence too.
@@ -34,4 +34,4 @@ Skip for single-fact lookups (one Context7 query inline) or anything `profile.md
 - **Every claim is cited.** A finding without a `source` is a guess — mark it `confidence: low` and verify or drop it.
 - **Verification is not optional.** Unrefuted ≠ true; it means "survived one refutation attempt." Stop when further searches stop changing the answer, not after the first hit.
 - **Parallel by default.** Independent sub-questions go out together, not one at a time. Sequential research is the slow path.
-- **Memory is stale.** Library/API facts come from Context7/Exa/DeepWiki, not training memory (it's 2026).
+- **Memory is stale.** Library/API facts come from Context7/Exa, not training memory (it's 2026).

@@ -4,7 +4,7 @@ This file tells agents (and humans) how to work on the coding-agent plugin itsel
 
 ## What This Is
 
-A Claude Code plugin: 5 agents + 54 skills + 9 named protocols + 9 deterministic checks + 8 artifact templates + 7 MCP servers. All Markdown + Bash. No build step.
+A Claude Code plugin: 5 agents + 55 skills + 10 named protocols + 11 deterministic checks + 12 artifact templates + 5 MCP servers. All Markdown + Bash. No build step.
 
 ## Project Structure (v2)
 
@@ -20,15 +20,17 @@ coding-agent/
 │   ├── intake.md   research.md   spec-writing.md   plan-writing.md
 │   ├── implementation.md   review.md   fix-round.md
 │   ├── close-out.md   redirect.md   recovery.md
-├── checks/                       # 9 deterministic verification scripts
+├── checks/                       # 11 deterministic verification scripts
 │   ├── lib.sh                    # shared helpers (sourced)
 │   ├── intent-approved.sh    spec-approved.sh    plan-approved.sh
 │   ├── ui-evidence.sh   no-raw-print.sh   close-out-complete.sh
 │   ├── action-logged.sh   active-feature-consistent.sh   revisions-resolved.sh
-├── templates/                    # 9 artifact frontmatter templates
+│   ├── env-vars-present.sh   no-secrets-staged.sh
+├── templates/                    # 12 artifact frontmatter templates
 │   ├── intent.template.md   spec.template.md   plan.template.md
 │   ├── work.template.md   review.template.md   diagnosis.template.md
 │   ├── research.template.md   session.template.md   learnings.template.md
+│   ├── deployments.template.md   environments.template.md   open-threads.template.md
 ├── hooks/hooks.json              # SubagentStart logging + PostToolUse validation
 ├── scripts/
 │   ├── validate.sh               # plugin self-validator
