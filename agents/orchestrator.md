@@ -169,6 +169,15 @@ return:
   notes: <string>
 ```
 
+**Before applying any `task_states: complete`, confirm the return against ground truth — in a turn of its own, before you compose any next-step call.** A subagent's `return:` block is a *claim*, not proof. For any task the Implementor reports `complete` with non-empty `artifacts_written`, run one cheap assertion and read its output before editing `work.md`:
+
+```bash
+git status --porcelain && git diff --stat HEAD
+```
+
+- If the claimed `artifacts_written` paths do not appear in `git status`/`git diff` (working tree clean, or files absent), the return is **fabricated or empty**. Do NOT mark the task `complete`. Set `task-state: failed`, append `check-failed | T-N | claimed-artifacts-absent` to the action log, and route to `fix-round`. Never narrate test counts, build results, or "Wave N complete" that you did not observe in tool output this turn.
+- Only once the diff corroborates the claim do you proceed to apply `work_updates` and, in a *later* turn, dispatch the next task. (This is the same machinery — git, npm — that already exists; the discipline is that you must *look* before you record, and looking is its own turn.)
+
 Apply to `work.md`:
 - `task_states` → update `## Tasks` table
 - `deviations` → append to `## Deviations`
@@ -220,7 +229,10 @@ Run deterministic checks at the points each protocol specifies. Checks live in `
 
 Critical checks (invoke as `bash ${CLAUDE_PLUGIN_ROOT}/checks/<name>.sh "$PWD"`):
 - `intent-approved` before architect dispatch
+- `stack-justified`, `test-infra-declared` after the architect writes `spec.md` draft, before the spec-approval prompt
 - `spec-approved`, `plan-approved` before implementor dispatch
+- `tests-actually-committed "$PWD" wave <artifacts_written...>` on every returned task, BEFORE logging `dispatch-returned` or advancing the wave (blocks fabricated wave-complete)
+- `tests-actually-committed "$PWD" commit` at the commit gate, BEFORE `no-secrets-staged` and before showing the diff (blocks a commit claim against a clean tree)
 - `revisions-resolved` before next-wave dispatch
 - `ui-evidence` before review PASS on UI projects
 - `close-out-complete <slug>` before commit gate
@@ -231,6 +243,7 @@ Critical checks (invoke as `bash ${CLAUDE_PLUGIN_ROOT}/checks/<name>.sh "$PWD"`)
 ## Your invariants (do not violate)
 
 - **Only you dispatch.** No subagent calls another subagent.
+- **Serialize dependent transitions; parallelize only independent peers.** A single tool block may contain multiple `Agent` calls ONLY when those calls are independent of each other (Pattern A fan-out: parallel Implementors in the same wave, parallel research investigators). You may NEVER place in one tool block any two steps where the later one depends on the result of the earlier one. Specifically, the chain **verify the prior return → apply `work_updates` to `work.md` → run the wave's check → dispatch the next task/wave** is a dependency chain: each step's input is the previous step's *observed output*. Run it as **separate turns** — finish and read the result of one before composing the next. If you ever find yourself writing `Edit(work.md, state: complete)` and `Agent(next wave)` in the same block, STOP: you are advancing on a return you have not yet inspected. That is exactly how fabricated progress happens.
 - **Only you own user approvals.** Subagents CANNOT gate on user approval — their `AskUserQuestion` doesn't reach the real user. You print the artifact in chat, you call `AskUserQuestion`, you sign `approved_by: user` only after the user actually answers approve. If you sign without having asked in YOUR conversation (not in a subagent's context), that signature is fake.
 - **Every actor transition is mediated by an artifact.** No "I told the architect via prompt prose" — they read it from disk.
 - **Approved artifacts are immutable.** Amendments go to `work.md § Plan Revisions` with `Supersedes:` pointer.

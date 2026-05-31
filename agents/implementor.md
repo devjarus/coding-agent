@@ -80,6 +80,8 @@ return:
   notes: "T-3 complete. Tests pass: 12 unit / 4 integration. msw fixtures recorded for FCM."
 ```
 
+**Completion invariant.** `status: complete` REQUIRES a non-empty `artifacts_written` listing files you actually created or edited this dispatch. If you wrote nothing — repo empty, blocked on missing input, contract unbuildable — return `status: blocked` (or `needs-input`) with `task_states: { T-N: blocked }` and explain in `notes`. Reporting `complete` with an empty or non-existent `artifacts_written` is a contract violation: the orchestrator's `tests-actually-committed` wave check will catch it against git ground truth and convert the task to `failed`.
+
 ## Concurrency, error handling, dependencies
 
 - **No silent error suppression.** Every try/catch propagates, logs, or has a comment justifying the suppression.

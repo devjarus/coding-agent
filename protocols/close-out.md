@@ -38,6 +38,7 @@
 
 After close-out completes, **before** any git commit:
 
+0. **Run `tests-actually-committed` in commit mode** (`bash ${CLAUDE_PLUGIN_ROOT}/checks/tests-actually-committed.sh "$PWD" commit`). This asserts the working tree is non-empty (staged, modified, or untracked changes exist). If it fails, there is nothing to commit — a "commit" claim here is fabricated. **Abort the commit gate**, append `check-failed | tests-actually-committed | commit`, and surface to the user. Do not draft a commit message or show a diff.
 1. **Run `no-secrets-staged`** (`bash ${CLAUDE_PLUGIN_ROOT}/checks/no-secrets-staged.sh "$PWD"`). If it fails: surface the `file_hits` and `content_hits` to the user, append a line to `.coding-agent/open-threads.md`, and **do not proceed to step 2 until the user either un-stages the file(s) or explicitly authorizes the override** ("commit anyway — fixture/intentional"). Re-run the check after any change.
 2. Show diff (`git diff --stat HEAD` summary + first 100 lines of `git diff`) in chat.
 3. Draft commit message: `<type>(<scope>): <subject>` + body referencing FRs + `Learnings:` block.

@@ -56,4 +56,17 @@ while IFS= read -r -d '' file; do
   fi
 done < <(find "$DIR" -maxdepth 1 -name "*.md" -print0)
 
+# 6. Ground-truth backstop — real source work exists in the working tree
+# (excluding .coding-agent/ coordinator state). This is the commit-mode assertion
+# folded into the aggregate gate the orchestrator MUST pass to close out, so it
+# fires even if the orchestrator skipped the inline `tests-actually-committed
+# commit` call (no PreToolUse hook can force that — this gate is the backstop).
+if git -C "$REPO" rev-parse --git-dir >/dev/null 2>&1; then
+  src_changes=$(git -C "$REPO" status --porcelain -- . ':(exclude).coding-agent' 2>/dev/null)
+  if [[ -z "$src_changes" ]]; then
+    emit_fail "$NAME" "no source changes in working tree (excluding .coding-agent/) — close-out reached with nothing implemented"
+    exit 1
+  fi
+fi
+
 emit_pass "$NAME"
