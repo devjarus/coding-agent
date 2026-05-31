@@ -254,10 +254,39 @@ echo ""
 # ─── 9. Inventory ───────────────────────────────────────────────────
 echo "▸ Inventory"
 
+# Derive real counts from the directories (single source of truth).
 agent_count=$(find "$PLUGIN_ROOT/agents" -name "*.md" | wc -l | tr -d ' ')
 skill_count=$(find "$PLUGIN_ROOT/skills" -name "SKILL.md" | wc -l | tr -d ' ')
+protocol_count=$(find "$PLUGIN_ROOT/protocols" -name "*.md" ! -name "README.md" | wc -l | tr -d ' ')
+check_count=$(find "$PLUGIN_ROOT/checks" -name "*.sh" ! -name "lib.sh" | wc -l | tr -d ' ')
+template_count=$(find "$PLUGIN_ROOT/templates" -name "*.template.md" | wc -l | tr -d ' ')
+mcp_count=$(jq -r '(.mcpServers // {}) | length' "$PLUGIN_ROOT/.mcp.json" 2>/dev/null || echo "?")
 dim "  Agents:      $agent_count"
 dim "  Skills:      $skill_count"
+dim "  Protocols:   $protocol_count"
+dim "  Checks:      $check_count"
+dim "  Templates:   $template_count"
+dim "  MCP servers: $mcp_count"
+
+# Verify AGENTS.md's canonical inventory line matches reality. AGENTS.md is the
+# single source of truth (CLAUDE.md redirects to it); when it drifts, fix it +
+# the mirrors (ARCHITECTURE.md, docs/README.md, .claude-plugin/marketplace.json).
+summary=$(grep -m1 -E '[0-9]+ agents \+ .* [0-9]+ MCP servers' "$PLUGIN_ROOT/AGENTS.md" 2>/dev/null || true)
+if [ -z "$summary" ]; then
+  warn "AGENTS.md canonical inventory line not found — cannot verify counts"
+else
+  doc_n() { echo "$summary" | grep -oE "[0-9]+ $1" | grep -oE '^[0-9]+' | head -1; }
+  drift=0
+  for pair in "agents:$agent_count" "skills:$skill_count" "named protocols:$protocol_count" \
+              "deterministic checks:$check_count" "artifact templates:$template_count" "MCP servers:$mcp_count"; do
+    label="${pair%:*}"; real="${pair##*:}"; doc=$(doc_n "$label")
+    if [ -n "$doc" ] && [ "$doc" != "$real" ]; then
+      error "inventory drift: $real $label on disk, AGENTS.md says $doc — sync AGENTS.md + ARCHITECTURE.md + docs/README.md + marketplace.json"
+      drift=1
+    fi
+  done
+  [ "$drift" -eq 0 ] && pass "AGENTS.md inventory counts match the directories"
+fi
 
 echo ""
 echo "═══════════════════════════════════════════"
