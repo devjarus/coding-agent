@@ -5,6 +5,33 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] — 2026-05-31 — Deploy/ops primitives, lifecycle hooks, anti-fabrication hardening
+
+Everything between 2.1.0 and here: a deploy/ops capability, SessionStart/PreCompact hooks that make resume durable, and a hard line against fabricated progress — claims are now verified against git ground truth, and a failed Write/Edit is a hard stop for *both* the implementor and the orchestrator's own writes.
+
+### Added (checks: 14 → 15, templates: 9 → 12)
+
+- **Deploy mode** in `agents/orchestrator.md` — `deploy` / `rollback` / `env-change` with a mandatory production-approval gate (never deploys without the user's go-ahead in the orchestrator's own conversation), preflight env-var diff, post-deploy URL verification, and `deploy` / `rollback` action-log events.
+- **Operations artifact category** + templates: `deployments.template.md`, `environments.template.md`, `open-threads.template.md`. `open-threads.md` is append-only and survives `/compact`.
+- **Lifecycle hooks** (`hooks/hooks.json` + scripts): **SessionStart** injects resume state (CURRENT, open-threads, action-log tail) via `scripts/session-start-context.sh`; **PreCompact** writes a durable breadcrumb via `scripts/pre-compact-checkpoint.sh`; SubagentStart logging + PostToolUse frontmatter validation. All no-op outside a coding-agent project.
+- **New checks:** `env-vars-present`, `no-secrets-staged` (blocks `.env` / private keys / token patterns at the commit gate), `stack-justified` + `test-infra-declared` (gate the spec draft), `review-passed` (commit gate requires the evaluator's `review.md` Status: PASS).
+- **`scripts/validate.sh`** — check-reference linter (warns on named-but-unimplemented checks) + a derive-and-verify Inventory section that FAILS if `AGENTS.md`'s canonical counts drift from directory reality.
+
+### Changed
+
+- **MCP servers 7 → 5** — dropped `chrome-devtools` and `deepwiki`; scrubbed stale references across ~10 files; `e2e-testing` skill rewritten Playwright-only.
+- **Implementor: build, don't review.** Removed `code-review` from preloaded skills (it's the evaluator's primitive — carrying it primed review-mode), added a "ship files, not findings" mission with teeth, and a rule for bugs-found-while-building (log to nits, keep building). Fixes off-task implementor returns observed in live runs.
+- **Orchestrator: derive, don't duplicate.** Wave ground-truth gate now points at the codified `tests-actually-committed wave` check instead of an ad-hoc `git status`; log-compaction trigger is derived from the action log itself (removed the hand-synced `dispatches_since_compact` Checkpoint field).
+- **Diagnose-first** for bug reports — symptom-without-cause routes to the debugger before size classification.
+- **Vendor-neutral AGENTS.md** emitted on close-out (no `.coding-agent/` / protocol / check leakage into the consumer project's docs).
+
+### Fixed
+
+- **Anti-fabrication ground-truth gate.** A subagent's `return:` is a claim, not proof: completion is now verified against git before `work.md` records it. The orchestrator must never narrate test counts or "Wave N complete" it didn't observe in tool output that turn.
+- **A failed Write/Edit is a HARD STOP — for both actors.** An `Edit` whose `old_string` doesn't match, or a `Write` to an unread file, doesn't land. The implementor and the orchestrator (its own coordinator-state and inline micro-task writes) must verify the edit returned success before claiming the change — this is what produced earlier fabricated "verified" commits.
+- **Commit gate requires evaluator review PASS** (`review-passed`) before any commit — no substituting a partial `tsc`/build signal for the evaluator's verdict.
+- **Coordinator artifacts no longer deleted by git.** `.coding-agent/` gitignoring is mandatory and non-skippable at session-start preflight; staging is always scoped (`git add -- . ':(exclude).coding-agent'`) — NEVER `git add -A`. Prevents `intent.md`/`spec.md`/`plan.md`/`session.md` being swept in and then erased by a later `git reset --hard`/`clean`.
+
 ## [2.1.0] — 2026-05-29 — Thinking + research workflow
 
 Leverage recent Claude capabilities (adaptive/extended thinking, interleaved thinking, the multi-agent research pattern, context editing) across the plugin's thinking and research workflow.
