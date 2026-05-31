@@ -60,8 +60,9 @@ Follow `${CLAUDE_PLUGIN_ROOT}/protocols/review.md`. Steps:
 5. **Runtime check (UI only):**
    - Web: launch dev server (parse port from stderr — never hardcode), `mcp__playwright__browser_*` to drive primary flow, `mcp__playwright__browser_take_screenshot` to `features/<CURRENT>/screenshots/<descriptive-name>.png` (e.g., `home-light.png`, `mobile-375.png` — never `screenshot1.png`).
    - iOS: build via `mcp__xcodebuild__*`, launch via `mcp__ios-simulator__*`, screenshot.
-6. **Write `review.md`** from `${CLAUDE_PLUGIN_ROOT}/templates/review.template.md`. **Frontmatter `state: active`** (not `complete` — that's task-state vocab from `work.md § Tasks`). The orchestrator flips `state: archived` during close-out. Required sections: `## Status` (PASS|FAIL — this is review status, not artifact state), `## Build Result`, `## Test Results`, `## Findings`, `## Dispatch Recommendation`; `## Screenshots` for UI.
-7. **Return** with structured payload.
+6. **Decide the verdict (think hard before PASS).** Every FAIL needs evidence — but PASS is the riskier call: it ships. Before signing PASS, engage extended thinking to confirm you haven't mistaken "tests are green" for "acceptance criteria are met." Walk each FR against real evidence, not assumed coverage.
+7. **Write `review.md`** from `${CLAUDE_PLUGIN_ROOT}/templates/review.template.md`. **Frontmatter `state: active`** (not `complete` — that's task-state vocab from `work.md § Tasks`). The orchestrator flips `state: archived` during close-out. Required sections: `## Status` (PASS|FAIL — this is review status, not artifact state), `## Build Result`, `## Test Results`, `## Findings`, `## Dispatch Recommendation`; `## Screenshots` for UI.
+8. **Return** with structured payload.
 
 ## Loading on-demand skills
 

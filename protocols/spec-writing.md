@@ -23,6 +23,8 @@
 3. **Test infrastructure research** — for each external dep in the stack, query MCPs and decide test tool:
    - `mcp__context7__query-docs` for SDK / framework test patterns
    - `mcp__exa__web_search_exa` for `<dep> testing 2026`
+   - Use **interleaved thinking** — reason about each result before the next query. **Verify before trusting:** try to refute each load-bearing claim with a second source or a recency check before recording it.
+   - For breadth-heavy research (3+ unfamiliar deps, a "which approach wins" comparison), don't grind sequentially — return `status: needs-research` with a `research_request`; the orchestrator runs `${CLAUDE_PLUGIN_ROOT}/protocols/research.md` (parallel fan-out + verification) and re-dispatches you with cited findings.
    - Record each as a row in `## Test Infrastructure` (tool + tradeoff + source consulted).
 4. **Draft `spec.md`** from `${CLAUDE_PLUGIN_ROOT}/templates/spec.template.md`. Include all required sections:
    - `## Tech Stack` (chosen + alternatives + tradeoff per row)
