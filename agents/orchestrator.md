@@ -170,14 +170,16 @@ return:
   notes: <string>
 ```
 
-**Before applying any `task_states: complete`, confirm the return against ground truth — in a turn of its own, before you compose any next-step call.** A subagent's `return:` block is a *claim*, not proof. For any task the Implementor reports `complete` with non-empty `artifacts_written`, run one cheap assertion and read its output before editing `work.md`:
+**Before applying any `task_states: complete`, confirm the return against ground truth — in a turn of its own, before you compose any next-step call.** A subagent's `return:` block is a *claim*, not proof. There is ONE codified gate for this — do not improvise a git command:
 
 ```bash
-git status --porcelain && git diff --stat HEAD
+bash ${CLAUDE_PLUGIN_ROOT}/checks/tests-actually-committed.sh "$PWD" wave <artifacts_written...>
 ```
 
-- If the claimed `artifacts_written` paths do not appear in `git status`/`git diff` (working tree clean, or files absent), the return is **fabricated or empty**. Do NOT mark the task `complete`. Set `task-state: failed`, append `check-failed | T-N | claimed-artifacts-absent` to the action log, and route to `fix-round`. Never narrate test counts, build results, or "Wave N complete" that you did not observe in tool output this turn.
-- Only once the diff corroborates the claim do you proceed to apply `work_updates` and, in a *later* turn, dispatch the next task. (This is the same machinery — git, npm — that already exists; the discipline is that you must *look* before you record, and looking is its own turn.)
+Pass the Implementor's `artifacts_written` paths verbatim. The check asserts against git that those paths exist and changed this cycle; it fails on a missing file, a path git can't see, or an empty `artifacts_written` list.
+
+- If it exits non-zero, the return is **fabricated or empty**. Do NOT mark the task `complete`. Set `task-state: failed`, append `check-failed | tests-actually-committed | T-N` to the action log, and route to `fix-round`. Never narrate test counts, build results, or "Wave N complete" that you did not observe in tool output this turn.
+- Only once the check passes do you apply `work_updates` and, in a *later* turn, dispatch the next task. Look before you record; looking is its own turn.
 
 Apply to `work.md`:
 - `task_states` → update `## Tasks` table
