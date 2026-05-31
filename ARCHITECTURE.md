@@ -289,7 +289,7 @@ coding-agent/
 │   ├── work.template.md   review.template.md   diagnosis.template.md
 │   ├── research.template.md   session.template.md   learnings.template.md
 │   ├── deployments.template.md   environments.template.md   open-threads.template.md
-├── hooks/hooks.json                     ← SubagentStart logging + PostToolUse validate
+├── hooks/hooks.json                     ← SessionStart context-inject + PreCompact breadcrumb + SubagentStart logging + PostToolUse validate
 ├── scripts/
 │   ├── setup.sh                         ← one-command per-project installer
 │   ├── validate.sh                      ← plugin self-validator

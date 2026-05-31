@@ -31,10 +31,12 @@ coding-agent/
 │   ├── work.template.md   review.template.md   diagnosis.template.md
 │   ├── research.template.md   session.template.md   learnings.template.md
 │   ├── deployments.template.md   environments.template.md   open-threads.template.md
-├── hooks/hooks.json              # SubagentStart logging + PostToolUse validation
+├── hooks/hooks.json              # SessionStart context-inject + PreCompact breadcrumb + SubagentStart logging + PostToolUse validation
 ├── scripts/
 │   ├── validate.sh               # plugin self-validator
 │   ├── post-edit-validate.sh     # called by PostToolUse hook
+│   ├── session-start-context.sh  # SessionStart hook — injects resume state (CURRENT, open-threads, action-log)
+│   ├── pre-compact-checkpoint.sh # PreCompact hook — durable compaction breadcrumb to agent-log.txt
 │   └── setup.sh                  # writes recommended .claude/settings.local.json into target project
 ├── docs/
 │   ├── README.md                 # docs index
