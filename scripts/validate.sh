@@ -153,7 +153,7 @@ referenced_checks=$(
       awk '/^## Checks fired/{s=1;next} s&&/^#/{s=0} s&&/^\|/{print}' "$pf"
     done
     awk '/Critical checks/{s=1;next} s&&/^##/{s=0} s&&/^- `/{print}' "$PLUGIN_ROOT/agents/orchestrator.md"
-  } | grep -oE '`[a-z][a-z0-9-]+' | tr -d '`' | sort -u
+  } | sed -nE 's/^[^`]*`([a-z][a-z0-9-]+).*/\1/p' | sort -u
 )
 check_refs_missing=""
 for ref in $referenced_checks; do

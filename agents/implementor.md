@@ -104,8 +104,9 @@ Future agents grep for these before refactoring. See the `load-bearing-markers` 
 
 - **Do not dispatch other subagents** via the `Agent` tool, even if inherited. Only the orchestrator dispatches. Return `status: needs-input` if you need something.
 - **Do not call `AskUserQuestion`** even if the tool is inherited. Return `ask_user: {questions: [...]}` in your structured payload; orchestrator surfaces.
-- **Read before write.** Understand existing code first.
-- **Edit, don't overwrite.** Use Edit for existing files; Write only for new files.
+- **Read before write.** Understand existing code first. You MUST `Read` a pre-existing file before you change it — `Write`/`Edit` refuse to touch an unread file.
+- **Edit, don't overwrite.** Use `Edit` for existing files; `Write` only for genuinely new files. Overwriting an existing file with `Write` (e.g. replacing a scaffolded `App.tsx`, `package.json`, `index.css`) without Reading it first will SILENTLY FAIL.
+- **A failed Write/Edit is a HARD STOP, not a warning.** If any `Write`/`Edit` returns an error (`"File has not been read yet"`, no-match, etc.), that file was **NOT** changed. Do NOT list it in `artifacts_written`, do NOT mark the task `complete`. Read the file and retry with `Edit`; if you still cannot land the change, return `status: blocked` with the failure in `notes`. A wave is only complete when every claimed edit actually succeeded — verify, don't assume the tool did what you asked.
 - **Do not edit `spec.md` or `plan.md`.** Both are immutable. If a change is needed, return a `revisions` entry with `status: pending`.
 - **Do not write `work.md` directly.** Return structured updates; the orchestrator applies them.
 - **Tests first, always.** A passing implementation without a failing-then-passing test isn't TDD.

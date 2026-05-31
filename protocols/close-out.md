@@ -38,12 +38,13 @@
 
 After close-out completes, **before** any git commit:
 
-0. **Run `tests-actually-committed` in commit mode** (`bash ${CLAUDE_PLUGIN_ROOT}/checks/tests-actually-committed.sh "$PWD" commit`). This asserts the working tree is non-empty (staged, modified, or untracked changes exist). If it fails, there is nothing to commit — a "commit" claim here is fabricated. **Abort the commit gate**, append `check-failed | tests-actually-committed | commit`, and surface to the user. Do not draft a commit message or show a diff.
-1. **Run `no-secrets-staged`** (`bash ${CLAUDE_PLUGIN_ROOT}/checks/no-secrets-staged.sh "$PWD"`). If it fails: surface the `file_hits` and `content_hits` to the user, append a line to `.coding-agent/open-threads.md`, and **do not proceed to step 2 until the user either un-stages the file(s) or explicitly authorizes the override** ("commit anyway — fixture/intentional"). Re-run the check after any change.
-2. Show diff (`git diff --stat HEAD` summary + first 100 lines of `git diff`) in chat.
-3. Draft commit message: `<type>(<scope>): <subject>` + body referencing FRs + `Learnings:` block.
-4. **`AskUserQuestion`**: `approve push` / `commit local only` / `redo message` / `abort`.
-5. On approve push → `git commit && git push`. On commit local only → `git commit`, set `session.md.pending_pushes` += 1.
+0. **Run `review-passed`** (`bash ${CLAUDE_PLUGIN_ROOT}/checks/review-passed.sh "$PWD" <slug>`). Asserts the evaluator wrote `review.md` with `## Status: PASS` — a real build + test verdict from a different actor. If it fails, there is **no passing review**: a commit here would ship unverified (or broken) work. **Abort the commit gate**, append `check-failed | review-passed`, and route back to `review` (or `fix-round` if findings exist). NEVER substitute your own `tsc`/typecheck/build for the evaluator's review — a partial signal like `tsc -b` passing is not a PASS.
+1. **Run `tests-actually-committed` in commit mode** (`bash ${CLAUDE_PLUGIN_ROOT}/checks/tests-actually-committed.sh "$PWD" commit`). This asserts the working tree is non-empty (staged, modified, or untracked changes exist). If it fails, there is nothing to commit — a "commit" claim here is fabricated. **Abort the commit gate**, append `check-failed | tests-actually-committed | commit`, and surface to the user. Do not draft a commit message or show a diff.
+2. **Run `no-secrets-staged`** (`bash ${CLAUDE_PLUGIN_ROOT}/checks/no-secrets-staged.sh "$PWD"`). If it fails: surface the `file_hits` and `content_hits` to the user, append a line to `.coding-agent/open-threads.md`, and **do not proceed to the next step until the user either un-stages the file(s) or explicitly authorizes the override** ("commit anyway — fixture/intentional"). Re-run the check after any change.
+3. Show diff (`git diff --stat HEAD` summary + first 100 lines of `git diff`) in chat.
+4. Draft commit message: `<type>(<scope>): <subject>` + body referencing FRs + `Learnings:` block.
+5. **`AskUserQuestion`**: `approve push` / `commit local only` / `redo message` / `abort`.
+6. On approve push → `git commit && git push`. On commit local only → `git commit`, set `session.md.pending_pushes` += 1.
 
 ## Touch-up close-out (lightweight)
 
@@ -67,5 +68,6 @@ Micro tasks have no feature dir. "Close-out" is just appending action-log: `micr
 | `session-updated` | step 6 verification |
 | `no-draft-artifacts` | step 1 verification |
 | `close-out-complete` | aggregate of all above (single command) |
+| `review-passed` | commit gate, step 0 — requires the evaluator's `review.md` Status: PASS before any commit |
 | `commit-has-learnings` | commit gate (Medium/Large only) |
-| `no-secrets-staged` | commit gate, step 1 — blocks .env / private keys / common token patterns |
+| `no-secrets-staged` | commit gate, step 2 — blocks .env / private keys / common token patterns |
