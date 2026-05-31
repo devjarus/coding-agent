@@ -22,7 +22,7 @@ Skip for single-fact lookups (one Context7 query inline) or anything `profile.md
 2. **Fan out in parallel.** Dispatch one subagent per sub-question **in a single message** (multiple `Agent` calls) so they run concurrently — Explore for codebase sweeps, architect for design/stack judgment. Each subagent:
    - gets its own isolated context (separation of concerns reduces path dependency),
    - calls research tools in parallel where possible (Context7 / Exa / WebSearch),
-   - uses **interleaved thinking** — reason about each tool result before the next query, refine rather than fire blind,
+   - reasons between queries **only when a result surprises or contradicts the working hypothesis** — refine then, rather than spending a thinking pass on every confirming result,
    - returns a brief: each claim paired with its source and a confidence (high / medium / low).
 3. **Verify adversarially (lead).** Do not trust briefs on arrival. For every load-bearing or low-confidence claim, try to *refute* it: a second source, a counter-example, "is this version-current?". Demote or drop claims that don't survive. Record refuted claims — they are evidence too.
 4. **Synthesize.** Reconcile across briefs. Resolve contradictions explicitly (don't average them). When the result feeds a spec, dispatch the architect to fold findings into `## Approach` / `## Alternatives` / `## Test Infrastructure`; otherwise the orchestrator writes `research.md` directly.

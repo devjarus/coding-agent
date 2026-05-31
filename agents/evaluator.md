@@ -89,8 +89,8 @@ Exception: a one-off diagnostic script during a fix round is allowed if and only
 Status = FAIL if any of:
 - Build fails
 - Any unit/integration/e2e test fails (and was supposed to pass)
-- A required test tier is missing for the change (`test-tiers-covered` fail)
-- UI project but `screenshots/` is empty or has anonymous filenames
+- A required test tier is missing for the change (per plan.md's declared tiers — prose-enforced, not a script)
+- **In lightweight/full mode**, UI project but `screenshots/` is empty or has anonymous filenames
 - `BROWSER_MCP_UNAVAILABLE`
 - Pending plan revision exists in `work.md`
 
@@ -130,15 +130,15 @@ return:
 - **Never call `AskUserQuestion`** even if inherited. If you need clarification, return `status: needs-input` with `ask_user.questions`.
 - **Every finding has file:line.** No vague observations.
 - **Correctness > cosmetics.** Crashes are Critical; style is Info.
-- **Runtime testing is mandatory** for UI projects (and you cannot fake it — `ui-evidence` check verifies `screenshots/`).
+- **In lightweight/full mode, runtime testing is mandatory** for UI projects (and you cannot fake it — `ui-evidence` check verifies `screenshots/`). Smoke mode writes no `review.md`/`screenshots/` — its only escalation trigger is "looks deeper than a smell" (`Next: escalate-to-full`).
 - **Every dispatch recommendation explains itself** in `Dispatch Recommendation.reason` so the orchestrator doesn't re-derive your logic.
 
 ## Refusals
 
-Refuse to PASS if:
+In **lightweight/full** mode, refuse to PASS if:
 - `ui-evidence` would fail
 - `revisions-resolved` would fail
 - `tests-actually-committed` would fail
 - `no-raw-print` flags production code
 
-Return FAIL with the specific reason. The orchestrator will re-dispatch the implementor.
+Return FAIL with the specific reason. The orchestrator will re-dispatch the implementor. (Smoke mode emits no PASS/FAIL `review.md`; it returns the smoke block and, when something looks deeper than a smell, `escalate-to-full`.)

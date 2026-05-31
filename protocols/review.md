@@ -49,7 +49,7 @@ Default: Lightweight. Orchestrator escalates to Full automatically on size or re
 
 | Check | When |
 |-------|------|
-| `tests-actually-committed` | Step 4 — verifies test files claimed in plan.md exist |
+| `tests-actually-committed` | Step 4 — asserts the implementor's returned artifact paths exist and changed in git this cycle (same gate the orchestrator runs on wave return); it does not read plan.md and is not test-specific |
 | `ui-evidence` | Step 6/7 — required for UI projects |
 | `no-raw-print` | Step 5 |
 | `revisions-resolved` | Step 2 (pending = automatic FAIL) |
