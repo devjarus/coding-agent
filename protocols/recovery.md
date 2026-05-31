@@ -86,5 +86,5 @@ Advisory only — continue normally if user declines.
 
 | Check | When |
 |-------|------|
-| `session-state-consistent` | session start |
+| `active-feature-consistent` | session start |
 | `action-logged` | continuous |

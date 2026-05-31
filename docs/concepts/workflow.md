@@ -52,7 +52,7 @@ Profile: devjarus-default. Open PRs: 0. Ready.
 
 ### Checks at session start
 
-- `session-state-consistent` — `CURRENT` points to an existing feature dir or is empty
+- `active-feature-consistent` — `CURRENT` points to an existing feature dir or is empty
 - `profile-loaded` — `~/.coding-agent/profile.md` exists; if missing, Orchestrator prompts User to initialize on first feature
 
 ---
@@ -332,9 +332,9 @@ If mid-task the Implementor hits a design question the plan doesn't answer, it s
 
 ### Checks
 
-- `work-ledger-consistent` — `work.md` task states match the dispatched Actors
 - `revisions-resolved` — no `Status: pending` revisions before next wave dispatch
 - `no-raw-print` — Evaluator Output check (but also self-run by Implementor before return)
+- Work-ledger consistency — `work.md` task states reflect the dispatched Actors (orchestrator-maintained as it parses returns; not a separate script)
 
 **Plan revision supersession.** Approved `plan.md` is immutable. If wave work reveals the plan needs to change, the revision lives in `work.md` `## Plan Revisions`, with `Supersedes: plan.md §<section>` referencing the original. Readers (Evaluator, next Implementor dispatch) consult both files — `plan.md` for the base contract, `work.md` for approved amendments. Same applies to spec-level changes (rare, but possible): amendment in `work.md`, spec.md untouched.
 
@@ -374,7 +374,7 @@ The Evaluator **invokes committed test suites**. It does not write curl pipeline
 ### Checks
 
 - `tests-actually-committed` — test files the plan promised exist on disk
-- `ui-screenshots-exist` — if UI project, `screenshots/` non-empty; named files
+- `ui-evidence` — if UI project, `screenshots/` non-empty; named files
 - `review-has-required-sections` — `## Status`, `## Findings`, `## Dispatch Recommendation`
 
 ### FAIL branches into fix-round
@@ -492,8 +492,8 @@ Orchestrator: commits, pushes, appends action-log entry | micro | commit <sha> |
 
 **Checks that fire on Micro:**
 - `action-logged` — every Orchestrator action has a corresponding log entry
-- Evaluator's smoke-mode output-checks (`tests-passed`, `typecheck-clean`, `no-raw-print`)
-- `commit-message-has-context` — commit message body references the micro action description
+- `no-raw-print` — plus the evaluator's smoke-mode verification (typecheck + tests must pass)
+- Commit message body references the micro action description (orchestrator self-check, not a script)
 
 **Checks that are skipped:**
 - `intent-approved` footer check — no intent.md file

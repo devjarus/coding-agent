@@ -200,7 +200,7 @@ No LLM. Runs in <1s. Written in bash or a small scripting language — whatever 
 | **Input** | Before an Actor runs | `plan-approved` before Implementor dispatch |
 | **Output** | After an Actor returns | `review-has-required-sections` after Evaluator |
 | **Invariant** | Continuously (or on each dispatch) | `current-points-to-existing-feature` |
-| **Evidence** | Guards a state transition | `ui-screenshots-exist` before `Status: PASS` on a UI feature |
+| **Evidence** | Guards a state transition | `ui-evidence` before `Status: PASS` on a UI feature |
 
 ### Checks that replace prose rules
 
@@ -215,7 +215,7 @@ Every prose rule that has failed twice becomes a Check. Starting list:
 | `test-infra-declared` | "Plan must include test infrastructure research" |
 | `test-tiers-covered` | "Each wave must require unit + integration + e2e" |
 | `tests-actually-committed` | "Evaluator invokes real tests, not curl scripts" |
-| `ui-screenshots-exist` | "UI projects require Playwright evidence" |
+| `ui-evidence` | "UI projects require Playwright evidence" |
 | `no-raw-print` | "Use structured logging; no console.log in prod code" |
 | `logger-imported` | "New files must import project logger" |
 | `close-out-complete` | "Feature completion distills to learnings + clears CURRENT" |

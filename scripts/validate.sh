@@ -145,6 +145,31 @@ done
 
 pass "skill references checked"
 
+# Check that every check named in a protocol "## Checks fired" table or the
+# orchestrator critical-checks list resolves to a checks/<name>.sh script.
+referenced_checks=$(
+  {
+    for pf in "$PLUGIN_ROOT"/protocols/*.md; do
+      awk '/^## Checks fired/{s=1;next} s&&/^#/{s=0} s&&/^\|/{print}' "$pf"
+    done
+    awk '/Critical checks/{s=1;next} s&&/^##/{s=0} s&&/^- `/{print}' "$PLUGIN_ROOT/agents/orchestrator.md"
+  } | grep -oE '`[a-z][a-z0-9-]+' | tr -d '`' | sort -u
+)
+check_refs_missing=""
+for ref in $referenced_checks; do
+  [ -f "$PLUGIN_ROOT/checks/$ref.sh" ] || check_refs_missing="$check_refs_missing $ref"
+done
+if [ -z "$check_refs_missing" ]; then
+  pass "all referenced checks resolve to scripts"
+else
+  # Warn (not error): some names are conceptual sub-conditions covered by a
+  # composite check (e.g. close-out-complete) or action-log events, not drift.
+  # Surfaced for triage so genuinely-missing scripts get caught early.
+  for m in $check_refs_missing; do
+    warn "referenced check '$m' has no checks/$m.sh (composite-covered, event, or drift — triage)"
+  done
+fi
+
 echo ""
 
 # ─── 6. Artifact path checks ────────────────────────────────────────
