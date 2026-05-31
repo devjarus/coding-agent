@@ -62,12 +62,9 @@ Micro tasks have no feature dir. "Close-out" is just appending action-log: `micr
 
 | Check | When |
 |-------|------|
-| `close-out-frozen` | step 1 verification |
-| `learnings-appended` | step 2 verification |
-| `current-cleared` | step 5 verification |
-| `session-updated` | step 6 verification |
-| `no-draft-artifacts` | step 1 verification |
-| `close-out-complete` | aggregate of all above (single command) |
-| `review-passed` | commit gate, step 0 — requires the evaluator's `review.md` Status: PASS before any commit |
-| `commit-has-learnings` | commit gate (Medium/Large only) |
+| `close-out-complete` | step 8 — one aggregate script; verifies artifacts archived, learnings appended, CURRENT cleared, session updated, and no draft artifacts remain |
+| `review-passed` | commit gate, step 0 — requires the evaluator's review.md Status: PASS before any commit |
+| `tests-actually-committed` | commit gate, step 1 — working tree non-empty (commit mode) |
 | `no-secrets-staged` | commit gate, step 2 — blocks .env / private keys / common token patterns |
+
+The Medium/Large commit message must carry a `Learnings:` block (step 4) — an orchestrator convention, not a separate script.

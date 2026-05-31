@@ -32,6 +32,7 @@
 
 | Check | When |
 |-------|------|
-| `redirect-classified` | every user message during active pipeline |
 | `revisions-resolved` | continuous |
 | `action-logged` | continuous |
+
+Every user message during an active pipeline is recorded with a `redirect-classified` action-log entry (step 3) — that's an event, not a separate check script.

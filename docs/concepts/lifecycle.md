@@ -198,16 +198,17 @@ pending_pushes: 1 (commit 7b5f5e0)
 
 ### Step 8 — Run Checks
 
-Before commit gate is opened:
+Before the commit gate opens, the `close-out-complete` script runs as one aggregate check verifying these conditions (sub-checks, not separate scripts):
 
-| Check | Verifies |
-|-------|---------|
-| `close-out-frozen` | Every artifact in feature dir has `state: archived` |
-| `learnings-appended` | `learnings.md` has an entry dated today |
-| `current-cleared` | `.coding-agent/CURRENT` is empty |
-| `session-updated` | `session.md` Checkpoint timestamp is from this session AND action log has a `close-out` entry |
-| `no-draft-artifacts` | No lingering `draft` state in feature dir |
-| `action-logged` | Every significant Orchestrator action has a corresponding action-log entry (runs continuously, not just at close-out) |
+| Condition | Verifies |
+|-----------|---------|
+| artifacts frozen | Every artifact in feature dir has `state: archived` |
+| learnings appended | `learnings.md` has an entry dated today |
+| CURRENT cleared | `.coding-agent/CURRENT` is empty |
+| session updated | `session.md` Checkpoint timestamp is from this session AND action log has a `close-out` entry |
+| no draft artifacts | No lingering `draft` state in feature dir |
+
+Separately, `action-logged` runs continuously — every significant Orchestrator action has a corresponding action-log entry, not just at close-out.
 
 If any Check fails, Orchestrator self-repairs (re-runs the failed step) or escalates to User.
 
@@ -251,11 +252,12 @@ Orchestrator:
 User decides.
 ```
 
-### Checks
+### Verified before Round 2 (orchestrator-checked conditions, not separate scripts)
 
-- `fix-round-count` — tracked in `work.md`; forces Round 2 path on recurrence, not repeated Round 1
-- `handoff-written` — work.md has Handoff section before Round 2 dispatch
-- `diagnosis-consumed` — Implementor dispatch in Round 2 references diagnosis.md path
+- Round count tracked in `work.md` — forces the Round 2 path on recurrence, not repeated Round 1
+- `work.md` has a `## Handoff` section before re-dispatch
+- the Round 2 Implementor dispatch references the `diagnosis.md` path
+- `revisions-resolved` (a real check) — no pending revisions
 
 ---
 
@@ -275,9 +277,9 @@ When the User sends a new message while a pipeline is active (not after close-ou
 
 Redirect classification runs **first** on any new message during an active pipeline. Orchestrator does not guess the path; if classification is ambiguous, `AskUserQuestion`.
 
-### Checks
+### Verified
 
-- `redirect-classified` — no User message during active pipeline is processed without an explicit classification recorded in `work.md Decisions Log`
+- Every User message during an active pipeline is classified, with the classification recorded in `work.md` Decisions Log (logged as a `redirect-classified` action-log event — not a separate check script).
 
 ---
 

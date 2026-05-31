@@ -45,13 +45,12 @@
 
 - **Round count is tracked in `work.md`.** Same task escalates to Round 2 on second failure of the same symptom — not unrelated failures.
 - **Same-bug-twice rule:** if Round 1 finding text is substantially the same as the original review's finding text → straight to Debugger Full diagnosis, skip the Round 1 re-implement reflex.
-- **Handoff section must exist before Round 2 dispatch** (`handoff-written` check).
-- **Diagnosis must be referenced in dispatch prompt** (`diagnosis-consumed` check).
+- **Handoff section must exist before Round 2 dispatch** — the orchestrator verifies `work.md` has a `## Handoff` section before re-dispatching.
+- **Diagnosis must be referenced in the Round 2 dispatch prompt** — the orchestrator verifies the dispatch cites the `diagnosis.md` path.
 
 ## Checks fired
 
 | Check | When |
 |-------|------|
-| `handoff-written` | before Round 2 dispatch |
 | `revisions-resolved` | continuous |
 | `action-logged` | continuous |
