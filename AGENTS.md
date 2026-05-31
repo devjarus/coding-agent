@@ -53,20 +53,12 @@ coding-agent/
 
 Run every time you edit an agent, skill, protocol, check, or doc:
 
-1. **Run the validator**
-   ```bash
-   ./scripts/validate.sh
-   ```
-   Must report PASSED. The validator now also lints protocol/check existence and frontmatter schema.
+1. **Run the validator** — `./scripts/validate.sh`. Must report PASSED before you commit (it lints protocol/check existence, frontmatter schema, and inventory counts).
+   - **On inventory drift, the directory count wins.** Copy the validator's counts into the AGENTS.md "Project Structure" inventory line, then mirror them into `.claude-plugin/plugin.json` `description`, `.claude-plugin/marketplace.json`, and `ARCHITECTURE.md` / `docs/README.md` if they cite counts. Re-run until PASSED.
 
-2. **If you added a skill**:
-   - Add to `CLAUDE.md` skill table + count
-   - If domain-specific: add to implementor's domain routing
-   - If preloaded: add to agent frontmatter `skills:` list
+2. **If you added a skill**: add to the implementor's domain routing (if domain-specific) and to the agent frontmatter `skills:` list (if preloaded). The skill *count* is derived by the validator — don't hand-maintain it anywhere.
 
-3. **If you added a protocol or check**:
-   - Add to `protocols/README.md` table OR `CLAUDE.md` checks list
-   - Reference from the agent prompt(s) that use it via `${CLAUDE_PLUGIN_ROOT}/protocols/<name>.md`
+3. **If you added a protocol or check**: protocol → row in `protocols/README.md`; check → add to the `agents/orchestrator.md` checks list. Reference it from the agent prompt(s) that use it via `${CLAUDE_PLUGIN_ROOT}/<protocols|checks>/<name>.{md,sh}`.
 
 4. **If you added an artifact category**: update `docs/concepts/primitives.md` Artifact Categories table AND create `templates/<name>.template.md`.
 
@@ -75,10 +67,15 @@ Run every time you edit an agent, skill, protocol, check, or doc:
    - User project artifacts: `.coding-agent/...` (relative to project root, set by user)
    - NEVER use relative `..` paths — they break in marketplace caching
 
-6. **Commit**:
-   - One logical change per commit
-   - Subject mentions affected agent/skill/protocol/check
-   - PostToolUse hook validates frontmatter on every save
+6. **Update CHANGELOG.md + bump the version** (skip only for typos/pure-doc tweaks). This is not optional and not user-prompted — do it as part of the change, before committing:
+   - **Semver** (see [Versioning](#versioning-semver)): patch = doc/typo; minor = new skill / protocol / check / agent instruction; major = primitive change or agent added/removed.
+   - Prepend a dated entry to `CHANGELOG.md` (Added / Changed / Fixed) covering the change.
+   - Set the new version in `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`, then re-run the validator.
+
+7. **Commit**:
+   - One logical change per commit; subject mentions the affected agent/skill/protocol/check (`type(scope): subject`), or `release: vX.Y.Z — summary` when the version bumped.
+   - End the message with the `Co-Authored-By: Claude` line.
+   - Push only when the user asks. PostToolUse hook validates frontmatter on every save.
 
 ## Adding a New Skill
 

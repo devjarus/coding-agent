@@ -281,7 +281,7 @@ else
               "deterministic checks:$check_count" "artifact templates:$template_count" "MCP servers:$mcp_count"; do
     label="${pair%:*}"; real="${pair##*:}"; doc=$(doc_n "$label")
     if [ -n "$doc" ] && [ "$doc" != "$real" ]; then
-      error "inventory drift: $real $label on disk, AGENTS.md says $doc — sync AGENTS.md + ARCHITECTURE.md + docs/README.md + marketplace.json"
+      error "inventory drift: $real $label on disk, AGENTS.md says $doc — sync AGENTS.md + plugin.json + marketplace.json + ARCHITECTURE.md + docs/README.md"
       drift=1
     fi
   done
