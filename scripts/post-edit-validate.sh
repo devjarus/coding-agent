@@ -41,7 +41,11 @@ case "$FILE_PATH" in
     MODEL=$(sed -n '/^---$/,/^---$/p' "$FILE_PATH" | grep "^model:" | head -1 | sed 's/model: *//')
     if [ -z "$MODEL" ]; then
       echo "⚠ $REL_PATH: missing 'model' in frontmatter" >&2
-    elif [[ "$MODEL" != "opus" && "$MODEL" != "sonnet" && "$MODEL" != "haiku" && "$MODEL" != "inherit" ]]; then
+    elif [[ "$MODEL" == "opus" || "$MODEL" == "sonnet" || "$MODEL" == "haiku" || "$MODEL" == "inherit" ]]; then
+      : # alias — ok
+    elif [[ "$MODEL" =~ ^claude-(opus|sonnet|haiku)-[0-9]+-[0-9]+ ]]; then
+      : # full model id (e.g. claude-opus-4-8) — ok, mirrors validate.sh
+    else
       echo "⚠ $REL_PATH: invalid model '$MODEL'" >&2
     fi
     ;;

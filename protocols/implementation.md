@@ -16,18 +16,17 @@
      - Path to `work.md` (current state)
      - Path to `learnings.md` and `AGENTS.md` (project context)
      - Path to any prior `review.md` (regression context)
-3. **On Implementor return — serialize, do not batch.** Steps (a)–(d) below form a dependency chain: each consumes the *observed* output of the prior. Run them across separate turns, never collapsed into one parallel tool block with the next-wave `Agent` dispatch.
+3. **On Implementor return — gate before you record; one boundary, not a turn-chain.**
    - (a) Parse the structured `return:` YAML from the Implementor's final message.
-   - (b) **Ground-truth gate (own turn) — codified, not ad-hoc:** for any task reported `complete`, run `bash ${CLAUDE_PLUGIN_ROOT}/checks/tests-actually-committed.sh "$PWD" wave <artifacts_written...>`, passing the Implementor's `artifacts_written` paths verbatim. The check asserts against git that those paths exist on disk and are tracked-or-changed; it fails on a missing file, a path invisible to git, OR a zero-length `artifacts_written` list. If it exits non-zero the return is fabricated — set that task `task-state: failed`, log `check-failed | tests-actually-committed | T-N`, and route to `fix-round`. Do not record any completion the check did not corroborate.
-   - (c) Apply `work_updates` to `work.md` (only for claims corroborated in (b)).
-   - (d) In a *subsequent* turn, run the wave check and dispatch the next task/wave.
-   - Apply `work_updates`:
+   - (b) **Ground-truth gate — codified, not ad-hoc.** Run `bash ${CLAUDE_PLUGIN_ROOT}/checks/tests-actually-committed.sh "$PWD" wave <artifacts_written...>` with the returned paths verbatim. For a **parallel wave, run it ONCE at the all-returns-received barrier** (see Parallel failure handling) over every Implementor's `artifacts_written` concatenated — the check loops over the whole path list, so one invocation covers every task identically. For a **serial task**, run it on that one return. It asserts against git that the paths exist and changed this cycle; it fails on a missing file, a path invisible to git, or a zero-length list. Any task whose paths the check does not corroborate → `task-state: failed`, log `check-failed | tests-actually-committed | T-N`, route to `fix-round`. Record no completion the check did not corroborate.
+   - (c) **Once the gate returns `ok` this turn, apply `work_updates` and record completion in the SAME turn** — no separate turn per step:
      - `task_states` → update `work.md § Tasks`
      - `deviations` → append to `work.md § Deviations`
      - `revisions` (any with `status: pending`) → invoke **classification step** (below) before continuing
      - `decisions` → append to `work.md § Decisions Log`
      - `nits` → append to `work.md § Nits`
-   - Append action-log: `dispatch-returned | T-N | <status>`
+     - Append action-log: `dispatch-returned | T-N | <status>`
+   - (d) **Dispatch the next task/wave in a SUBSEQUENT turn.** The only hard boundary: the next `Agent` dispatch must not share a tool block with — or precede — the gating check that proved the current return. That single rule prevents advancing on an uninspected return; splitting parse/apply/log into their own turns buys no extra safety.
 4. **Wave completion:** when all tasks in wave are `complete`, advance to next wave.
 
 ## Pending revision classification
