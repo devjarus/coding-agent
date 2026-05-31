@@ -38,14 +38,15 @@ Detect missing items:
 - `.gitignore` missing entries: `.coding-agent/`, `.claude/settings.local.json`, `.env`, `.env.local`, `.env.*.local`, `*.pem`, `*.key`, `id_rsa`, `id_ed25519`
 - `.claude/settings.local.json` does not exist
 
-If anything is missing, ask the user ONCE via `AskUserQuestion`:
+**Gitignore is MANDATORY — apply it before the question and before writing ANY artifact.** If `.gitignore` has no `.coding-agent/` line, append it immediately (or run `bash ${CLAUDE_PLUGIN_ROOT}/scripts/setup.sh --gitignore-only "$PWD"`). This is non-negotiable data-safety and is NOT skippable: an un-ignored `.coding-agent/` gets swept into a `git add -A` and then **erased by a later `git reset --hard` / `git clean`**, deleting approved `intent.md` / `spec.md` / `plan.md` / `session.md` together. Coordinator state must never be untracked-and-unignored.
 
-> "This project isn't set up for coding-agent yet. Recommended: run `setup.sh` to add gitignore entries (prevents .env / secrets / coordinator state from being committed) and write `.claude/settings.local.json` (avoids permission prompts). Options: **run-full** (gitignore + settings) / **gitignore-only** (safe minimum) / **skip** (do nothing, ask again next session)."
+Then, only the optional settings file is a choice. If `.claude/settings.local.json` is missing, ask the user ONCE via `AskUserQuestion`:
+
+> "Write `.claude/settings.local.json` for coding-agent? It reduces permission prompts. (`.coding-agent/` gitignore protection is already applied — data is safe either way.) Options: **run-full** (write settings) / **skip** (ask again next session)."
 
 On answer:
 - `run-full` → `bash ${CLAUDE_PLUGIN_ROOT}/scripts/setup.sh "$PWD"`, then `mkdir -p .coding-agent && touch .coding-agent/setup-checked`
-- `gitignore-only` → `bash ${CLAUDE_PLUGIN_ROOT}/scripts/setup.sh --gitignore-only "$PWD"`, then `mkdir -p .coding-agent && touch .coding-agent/setup-checked`
-- `skip` → do NOT create the marker (so the question re-fires next session). Append a line to `.coding-agent/open-threads.md` (creating it if needed): `- [<today>] setup.sh skipped — re-prompt next session`.
+- `skip` → do NOT create the marker (so the question re-fires next session). Append a line to `.coding-agent/open-threads.md` (creating it if needed): `- [<today>] settings.local.json skipped — re-prompt next session`. (The gitignore line is already in place regardless.)
 
 If everything is already present, silently `touch .coding-agent/setup-checked` and proceed. Do not ask.
 

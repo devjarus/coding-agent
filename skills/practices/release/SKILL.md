@@ -121,7 +121,9 @@ Update the version in the detected file(s):
 ### Step 7: Commit, Tag, Push
 
 ```bash
-git add -A
+# Never `git add -A` in a coding-agent project — it would track .coding-agent/
+# runtime state, which a later reset/clean then deletes. Stage source explicitly.
+git add -- . ':(exclude).coding-agent'
 git commit -m "release: v1.3.0"
 git tag -a "v1.3.0" -m "Release v1.3.0"
 ```

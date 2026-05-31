@@ -44,7 +44,9 @@ After close-out completes, **before** any git commit:
 3. Show diff (`git diff --stat HEAD` summary + first 100 lines of `git diff`) in chat.
 4. Draft commit message: `<type>(<scope>): <subject>` + body referencing FRs + `Learnings:` block.
 5. **`AskUserQuestion`**: `approve push` / `commit local only` / `redo message` / `abort`.
-6. On approve push → `git commit && git push`. On commit local only → `git commit`, set `session.md.pending_pushes` += 1.
+6. On approve, **stage source explicitly — NEVER `git add -A` or `git add .`**. Coordinator state must never be tracked. Use `git add -- . ':(exclude).coding-agent'` (or stage only the implementor's reported source paths). Then `approve push` → `git commit && git push`; `commit local only` → `git commit`, set `session.md.pending_pushes` += 1.
+
+> **Never track `.coding-agent/`.** Staging it (via `git add -A`) makes coordinator artifacts part of a commit; a later `git reset --hard`/amend/`git clean` then deletes `intent.md`/`spec.md`/`plan.md`/`session.md` all at once. Always stage source explicitly and exclude `.coding-agent/`.
 
 ## Touch-up close-out (lightweight)
 
