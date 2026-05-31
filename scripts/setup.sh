@@ -4,19 +4,67 @@
 # Backs up any existing settings before overwriting.
 #
 # Usage:
-#   bash /path/to/coding-agent/scripts/setup.sh              # current directory
-#   bash /path/to/coding-agent/scripts/setup.sh /some/repo   # specific project
+#   bash /path/to/coding-agent/scripts/setup.sh                       # full setup, current directory
+#   bash /path/to/coding-agent/scripts/setup.sh /some/repo            # full setup, specific project
+#   bash /path/to/coding-agent/scripts/setup.sh --gitignore-only      # safe-minimum: only append gitignore entries
+#   bash /path/to/coding-agent/scripts/setup.sh --gitignore-only /repo
 
 set -uo pipefail
 
-TARGET="${1:-$PWD}"
+GITIGNORE_ONLY=0
+TARGET=""
+for arg in "$@"; do
+  case "$arg" in
+    --gitignore-only) GITIGNORE_ONLY=1 ;;
+    -*) echo "error: unknown flag '$arg'" >&2; exit 1 ;;
+    *) TARGET="$arg" ;;
+  esac
+done
+TARGET="${TARGET:-$PWD}"
+
 if [[ ! -d "$TARGET" ]]; then
   echo "error: '$TARGET' is not a directory" >&2
   exit 1
 fi
 
 cd "$TARGET"
-echo "▸ Setting up coding-agent in: $TARGET"
+if [[ $GITIGNORE_ONLY -eq 1 ]]; then
+  echo "▸ Appending gitignore entries only (no settings written): $TARGET"
+else
+  echo "▸ Setting up coding-agent in: $TARGET"
+fi
+
+# ─── gitignore (always runs, even in --gitignore-only mode) ─────────
+# Idempotent — only appends entries that aren't already present.
+GITIGNORE_PATTERNS=(
+  ".claude/settings.local.json"
+  ".coding-agent/"
+  ".env"
+  ".env.local"
+  ".env.*.local"
+  ".env.development.local"
+  ".env.production.local"
+  "*.pem"
+  "*.key"
+  "id_rsa"
+  "id_rsa.pub"
+  "id_ed25519"
+  "id_ed25519.pub"
+)
+[[ ! -f .gitignore ]] && touch .gitignore
+for pat in "${GITIGNORE_PATTERNS[@]}"; do
+  if ! grep -qxF "$pat" .gitignore; then
+    echo "$pat" >> .gitignore
+    echo "  ✓ added $pat to .gitignore"
+  fi
+done
+
+# ─── Stop here if caller only wanted gitignore changes ──────────────
+if [[ $GITIGNORE_ONLY -eq 1 ]]; then
+  echo ""
+  echo "✓ gitignore-only setup complete."
+  exit 0
+fi
 
 # Detect iOS project
 HAS_IOS=0
@@ -85,25 +133,6 @@ cat > "$SETTINGS" <<EOF
 EOF
 
 echo "  ✓ wrote $SETTINGS"
-
-# Add to .gitignore if not present
-if [[ -f .gitignore ]]; then
-  if ! grep -qxF ".claude/settings.local.json" .gitignore; then
-    echo ".claude/settings.local.json" >> .gitignore
-    echo "  ✓ added .claude/settings.local.json to .gitignore"
-  fi
-else
-  echo ".claude/settings.local.json" > .gitignore
-  echo "  ✓ created .gitignore with .claude/settings.local.json"
-fi
-
-# Ensure .coding-agent is gitignored (runtime state, not source)
-if [[ -f .gitignore ]]; then
-  if ! grep -qxF ".coding-agent/" .gitignore; then
-    echo ".coding-agent/" >> .gitignore
-    echo "  ✓ added .coding-agent/ to .gitignore"
-  fi
-fi
 
 echo ""
 echo "✓ Setup complete."

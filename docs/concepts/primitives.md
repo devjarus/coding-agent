@@ -43,9 +43,10 @@ A durable output on disk. Typed, owned by exactly one Actor, with declared reade
 | **Work** | Current state: task ledger, decisions, deviations, revisions, nits — one place | `work.md` |
 | **Findings** | What the Critic saw | `review.md`, `diagnosis.md` |
 | **Research** | Verified, cited research backing a decision | `research.md` |
-| **Memory** | Durable across features or sessions | `profile.md`, `learnings.md`, `AGENTS.md`, `ARCHITECTURE.md`, `session.md` |
+| **Memory** | Durable across features or sessions | `profile.md`, `learnings.md`, `AGENTS.md`, `ARCHITECTURE.md`, `session.md`, `open-threads.md` |
+| **Operations** | Deploy history + declared per-env deploy/verify state | `deployments.md`, `environments.md` |
 
-Six categories, five-to-seven files per active feature at most. (`research.md` is optional — written only when a decision needs breadth-heavy investigation; otherwise research folds inline into `spec.md`.)
+Seven categories, five-to-seven files per active feature at most. (`research.md` is optional — written only when a decision needs breadth-heavy investigation; otherwise research folds inline into `spec.md`.) **Memory and Operations artifacts are global**, not per-feature — they persist across the whole project and are read on session start.
 
 ### States
 

@@ -21,7 +21,7 @@
    - <reusable pattern introduced> — file:line reference
    ```
    `learnings.md` is `append-only` — newest section at top (below the file header), older below; never truncated, never edited after writing. Existing dated sections are immutable. If you find a past entry is wrong or outdated, ADD a correcting entry in today's section — do NOT edit the old one.
-3. **Update AGENTS.md** if a new project-wide convention was established (logger module, test path, shared adapter).
+3. **Update AGENTS.md** if a new project-wide convention was established (logger module, test path, shared adapter). Keep it vendor-neutral — see `${CLAUDE_PLUGIN_ROOT}/skills/practices/project-docs/SKILL.md § AGENTS.md is vendor-neutral`. No references to `.coding-agent/`, protocols, checks, or deploy commands.
 4. **Update ARCHITECTURE.md** if a new service/db/queue or cross-module dependency was introduced.
 4.5. **Ensure CI exists (first feature only).** If this was the project's first feature AND there's no `.github/workflows/` (or GitLab/Bitbucket equivalent), dispatch Implementor with `ci-testing-standard` skill to scaffold: test script, CI workflow running lint+typecheck+tests+build on push/PR, optional pre-commit hook. Skip if CI already exists and covers what the evaluator ran.
 5. **Clear CURRENT.** `: > .coding-agent/CURRENT`
@@ -38,10 +38,11 @@
 
 After close-out completes, **before** any git commit:
 
-1. Show diff (`git diff --stat HEAD` summary + first 100 lines of `git diff`) in chat.
-2. Draft commit message: `<type>(<scope>): <subject>` + body referencing FRs + `Learnings:` block.
-3. **`AskUserQuestion`**: `approve push` / `commit local only` / `redo message` / `abort`.
-4. On approve push → `git commit && git push`. On commit local only → `git commit`, set `session.md.pending_pushes` += 1.
+1. **Run `no-secrets-staged`** (`bash ${CLAUDE_PLUGIN_ROOT}/checks/no-secrets-staged.sh "$PWD"`). If it fails: surface the `file_hits` and `content_hits` to the user, append a line to `.coding-agent/open-threads.md`, and **do not proceed to step 2 until the user either un-stages the file(s) or explicitly authorizes the override** ("commit anyway — fixture/intentional"). Re-run the check after any change.
+2. Show diff (`git diff --stat HEAD` summary + first 100 lines of `git diff`) in chat.
+3. Draft commit message: `<type>(<scope>): <subject>` + body referencing FRs + `Learnings:` block.
+4. **`AskUserQuestion`**: `approve push` / `commit local only` / `redo message` / `abort`.
+5. On approve push → `git commit && git push`. On commit local only → `git commit`, set `session.md.pending_pushes` += 1.
 
 ## Touch-up close-out (lightweight)
 
@@ -66,3 +67,4 @@ Micro tasks have no feature dir. "Close-out" is just appending action-log: `micr
 | `no-draft-artifacts` | step 1 verification |
 | `close-out-complete` | aggregate of all above (single command) |
 | `commit-has-learnings` | commit gate (Medium/Large only) |
+| `no-secrets-staged` | commit gate, step 1 — blocks .env / private keys / common token patterns |

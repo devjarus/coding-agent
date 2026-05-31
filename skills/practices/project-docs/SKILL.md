@@ -23,6 +23,17 @@ See AGENTS.md for: stack, build/test commands, conventions, architecture decisio
 
 If this project was created before `AGENTS.md` became standard and already has a detailed `CLAUDE.md`, invert the relationship: keep `CLAUDE.md` as the source of truth and make `AGENTS.md` the redirect. Never maintain both.
 
+## AGENTS.md is vendor-neutral
+
+`AGENTS.md` follows the agents.md community spec (https://agents.md). It must be useful to ANY coding agent: Cursor, Aider, Codex, Claude Code with or without this plugin.
+
+❌ No references to `.coding-agent/`, protocols, checks, or skills by name
+❌ No `coding-agent:`-prefixed instructions or dispatch sequences
+❌ No deploy commands, env-var lists, or runtime state — those live in `.coding-agent/environments.md`
+✓ Stack, build/test commands, conventions, architecture, known gotchas
+
+Plugin-specific configuration lives in `.coding-agent/`. The plugin reads its own files; it doesn't need `AGENTS.md` to point at them. A user must be able to remove this plugin and have `AGENTS.md` keep working for whatever agent they switch to.
+
 ## When to Apply
 
 - **After** first feature ships (review PASS) — docs describe what was actually built, not what was planned
