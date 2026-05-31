@@ -4,7 +4,7 @@ This file tells agents (and humans) how to work on the coding-agent plugin itsel
 
 ## What This Is
 
-A Claude Code plugin: 5 agents + 55 skills + 10 named protocols + 16 deterministic checks + 12 artifact templates + 5 MCP servers. All Markdown + Bash. No build step.
+A Claude Code plugin: 5 agents + 55 skills + 10 named protocols + 17 deterministic checks + 12 artifact templates + 5 MCP servers. All Markdown + Bash. No build step.
 
 ## Project Structure (v2)
 
@@ -20,13 +20,14 @@ coding-agent/
 │   ├── intake.md   research.md   spec-writing.md   plan-writing.md
 │   ├── implementation.md   review.md   fix-round.md
 │   ├── close-out.md   redirect.md   recovery.md
-├── checks/                       # 16 deterministic verification scripts
+├── checks/                       # 17 deterministic verification scripts
 │   ├── lib.sh                    # shared helpers (sourced)
 │   ├── intent-approved.sh    spec-approved.sh    plan-approved.sh
 │   ├── ui-evidence.sh   no-raw-print.sh   close-out-complete.sh
 │   ├── action-logged.sh   active-feature-consistent.sh   revisions-resolved.sh
 │   ├── env-vars-present.sh   no-secrets-staged.sh   review-passed.sh
 │   ├── stack-justified.sh   test-infra-declared.sh   tests-actually-committed.sh
+│   ├── docs-current.sh          # close-out: README is real, not framework scaffold
 │   ├── commit-gate.sh            # composite: review-passed→tests-committed→no-secrets→last-verify
 ├── templates/                    # 12 artifact frontmatter templates
 │   ├── intent.template.md   spec.template.md   plan.template.md

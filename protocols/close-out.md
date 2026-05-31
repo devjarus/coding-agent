@@ -21,7 +21,9 @@
    - <reusable pattern introduced> — file:line reference
    ```
    `learnings.md` is `append-only` — newest section at top (below the file header), older below; never truncated, never edited after writing. Existing dated sections are immutable. If you find a past entry is wrong or outdated, ADD a correcting entry in today's section — do NOT edit the old one.
-3. **Update AGENTS.md** if a new project-wide convention was established (logger module, test path, shared adapter). Keep it vendor-neutral — see `${CLAUDE_PLUGIN_ROOT}/skills/practices/project-docs/SKILL.md § AGENTS.md is vendor-neutral`. No references to `.coding-agent/`, protocols, checks, or deploy commands.
+3. **Update human + agent docs.**
+   - **README.md** — the repo's human-facing front page. On the **first feature** (or whenever `README.md` is missing or still a framework scaffold), generate a real one via `${CLAUDE_PLUGIN_ROOT}/skills/practices/project-docs/SKILL.md` — read the actual codebase, don't ship `create-vite`/`create-next-app` boilerplate. A scaffold README ("This template provides a minimal setup…") must be **replaced**, not preserved; the `docs-current` check (step 8) blocks close-out while one remains. On later features, refresh only what the feature changed.
+   - **AGENTS.md** — if a new project-wide convention was established (logger module, test path, shared adapter). Keep it vendor-neutral — see the skill's *§ AGENTS.md is vendor-neutral*. No references to `.coding-agent/`, protocols, checks, or deploy commands.
 4. **Update ARCHITECTURE.md** if a new service/db/queue or cross-module dependency was introduced.
 4.5. **Ensure CI exists (first feature only).** If this was the project's first feature AND there's no `.github/workflows/` (or GitLab/Bitbucket equivalent), dispatch Implementor with `ci-testing-standard` skill to scaffold: test script, CI workflow running lint+typecheck+tests+build on push/PR, optional pre-commit hook. Skip if CI already exists and covers what the evaluator ran.
 5. **Clear CURRENT.** `: > .coding-agent/CURRENT`
@@ -49,10 +51,11 @@ After close-out completes, **before** any git commit:
 ## Touch-up close-out (lightweight)
 
 Touch-up close-out skips:
-- Step 3 (AGENTS.md update — touch-ups don't establish conventions)
+- Step 3 (README/AGENTS.md update — touch-ups don't establish conventions or change the project's front page)
 - Step 4 (ARCHITECTURE.md update — touch-ups don't change architecture)
+- The `docs-current` check in step 8 (a touch-up shouldn't force a README regen)
 
-Steps 1, 2, 5, 6, 7, 8 still run. `learnings.md` entry only if a real lesson was learned (touch-up reflection is optional).
+Steps 1, 2, 5, 6, 7, 8 still run (step 8 minus `docs-current`). `learnings.md` entry only if a real lesson was learned (touch-up reflection is optional).
 
 ## Micro close-out (none)
 
@@ -63,6 +66,7 @@ Micro tasks have no feature dir. "Close-out" is just appending action-log: `micr
 | Check | When |
 |-------|------|
 | `close-out-complete` | step 8 — one aggregate script; verifies artifacts archived, learnings appended, CURRENT cleared, session updated, and no draft artifacts remain |
+| `docs-current` | step 8 (full close-out only) — README.md exists, isn't framework-scaffold boilerplate, and isn't an untouched placeholder while source landed |
 | `commit-gate` | commit gate, step 0 — one serialized script: `review-passed` → `tests-actually-committed commit` → `no-secrets-staged` → `last-verify` green, stopping at the first failure |
 
 The Medium/Large commit message must carry a `Learnings:` block (step 2) — an orchestrator convention, not a separate script. The consumer-side `commit-msg` git hook (installed by `setup.sh`) independently rejects fabricated "verified/passing" messages — enforcement, not just convention.

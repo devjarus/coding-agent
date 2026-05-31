@@ -41,6 +41,20 @@ Plugin-specific configuration lives in `.coding-agent/`. The plugin reads its ow
 - When significant architectural changes need documenting
 - Never before implementation — you can't document what doesn't exist yet
 
+## Replace scaffold READMEs — they are NOT real content
+
+A `create-vite` / `create-react-app` / `create-next-app` scaffold ships a placeholder README describing *the template*, not *your app*. Shipping it is a real failure mode: the repo's front page reads "This template provides a minimal setup…" instead of what the project does. **A scaffold README must be fully replaced, not preserved.** The `docs-current` close-out check (`checks/docs-current.sh`) blocks close-out while any of these fingerprints remain — keep this list in sync with it:
+
+| Scaffold | Fingerprint phrase |
+|----------|--------------------|
+| Vite | `This template provides a minimal setup` / `Currently, two official plugins are available` |
+| Create React App | `Getting Started with Create React App` |
+| Next.js | `bootstrapped with [\`create-next-app\`]` |
+| SvelteKit | `npm create svelte@latest` |
+| Astro | `npm create astro@latest` / `Welcome to your new Astro project` / `Everything you need to know is in the README` |
+
+The check also fails a README that is **byte-identical to its first commit while ≥3 source commits have landed** — i.e. one that was committed at scaffold time and never touched. Either way, the fix is the same: write a real README from the actual codebase (below).
+
 ## What It Creates
 
 ### 1. README.md
@@ -193,6 +207,6 @@ Write each file at the project root. Keep them minimal:
 - **ASCII diagrams are required** in ARCHITECTURE.md. At minimum: system diagram + data flow.
 - **Keep it minimal.** If a section has nothing useful, omit it. Empty sections are worse than no section.
 - **Don't duplicate README and AGENTS.md.** README is for humans browsing the repo. AGENTS.md is for dev workflow (build/test commands, conventions).
-- **Brownfield: don't overwrite existing README.md.** Read it first. Only add missing sections or update outdated ones. The project may have custom content (contributing guides, badges, etc.) you must preserve.
+- **Brownfield: preserve a real README, replace a scaffold one.** Read it first. If it's hand-written (custom content, contributing guides, badges), only add missing sections or update outdated ones — preserve it. If it matches a scaffold fingerprint (see *Replace scaffold READMEs* above) or is the untouched generated placeholder, replace it wholesale — there is nothing worth preserving.
 - **Brownfield: always create AGENTS.md** if missing — existing projects rarely have agent workflow docs.
 - **Brownfield: update ARCHITECTURE.md** only if your feature changed the architecture (new components, new data models, new integrations).

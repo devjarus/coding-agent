@@ -5,6 +5,20 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.4.0] — 2026-05-31 — Project-docs close-out gate (no more scaffold READMEs)
+
+Closes the last open item from the anti-fabrication incident review (failure #7): a feature shipped with its repo front page still the `create-vite` scaffold README, because the plugin only ever updated the agent-facing `AGENTS.md` at close-out and the project-docs skill told brownfield agents to *preserve* existing READMEs. Now a real human-facing README is a close-out gate.
+
+### Added (checks: 16 → 17)
+
+- **`checks/docs-current.sh`** — close-out gate (full close-out only; touch-up/micro skip). Fails if `README.md` is missing, still matches a known framework-scaffold fingerprint (Vite / CRA / Next / SvelteKit / Astro), or is byte-identical to its first commit while ≥3 source commits have since landed (an untouched placeholder). Catches "shipped a repo whose front page is still *This template provides a minimal setup*".
+
+### Changed
+
+- **`skills/practices/project-docs/SKILL.md`** — adds a *Replace scaffold READMEs* section with the fingerprint table (kept in sync with `docs-current.sh`), and corrects the brownfield rule: preserve a *hand-written* README, but replace a *scaffold* one wholesale instead of trying to patch it.
+- **`protocols/close-out.md`** — step 3 broadened from "Update AGENTS.md" to "Update human + agent docs": the first feature (or any missing/scaffold README) now generates a real README via the project-docs skill, so the new gate has a remediation path. `docs-current` added to the checks-fired table and step 8; touch-up close-out skips it.
+- **`agents/orchestrator.md`** — `docs-current` added to the critical-checks list (before commit gate, full close-out only).
+
 ## [2.3.0] — 2026-05-31 — Mechanical anti-fabrication enforcement
 
 Converts the most-violated anti-fabrication rules from prompt-discipline into mechanically-enforced checks — the filesystem and git become the source of truth, validated by scripts, so a careless orchestrator can't *commit* the error even when it narrates one. Driven by a live incident review (narrated "verified" while red 3×, silent Edit no-ops, guessed test counts).

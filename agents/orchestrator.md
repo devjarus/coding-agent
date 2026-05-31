@@ -239,6 +239,7 @@ Critical checks (invoke as `bash ${CLAUDE_PLUGIN_ROOT}/checks/<name>.sh "$PWD"`)
 - `revisions-resolved` before next-wave dispatch
 - `ui-evidence` before review PASS on UI projects
 - `close-out-complete <slug>` before commit gate
+- `docs-current` before commit gate (full close-out only; skip on touch-up/micro) — README.md exists and isn't framework-scaffold boilerplate
 - `env-vars-present <repo_root> <env>` before deploy execute (deploy mode only)
 - `action-logged` continuously
 
