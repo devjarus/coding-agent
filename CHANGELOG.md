@@ -5,6 +5,36 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] — 2026-06-06 — Small-feature fast path (one design gate, not two)
+
+Adds a real ceremony tier between `touch-up` and `medium`. Until now the human-gate count was effectively binary: `micro` paid one gate, but *every* other feature — including a clearly-scoped `small` one — paid the full four (Intent → Spec → Plan → Push), with the architect dispatched twice and the user approving twice. A `small` feature rarely needs the stack decision to settle before wave decomposition, so the two design approvals were ceremony, not safety.
+
+### Changed
+
+- **`agents/orchestrator.md`** — task classification gains a *small-feature fast path*: dispatch the architect once with `Phase: SPEC+PLAN`; it returns `spec.md` then `plan.md` in a single pass; the orchestrator prints both and runs **one** combined approval covering the pair. Drops a `small` feature from 4 human gates to 3 (Intent → Design → Push) and saves an architect round-trip. `medium`/`large` keep the two separate gates.
+- **`protocols/spec-writing.md`** — adds a *Combined design gate (small features)* section specifying the single-dispatch / single-approval flow, and when **not** to combine (discovery- or research-heavy specs settle first; `medium`/`large` stay two-gate).
+- **`protocols/plan-writing.md`** — notes the `SPEC+PLAN` entry point that reuses these steps in the same return.
+- **`docs/concepts/workflow.md`** — documents a gate-count-by-size table so the canonical doc shows the new `small` tier.
+
+> Safety core untouched: `spec.md` and `plan.md` remain **separate artifacts**, so `stack-justified`, `test-infra-declared`, `spec-approved`, and `plan-approved` all still fire unchanged. Only the two *approval interactions* merge — no check, frontmatter schema, or anti-fabrication gate (`review-passed` / `commit-gate` / `close-out-complete`) is weakened.
+
+## [2.5.0] — 2026-06-06 — One-command count sync (less self-maintenance ceremony)
+
+Removes the heaviest recurring tax in the plugin's own dev loop: the manual five-file count cascade. The validator already derives the authoritative counts from the directories — now it can *write* them, instead of only erroring and making a human hand-edit five files. Also fixes mirror drift the old check couldn't see and prunes dead validator code that referenced agents which no longer exist.
+
+### Added
+
+- **`scripts/validate.sh --sync`** — rewrites the inventory counts in all five mirrors (the AGENTS.md "Project Structure" line, `.claude-plugin/plugin.json` `description`, `.claude-plugin/marketplace.json`, `ARCHITECTURE.md`, `docs/README.md`) from the directory-derived counts. Each replacement is phrase-anchored and idempotent; default (no-flag) behaviour is unchanged — still reports drift as a hard error, so CI/gate semantics don't shift.
+
+### Changed
+
+- **`AGENTS.md` + `CLAUDE.md`** — the "After Making Changes" checklist now says run `./scripts/validate.sh --sync` on drift instead of "copy the counts into five files by hand."
+
+### Fixed
+
+- **Mirror drift the old check couldn't catch** — `ARCHITECTURE.md` and `docs/README.md` both said *15 deterministic verification scripts* while the real count was 17 (the drift check only verified AGENTS.md, not the downstream mirrors). `--sync` corrects them.
+- **Dead validator code** — `scripts/validate.sh` model-tier and cross-reference sections referenced `domain-lead` / `brainstormer` / `planner` / `reviewer`, none of which exist in the current 5-agent roster. Rewritten to check the real agents (orchestrator/architect/evaluator/debugger → opus, implementor → sonnet), accepting full model IDs like `claude-opus-4-8`. Removes the lingering warning so a clean tree reports ALL CHECKS PASSED.
+
 ## [2.4.0] — 2026-05-31 — Project-docs close-out gate (no more scaffold READMEs)
 
 Closes the last open item from the anti-fabrication incident review (failure #7): a feature shipped with its repo front page still the `create-vite` scaffold README, because the plugin only ever updated the agent-facing `AGENTS.md` at close-out and the project-docs skill told brownfield agents to *preserve* existing READMEs. Now a real human-facing README is a close-out gate.

@@ -74,7 +74,7 @@ You execute these by name. Each protocol file is the authoritative reference —
 ## Your dispatch tools
 
 ```
-Agent(subagent_type="coding-agent:architect",  prompt="Phase: SPEC | PLAN. ...")
+Agent(subagent_type="coding-agent:architect",  prompt="Phase: SPEC | PLAN | SPEC+PLAN. ...")
 Agent(subagent_type="coding-agent:implementor", prompt="Tasks: T-N from plan.md. Skills: [...]. ...")
 Agent(subagent_type="coding-agent:evaluator",   prompt="Mode: smoke | lightweight | full. Files changed: ...")
 Agent(subagent_type="coding-agent:debugger",    prompt="Mode: inspection | full. Bug: ... Read work.md § Handoff.")
@@ -206,6 +206,8 @@ Subagents never ask the user directly — they have no `AskUserQuestion` tool. E
 | **small** | 2–5 files, clear scope | Implementor |
 | **medium** | design decisions needed | Implementor |
 | **large** | new feature, architectural | Implementor (multiple waves) |
+
+**Small-feature fast path — one design gate, not two.** For a `small` feature (clear scope, 2–5 files), dispatch the architect ONCE with `Phase: SPEC+PLAN`: it returns `spec.md` then `plan.md` in a single pass. Print **both** bodies in chat and run ONE combined `AskUserQuestion` (approve / request-changes / cancel) covering both; on approve, sign both artifacts and run `spec-approved` + `plan-approved` together before implementor dispatch. This drops a `small` feature from 4 human gates to 3 (intent → design → push) and saves a full architect round-trip. `medium`/`large` keep the two separate gates — the stack decision must settle before wave decomposition. See `${CLAUDE_PLUGIN_ROOT}/protocols/spec-writing.md` § Combined design gate.
 
 **Bug reports — diagnose first.** If the user message describes a symptom without a cause ("throws 500", "doesn't work", "missing", "broken", "returns wrong X"), dispatch `debugger` BEFORE classifying size. Implementor only runs after `diagnosis.md` (or an inspection note in `work.md § Handoff`) exists. Skip this rule only when the user has already named file + line + cause.
 

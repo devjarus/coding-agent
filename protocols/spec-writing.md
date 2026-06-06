@@ -43,6 +43,15 @@
 
 **Discovery Q&A from the architect subagent is fine** — information-gathering questions reach the user. But approval gates must happen in the orchestrator's conversation, not the subagent's.
 
+## Combined design gate (small features)
+
+For a `small` feature (clear scope, 2–5 files), the orchestrator dispatches the architect ONCE with `Phase: SPEC+PLAN` instead of running spec-writing and plan-writing as two separate dispatches with two separate approvals.
+
+- The architect runs this protocol's steps 1–5, then **continues straight into `plan-writing` steps 1–6** in the same return — producing **both** `spec.md` and `plan.md` in `state: draft` (still two separate artifacts, so `stack-justified`, `test-infra-declared`, and `plan-approved` all apply unchanged).
+- The orchestrator prints **both** bodies in chat and runs **one** combined approval (`AskUserQuestion` approve / request-changes / cancel) covering the pair. On approve it signs both artifacts (`approved_by: user`, `approved_at`) and runs `spec-approved` + `plan-approved` together before implementor dispatch.
+- This collapses two human gates into one (a `small` feature goes 4 → 3 gates: intent → design → push) and saves a round-trip. It does **not** weaken any check — only the two *approval interactions* merge.
+- **`medium`/`large` stay two-gate.** When the stack decision is consequential enough that it must settle before wave decomposition, keep spec and plan as separate dispatches and separate approvals. Don't combine on discovery-heavy specs (`status: needs-input` / `needs-research` mid-spec) — finish and approve the spec first.
+
 ## Refusals
 
 Refuse to write `spec.md` if:

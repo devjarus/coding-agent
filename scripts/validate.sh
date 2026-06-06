@@ -5,7 +5,19 @@
 
 set -uo pipefail
 
-PLUGIN_ROOT="${1:-$(cd "$(dirname "$0")/.." && pwd)}"
+# Args: an optional plugin root path, and an optional --sync flag.
+# --sync rewrites the inventory counts in every mirror file from the
+# directory-derived counts (the single source of truth), instead of only
+# erroring on drift. Default (no flag) behaviour is unchanged.
+SYNC=0
+PLUGIN_ROOT=""
+for arg in "$@"; do
+  case "$arg" in
+    --sync) SYNC=1 ;;
+    *) PLUGIN_ROOT="$arg" ;;
+  esac
+done
+PLUGIN_ROOT="${PLUGIN_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 ERRORS=0
 WARNINGS=0
 
@@ -17,6 +29,41 @@ dim() { printf "\033[0;90m%s\033[0m\n" "$1"; }
 error() { red "  ✘ $1"; ERRORS=$((ERRORS + 1)); }
 warn() { yellow "  ⚠ $1"; WARNINGS=$((WARNINGS + 1)); }
 pass() { green "  ✔ $1"; }
+
+# sync_counts <root> <agents> <skills> <protocols> <checks> <templates> <mcp>
+# Rewrites the count-bearing lines in every mirror file from the directory-
+# derived counts. Each replacement is anchored to a distinctive phrase and is
+# idempotent — running it twice is a no-op. Keeps the five mirrors (AGENTS.md,
+# plugin.json, marketplace.json, ARCHITECTURE.md, docs/README.md) in lockstep
+# so contributors never hand-sync counts across files again.
+sync_counts() {
+  local root="$1" a="$2" s="$3" p="$4" c="$5" t="$6" m="$7"
+
+  # AGENTS.md canonical inventory line ("N agents + N skills + ... + N MCP servers")
+  sed -E -i \
+    "s/[0-9]+ agents \+ [0-9]+ skills \+ [0-9]+ named protocols \+ [0-9]+ deterministic checks \+ [0-9]+ artifact templates \+ [0-9]+ MCP servers/${a} agents + ${s} skills + ${p} named protocols + ${c} deterministic checks + ${t} artifact templates + ${m} MCP servers/" \
+    "$root/AGENTS.md"
+
+  # plugin.json + marketplace.json description ("N agents, N skills, ...")
+  for f in .claude-plugin/plugin.json .claude-plugin/marketplace.json; do
+    [ -f "$root/$f" ] || continue
+    sed -E -i \
+      "s/[0-9]+ agents, [0-9]+ skills, [0-9]+ named protocols, [0-9]+ deterministic checks, [0-9]+ artifact templates/${a} agents, ${s} skills, ${p} named protocols, ${c} deterministic checks, ${t} artifact templates/" \
+      "$root/$f"
+  done
+
+  # ARCHITECTURE.md + docs/README.md — phrase-anchored single counts (wording varies)
+  for f in ARCHITECTURE.md docs/README.md; do
+    [ -f "$root/$f" ] || continue
+    sed -E -i \
+      -e "s/(User \+ )[0-9]+ agents/\1${a} agents/g" \
+      -e "s/[0-9]+ (named protocols|named workflows)/${p} \1/g" \
+      -e "s/[0-9]+ (deterministic checks|deterministic verification scripts)/${c} \1/g" \
+      -e "s/[0-9]+ (artifact templates|artifact frontmatter stubs|artifact frontmatter templates)/${t} \1/g" \
+      -e "s/[0-9]+ MCP servers/${m} MCP servers/g" \
+      "$root/$f"
+  done
+}
 
 echo ""
 echo "═══════════════════════════════════════════"
@@ -128,23 +175,6 @@ echo ""
 # ─── 5. Cross-reference checks ──────────────────────────────────────
 echo "▸ Cross-references"
 
-# Check that specialist skills referenced in leads exist
-for lead_file in "$PLUGIN_ROOT"/agents/domain-lead.md; do
-  [ -f "$lead_file" ] || continue
-  lead_name=$(basename "$lead_file" .md)
-
-  while IFS= read -r skill_ref; do
-    skill_name="${skill_ref%-specialist}"
-    # Check if the specialist skill exists anywhere under skills/
-    found=$(find "$PLUGIN_ROOT/skills" -path "*/${skill_ref}/SKILL.md" -o -path "*/${skill_ref}-specialist/SKILL.md" 2>/dev/null | head -1)
-    if [ -n "$found" ]; then
-      pass "$lead_name references skill $skill_ref (exists)"
-    fi
-  done < <(grep -oE '[a-z]+-specialist' "$lead_file" 2>/dev/null | sort -u || true)
-done
-
-pass "skill references checked"
-
 # Check that every check named in a protocol "## Checks fired" table or the
 # orchestrator critical-checks list resolves to a checks/<name>.sh script.
 referenced_checks=$(
@@ -196,34 +226,33 @@ echo ""
 # ─── 7. Model tier checks ───────────────────────────────────────────
 echo "▸ Model tier conventions"
 
+# Decision-making agents (orchestrator, architect, evaluator, debugger) run on
+# opus; implementor runs on sonnet. Accept bare tier names and full model IDs
+# (e.g. orchestrator pins claude-opus-4-8).
+is_opus() { [ "$1" = "opus" ] || [[ "$1" =~ ^claude-opus- ]]; }
+is_sonnet() { [ "$1" = "sonnet" ] || [[ "$1" =~ ^claude-sonnet- ]]; }
+
 for agent_file in "$PLUGIN_ROOT"/agents/*.md; do
   [ -f "$agent_file" ] || continue
   name=$(basename "$agent_file" .md)
   model=$(sed -n '/^---$/,/^---$/p' "$agent_file" | grep "^model:" | head -1 | sed 's/model: *//')
 
   case "$name" in
-    orchestrator|brainstormer|planner|reviewer)
-      if [ "$model" = "opus" ]; then
+    orchestrator|architect|evaluator|debugger)
+      if is_opus "$model"; then
         pass "$name uses opus (correct for decision-making agent)"
       else
         warn "$name uses $model (expected opus for decision-making agent)"
       fi
       ;;
-    domain-lead)
-      ;; # checked separately below
+    implementor)
+      if is_sonnet "$model"; then
+        pass "$name uses sonnet (correct for implementor)"
+      else
+        warn "$name uses $model (expected sonnet for implementor)"
+      fi
+      ;;
   esac
-done
-
-# Check domain-lead uses sonnet
-for agent_file in "$PLUGIN_ROOT"/agents/domain-lead.md; do
-  [ -f "$agent_file" ] || continue
-  name=$(basename "$agent_file" .md)
-  model=$(sed -n '/^---$/,/^---$/p' "$agent_file" | grep "^model:" | head -1 | sed 's/model: *//')
-  if [ "$model" = "sonnet" ]; then
-    pass "$name uses sonnet (correct for domain lead)"
-  else
-    warn "$name uses $model (expected sonnet for domain lead)"
-  fi
 done
 
 echo ""
@@ -267,6 +296,14 @@ dim "  Protocols:   $protocol_count"
 dim "  Checks:      $check_count"
 dim "  Templates:   $template_count"
 dim "  MCP servers: $mcp_count"
+
+# --sync: rewrite every mirror from the counts above, then fall through to the
+# verification below (which now passes). Without --sync we only verify + report.
+if [ "$SYNC" -eq 1 ]; then
+  sync_counts "$PLUGIN_ROOT" "$agent_count" "$skill_count" "$protocol_count" \
+              "$check_count" "$template_count" "$mcp_count"
+  pass "synced inventory counts into AGENTS.md, plugin.json, marketplace.json, ARCHITECTURE.md, docs/README.md"
+fi
 
 # Verify AGENTS.md's canonical inventory line matches reality. AGENTS.md is the
 # single source of truth (CLAUDE.md redirects to it); when it drifts, fix it +

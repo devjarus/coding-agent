@@ -57,7 +57,7 @@ coding-agent/
 Run every time you edit an agent, skill, protocol, check, or doc:
 
 1. **Run the validator** — `./scripts/validate.sh`. Must report PASSED before you commit (it lints protocol/check existence, frontmatter schema, and inventory counts).
-   - **On inventory drift, the directory count wins.** Copy the validator's counts into the AGENTS.md "Project Structure" inventory line, then mirror them into `.claude-plugin/plugin.json` `description`, `.claude-plugin/marketplace.json`, and `ARCHITECTURE.md` / `docs/README.md` if they cite counts. Re-run until PASSED.
+   - **On inventory drift, the directory count wins — let the tool sync it.** Run `./scripts/validate.sh --sync`: it rewrites the counts across all five mirrors (the AGENTS.md "Project Structure" line, `.claude-plugin/plugin.json` `description`, `.claude-plugin/marketplace.json`, `ARCHITECTURE.md`, `docs/README.md`) from the directory-derived counts, then re-run `./scripts/validate.sh` to confirm PASSED. Don't hand-edit the count lines anymore.
 
 2. **If you added a skill**: add to the implementor's domain routing (if domain-specific) and to the agent frontmatter `skills:` list (if preloaded). The skill *count* is derived by the validator — don't hand-maintain it anywhere.
 

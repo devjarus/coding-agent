@@ -65,8 +65,19 @@ User types a request. Orchestrator responds with:
 2. **Path proposal**:
    - Mode: `feature` / `touch-up` / `refactor`
    - Size: `micro` / `small` / `medium` / `large`
-   - Gates this pass: Intent → Spec → Plan → Push (or reduced for touch-up)
+   - Gates this pass: Intent → Spec → Plan → Push (or reduced — see below)
    - Estimated waves
+
+**Gate count scales with size.** The Intent → Spec → Plan → Push chain is the `medium`/`large` path. Smaller work takes fewer human gates:
+
+| Size | Human gates | How |
+|------|-------------|-----|
+| `micro` | 1 (Push) | orchestrator inlines, no spec/plan |
+| `touch-up` | 2 (Intent → Push) | skips spec + plan |
+| `small` | 3 (Intent → **Design** → Push) | architect dispatched once as `SPEC+PLAN`; spec.md + plan.md drafted together and approved in **one** combined gate |
+| `medium`/`large` | 4 (Intent → Spec → Plan → Push) | spec and plan are separate dispatches with separate approvals |
+
+For `small`, the two design artifacts stay separate on disk (so `stack-justified`, `test-infra-declared`, `plan-approved` all still fire) — only the two *approval interactions* merge into one. See `protocols/spec-writing.md` § Combined design gate.
 3. **`AskUserQuestion`** — approve / redirect / cancel.
 
 ### Intent artifact

@@ -278,7 +278,7 @@ coding-agent/
 │   ├── intake.md   research.md   spec-writing.md   plan-writing.md   implementation.md
 │   ├── review.md   fix-round.md   close-out.md   redirect.md   recovery.md
 │   └── README.md
-├── checks/                              ← 15 deterministic verification scripts (+ lib.sh helper)
+├── checks/                              ← 17 deterministic verification scripts (+ lib.sh helper)
 │   ├── lib.sh
 │   ├── intent-approved.sh   spec-approved.sh   plan-approved.sh
 │   ├── ui-evidence.sh   no-raw-print.sh   close-out-complete.sh
