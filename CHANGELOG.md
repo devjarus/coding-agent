@@ -5,6 +5,23 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] — 2026-06-06 — One-command count sync (less self-maintenance ceremony)
+
+Removes the heaviest recurring tax in the plugin's own dev loop: the manual five-file count cascade. The validator already derives the authoritative counts from the directories — now it can *write* them, instead of only erroring and making a human hand-edit five files. Also fixes mirror drift the old check couldn't see and prunes dead validator code that referenced agents which no longer exist.
+
+### Added
+
+- **`scripts/validate.sh --sync`** — rewrites the inventory counts in all five mirrors (the AGENTS.md "Project Structure" line, `.claude-plugin/plugin.json` `description`, `.claude-plugin/marketplace.json`, `ARCHITECTURE.md`, `docs/README.md`) from the directory-derived counts. Each replacement is phrase-anchored and idempotent; default (no-flag) behaviour is unchanged — still reports drift as a hard error, so CI/gate semantics don't shift.
+
+### Changed
+
+- **`AGENTS.md` + `CLAUDE.md`** — the "After Making Changes" checklist now says run `./scripts/validate.sh --sync` on drift instead of "copy the counts into five files by hand."
+
+### Fixed
+
+- **Mirror drift the old check couldn't catch** — `ARCHITECTURE.md` and `docs/README.md` both said *15 deterministic verification scripts* while the real count was 17 (the drift check only verified AGENTS.md, not the downstream mirrors). `--sync` corrects them.
+- **Dead validator code** — `scripts/validate.sh` model-tier and cross-reference sections referenced `domain-lead` / `brainstormer` / `planner` / `reviewer`, none of which exist in the current 5-agent roster. Rewritten to check the real agents (orchestrator/architect/evaluator/debugger → opus, implementor → sonnet), accepting full model IDs like `claude-opus-4-8`. Removes the lingering warning so a clean tree reports ALL CHECKS PASSED.
+
 ## [2.4.0] — 2026-05-31 — Project-docs close-out gate (no more scaffold READMEs)
 
 Closes the last open item from the anti-fabrication incident review (failure #7): a feature shipped with its repo front page still the `create-vite` scaffold README, because the plugin only ever updated the agent-facing `AGENTS.md` at close-out and the project-docs skill told brownfield agents to *preserve* existing READMEs. Now a real human-facing README is a close-out gate.
