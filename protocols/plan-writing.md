@@ -25,6 +25,8 @@
 
 Approval gates only work in the main-thread orchestrator's conversation. See `spec-writing.md` for the same rule.
 
+**Combined design gate (small features).** When dispatched as `Phase: SPEC+PLAN` (a `small` feature), the architect runs `spec-writing` steps 1–5 then these steps 1–6 in a single return, emitting both `spec.md` and `plan.md` as drafts; the orchestrator approves the pair in one gate. See `spec-writing.md` § Combined design gate. The two artifacts stay separate, so `plan-approved` is unchanged.
+
 ## Constraints
 
 - Spec must remain immutable. If during plan writing the spec is found to need changes, dispatch a separate `redirect` flow — do not edit `spec.md`.
