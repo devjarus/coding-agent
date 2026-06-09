@@ -5,6 +5,17 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.5.0] — 2026-06-09 — Fable 5 for orchestrator + architect
+
+Moves the two highest-reasoning, longest-running roles — the orchestrator (the main-thread state machine that runs the whole session) and the architect (spec/plan design) — onto **Fable 5** (`claude-fable-5`), the model tier tuned for the hardest, longest tasks. The execution-heavy implementor stays on Sonnet; the evaluator and debugger stay on Opus.
+
+### Changed
+
+- **`agents/orchestrator.md`** — `model: claude-opus-4-8` → `claude-fable-5`.
+- **`agents/architect.md`** — `model: opus` → `claude-fable-5`.
+- **`scripts/validate.sh` + `scripts/post-edit-validate.sh`** — model-frontmatter validation now accepts the `fable` alias and `claude-fable-N` full IDs (the regex previously only matched opus/sonnet/haiku, which would have rejected the new value on save and at the gate). The decision-making-agent tier convention now passes for either the opus *or* fable tier — which also clears the long-standing cosmetic warning about the orchestrator's pinned full model ID.
+- **`ARCHITECTURE.md`** — model-tier table + topology diagram updated to show orchestrator/architect on Fable; corrected the table's stale orchestrator ID (`claude-opus-4-7` → the real pinned value).
+
 ## [2.4.0] — 2026-05-31 — Project-docs close-out gate (no more scaffold READMEs)
 
 Closes the last open item from the anti-fabrication incident review (failure #7): a feature shipped with its repo front page still the `create-vite` scaffold README, because the plugin only ever updated the agent-facing `AGENTS.md` at close-out and the project-docs skill told brownfield agents to *preserve* existing READMEs. Now a real human-facing README is a close-out gate.

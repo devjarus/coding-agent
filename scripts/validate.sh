@@ -85,8 +85,8 @@ while IFS= read -r agent_file; do
   fi
   if [ -z "$model" ]; then
     error "$rel_path: missing 'model' in frontmatter"
-  elif [[ "$model" != "opus" && "$model" != "sonnet" && "$model" != "haiku" && "$model" != "inherit" && ! "$model" =~ ^claude-(opus|sonnet|haiku)-[0-9]+-[0-9]+ ]]; then
-    error "$rel_path: invalid model '$model' (must be opus/sonnet/haiku/inherit, or a full model ID like claude-opus-4-7)"
+  elif [[ "$model" != "opus" && "$model" != "sonnet" && "$model" != "haiku" && "$model" != "fable" && "$model" != "inherit" && ! "$model" =~ ^claude-(opus|sonnet|haiku|fable)-[0-9]+ ]]; then
+    error "$rel_path: invalid model '$model' (must be opus/sonnet/haiku/fable/inherit, or a full model ID like claude-opus-4-8 or claude-fable-5)"
   fi
 
   if [ -n "$name" ] && [ -n "$model" ]; then
@@ -203,11 +203,12 @@ for agent_file in "$PLUGIN_ROOT"/agents/*.md; do
 
   case "$name" in
     orchestrator|brainstormer|planner|reviewer)
-      if [ "$model" = "opus" ]; then
-        pass "$name uses opus (correct for decision-making agent)"
-      else
-        warn "$name uses $model (expected opus for decision-making agent)"
-      fi
+      case "$model" in
+        opus|claude-opus-*|fable|claude-fable-*)
+          pass "$name uses $model (opus/fable tier — correct for decision-making agent)" ;;
+        *)
+          warn "$name uses $model (expected opus or fable for decision-making agent)" ;;
+      esac
       ;;
     domain-lead)
       ;; # checked separately below
