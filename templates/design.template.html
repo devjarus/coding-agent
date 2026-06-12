@@ -1,0 +1,59 @@
+<!--
+artifact: design
+feature: <slug>
+writer: architect
+mutability: immutable
+state: draft                     (orchestrator flips to approved with spec.md — the sha-bound
+                                  design-review verdict records design_sha at approval)
+-->
+<!--
+  design.html — the LOOK contract for a UI feature. Written by the architect for
+  features with a user-facing surface; reviewed + commented in the design-review
+  surface alongside spec.md (the BEHAVIOR contract). The implementor reads both.
+
+  Rules:
+  - Self-contained: inline CSS, no JS frameworks, no external assets, no build.
+    It must render from a plain file server (the review surface iframes it).
+  - Real screens, not prose: one <section class="screen"> per screen/state, with
+    actual layout, copy, and states (empty / loading / error where relevant).
+  - Lo-fi is fine; honest is mandatory. Show what WILL be built — don't decorate
+    beyond what the spec commits to.
+  - This file is a contract, not the implementation. The implementor matches its
+    structure and intent using the project's real stack/design system, never by
+    copying this HTML.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Design — <feature name></title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", sans-serif; margin: 0; background: #f4f4f5; color: #18181b; }
+  .screen { max-width: 960px; margin: 32px auto; background: #fff; border: 1px solid #e4e4e7;
+            border-radius: 12px; overflow: hidden; }
+  .screen > header { padding: 10px 16px; background: #fafafa; border-bottom: 1px solid #e4e4e7;
+                     font-size: 13px; color: #71717a; }
+  .screen > .body { padding: 24px; }
+  .annotation { background: #fffbeb; border: 1px dashed #d97706; color: #92400e;
+                font-size: 12px; padding: 4px 8px; border-radius: 6px; margin: 8px 0; }
+</style>
+</head>
+<body>
+
+<section class="screen" id="screen-1">
+  <header>Screen 1 — <name> (<route or context>)</header>
+  <div class="body">
+    <!-- real layout + copy here -->
+    <p class="annotation">annotation: <design intent the layout alone can't convey></p>
+  </div>
+</section>
+
+<section class="screen" id="screen-1-empty">
+  <header>Screen 1 — empty state</header>
+  <div class="body">
+    <!-- what the user sees with zero data -->
+  </div>
+</section>
+
+</body>
+</html>

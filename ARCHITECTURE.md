@@ -79,9 +79,9 @@ The coding-agent plugin (v2) is a multi-agent software-development pipeline buil
                     ▼
                spec-writing
                     │
-                    │ architect writes spec.md (state: draft)
-                    │ orchestrator prints spec in chat
-                    │ AskUserQuestion (Gate 2: Spec)
+                    │ architect writes spec.md (+ design.html for UI)
+                    │ orchestrator serves design-review surface
+                    │ user comments in browser; sha-bound verdict (Gate 2: Spec)
                     ▼
    spec.md (state: approved, approved_by: user, IMMUTABLE forever)
                     │
@@ -90,8 +90,8 @@ The coding-agent plugin (v2) is a multi-agent software-development pipeline buil
                plan-writing
                     │
                     │ architect writes plan.md (state: draft)
-                    │ orchestrator prints plan in chat
-                    │ AskUserQuestion (Gate 3: Plan)
+                    │ orchestrator serves design-review surface
+                    │ user comments in browser; sha-bound verdict (Gate 3: Plan)
                     ▼
    plan.md (state: approved, approved_by: user, IMMUTABLE forever)
                     │
@@ -272,24 +272,26 @@ coding-agent/
 ├── .mcp.json                            ← 5 MCP servers
 ├── agents/                              ← 5 rewritten prompts (each ~150 lines)
 │   ├── orchestrator.md  architect.md  implementor.md  evaluator.md  debugger.md
-├── skills/                              ← 55 scoped-knowledge modules
+├── skills/                              ← 56 scoped-knowledge modules
 │   ├── frontend/  backend/  data/  mobile/  infra/  general/  practices/
-├── protocols/                           ← 10 named workflows (one source of truth each)
-│   ├── intake.md   research.md   spec-writing.md   plan-writing.md   implementation.md
-│   ├── review.md   fix-round.md   close-out.md   redirect.md   recovery.md
+├── protocols/                           ← 11 named workflows (one source of truth each)
+│   ├── intake.md   research.md   spec-writing.md   plan-writing.md   design-review.md
+│   ├── implementation.md   review.md   fix-round.md   close-out.md   redirect.md   recovery.md
 │   └── README.md
-├── checks/                              ← 15 deterministic verification scripts (+ lib.sh helper)
+├── checks/                              ← 17 deterministic verification scripts (+ lib.sh helper)
 │   ├── lib.sh
 │   ├── intent-approved.sh   spec-approved.sh   plan-approved.sh
 │   ├── ui-evidence.sh   no-raw-print.sh   close-out-complete.sh
 │   ├── action-logged.sh   active-feature-consistent.sh   revisions-resolved.sh
 │   ├── env-vars-present.sh   no-secrets-staged.sh   review-passed.sh
 │   ├── stack-justified.sh   test-infra-declared.sh   tests-actually-committed.sh
-├── templates/                           ← 12 artifact frontmatter stubs
+│   ├── docs-current.sh   commit-gate.sh
+├── templates/                           ← 13 artifact templates (12 .md stubs + design.template.html)
 │   ├── intent.template.md   spec.template.md   plan.template.md
 │   ├── work.template.md   review.template.md   diagnosis.template.md
 │   ├── research.template.md   session.template.md   learnings.template.md
 │   ├── deployments.template.md   environments.template.md   open-threads.template.md
+│   ├── design.template.html
 ├── hooks/hooks.json                     ← SessionStart context-inject + PreCompact breadcrumb + SubagentStart logging + PostToolUse validate
 ├── scripts/
 │   ├── setup.sh                         ← one-command per-project installer

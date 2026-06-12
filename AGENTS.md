@@ -4,7 +4,7 @@ This file tells agents (and humans) how to work on the coding-agent plugin itsel
 
 ## What This Is
 
-A Claude Code plugin: 5 agents + 55 skills + 10 named protocols + 17 deterministic checks + 12 artifact templates + 5 MCP servers. All Markdown + Bash. No build step.
+A Claude Code plugin: 5 agents + 56 skills + 11 named protocols + 17 deterministic checks + 13 artifact templates + 5 MCP servers. All Markdown + Bash (plus a stdlib-Python localhost server for the design-review surface). No build step.
 
 ## Project Structure (v2)
 
@@ -13,11 +13,12 @@ coding-agent/
 ├── .claude-plugin/plugin.json    # plugin manifest
 ├── .mcp.json                     # MCP server config
 ├── agents/                       # 5 agent prompts (each ≤300 lines, references protocols)
-├── skills/                       # 55 skill folders, each with SKILL.md
+├── skills/                       # 56 skill folders, each with SKILL.md
 │   ├── frontend/   backend/   data/   mobile/   infra/
-│   ├── general/   practices/
-├── protocols/                    # 10 named multi-actor workflows
+│   ├── general/   practices/    # practices includes prototype-first (disposable mock-app mode)
+├── protocols/                    # 11 named multi-actor workflows
 │   ├── intake.md   research.md   spec-writing.md   plan-writing.md
+│   ├── design-review.md          # browser review surface: comment batches + sha-bound verdict gate
 │   ├── implementation.md   review.md   fix-round.md
 │   ├── close-out.md   redirect.md   recovery.md
 ├── checks/                       # 17 deterministic verification scripts
@@ -29,11 +30,12 @@ coding-agent/
 │   ├── stack-justified.sh   test-infra-declared.sh   tests-actually-committed.sh
 │   ├── docs-current.sh          # close-out: README is real, not framework scaffold
 │   ├── commit-gate.sh            # composite: review-passed→tests-committed→no-secrets→last-verify
-├── templates/                    # 12 artifact frontmatter templates
+├── templates/                    # 13 artifact templates (12 .md frontmatter + 1 .html)
 │   ├── intent.template.md   spec.template.md   plan.template.md
 │   ├── work.template.md   review.template.md   diagnosis.template.md
 │   ├── research.template.md   session.template.md   learnings.template.md
 │   ├── deployments.template.md   environments.template.md   open-threads.template.md
+│   ├── design.template.html      # UI look-contract reviewed in the design-review surface
 ├── hooks/hooks.json              # SessionStart context-inject + PreCompact breadcrumb + SubagentStart logging + PostToolUse validation
 ├── scripts/
 │   ├── validate.sh               # plugin self-validator
@@ -41,6 +43,9 @@ coding-agent/
 │   ├── session-start-context.sh  # SessionStart hook — injects resume state (CURRENT, open-threads, action-log)
 │   ├── pre-compact-checkpoint.sh # PreCompact hook — durable compaction breadcrumb to agent-log.txt
 │   ├── run-and-record.sh         # runs verification, records exit+counts+tree → .coding-agent/last-verify.json
+│   ├── design-review.sh          # start/stop the localhost design-review surface for a feature
+│   ├── design-review-server.py   # stdlib http server: serves the review app, writes comments + sha-bound verdict
+│   ├── design-review.html        # the review app (render + inline comments + approve gate)
 │   └── setup.sh                  # writes .claude/settings.local.json + installs commit-msg hook (blocks fabricated "verified" claims)
 ├── docs/
 │   ├── README.md                 # docs index

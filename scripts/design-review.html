@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<!--
+  design-review app — served by design-review-server.py at /.
+  Renders spec.md / plan.md (markdown + mermaid) and design.html (iframe),
+  lets the user pin comments to any block/element, and ends the round with
+  a verdict: Approve (sha-bound, blocked while comments are open) or
+  Request changes. All persistence goes through the local server; nothing
+  external. The markdown artifacts remain the canonical source of truth —
+  this page is a render + input device, never a second source.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Design Review</title>
+<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  :root { --bg:#fafafa; --fg:#1a1a1a; --muted:#777; --line:#e2e2e2; --accent:#2563eb;
+          --open:#d97706; --resolved:#16a34a; --danger:#dc2626; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+         background:var(--bg); color:var(--fg); }
+  header { position:sticky; top:0; z-index:10; display:flex; align-items:center; gap:14px;
+           padding:10px 18px; background:#fff; border-bottom:1px solid var(--line); }
+  header h1 { font-size:15px; margin:0; font-weight:600; }
+  header .round { color:var(--muted); font-size:13px; }
+  header .spacer { flex:1; }
+  .tabs { display:flex; gap:2px; }
+  .tabs button { border:1px solid var(--line); background:#fff; padding:5px 14px; cursor:pointer;
+                 font-size:13px; border-radius:6px 6px 0 0; border-bottom:none; color:var(--muted); }
+  .tabs button.active { color:var(--fg); font-weight:600; background:var(--bg); }
+  .actions button { padding:7px 16px; font-size:13px; border-radius:7px; cursor:pointer; border:1px solid var(--line); background:#fff; }
+  #btn-changes { color:var(--open); border-color:var(--open); }
+  #btn-approve { color:#fff; background:var(--resolved); border-color:var(--resolved); font-weight:600; }
+  #btn-approve:disabled { background:#bbb; border-color:#bbb; cursor:not-allowed; }
+  main { display:grid; grid-template-columns:1fr 330px; min-height:calc(100vh - 54px); }
+  #content { padding:26px 40px; max-width:880px; }
+  #content .pane { display:none; } #content .pane.active { display:block; }
+  /* rendered markdown */
+  .md h1,.md h2,.md h3 { line-height:1.25; } .md h2 { border-bottom:1px solid var(--line); padding-bottom:4px; }
+  .md table { border-collapse:collapse; } .md td,.md th { border:1px solid var(--line); padding:5px 10px; }
+  .md pre { background:#f0f0f0; padding:12px; border-radius:6px; overflow-x:auto; }
+  .md .mermaid { background:#fff; border:1px solid var(--line); border-radius:8px; padding:10px; margin:14px 0; }
+  /* commentable blocks */
+  .cblock { position:relative; border-radius:4px; }
+  .cblock:hover { outline:2px solid #bfdbfe; cursor:pointer; }
+  .cblock.has-comment { outline:2px solid var(--open); }
+  .cblock.has-comment.all-resolved { outline:2px solid var(--resolved); }
+  #design-frame { width:100%; height:calc(100vh - 120px); border:1px solid var(--line); border-radius:8px; background:#fff; }
+  /* sidebar */
+  aside { border-left:1px solid var(--line); background:#fff; padding:14px; overflow-y:auto; }
+  aside h2 { font-size:13px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin:4px 0 10px; }
+  .comment { border:1px solid var(--line); border-left:3px solid var(--open); border-radius:6px;
+             padding:8px 10px; margin-bottom:8px; font-size:13px; }
+  .comment.resolved { border-left-color:var(--resolved); opacity:.65; }
+  .comment .anchor { color:var(--muted); font-size:11px; display:block; margin-bottom:3px;
+                     white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .comment .ops { margin-top:6px; display:flex; gap:8px; }
+  .comment .ops button { font-size:11px; padding:2px 8px; border:1px solid var(--line); background:#fff; border-radius:4px; cursor:pointer; }
+  /* composer popover */
+  #composer { position:absolute; z-index:20; width:300px; background:#fff; border:1px solid var(--line);
+              border-radius:8px; box-shadow:0 6px 24px rgba(0,0,0,.12); padding:10px; display:none; }
+  #composer textarea { width:100%; height:70px; font:13px/1.4 inherit; padding:6px; border:1px solid var(--line); border-radius:5px; resize:vertical; }
+  #composer .row { display:flex; justify-content:flex-end; gap:8px; margin-top:6px; }
+  #composer button { font-size:12px; padding:4px 12px; border-radius:5px; border:1px solid var(--line); background:#fff; cursor:pointer; }
+  #composer .primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+  #banner { display:none; padding:14px 18px; text-align:center; font-weight:600; }
+  #banner.approved { display:block; background:#dcfce7; color:#166534; }
+  #banner.changes { display:block; background:#fef3c7; color:#92400e; }
+  .hint { color:var(--muted); font-size:12px; margin:0 0 14px; }
+  .cdn-fallback pre { white-space:pre-wrap; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="feature">…</h1><span class="round" id="round"></span>
+  <div class="tabs" id="tabs"></div>
+  <div class="spacer"></div>
+  <span id="count" class="round"></span>
+  <div class="actions">
+    <button id="btn-changes">Request changes</button>
+    <button id="btn-approve" disabled>Approve</button>
+  </div>
+</header>
+<div id="banner"></div>
+<main>
+  <div id="content"></div>
+  <aside><h2>Comments</h2><p class="hint">Click any block (or element in the Design tab) to pin a comment. Approve unlocks at zero open comments.</p><div id="list"></div></aside>
+</main>
+<div id="composer"><textarea id="ctext" placeholder="What should change here?"></textarea>
+  <div class="row"><button id="c-cancel">Cancel</button><button id="c-save" class="primary">Add comment</button></div></div>
+
+<script>
+(function () {
+  'use strict';
+  var META = null, COMMENTS = [], locked = false, pendingAnchor = null;
+  var TABS = [["design","Design","design.html"],["spec","Spec","spec.md"],["plan","Plan","plan.md"]];
+
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+  function api(path, opts){ return fetch(path, opts).then(function(r){ return r.json ? r.json() : r; }); }
+
+  // ── persistence (debounced autosave) ──────────────────────────────
+  var saveTimer = null;
+  function save(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function(){
+      fetch('/comments', {method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({comments: COMMENTS})});
+    }, 400);
+  }
+
+  // ── render comment list + counters + approve gating ───────────────
+  function refresh(){
+    var open = COMMENTS.filter(function(c){ return !c.resolved; }).length;
+    $('count').textContent = COMMENTS.length ? (open + ' open / ' + COMMENTS.length + ' total') : 'no comments';
+    $('btn-approve').disabled = locked || open > 0;
+    var list = $('list'); list.innerHTML = '';
+    COMMENTS.forEach(function(c, i){
+      var div = document.createElement('div');
+      div.className = 'comment' + (c.resolved ? ' resolved' : '');
+      div.innerHTML = '<span class="anchor">[' + esc(c.tab) + '] ' + esc(c.quote || c.anchor) + '</span>'
+        + esc(c.text)
+        + '<div class="ops"><button data-op="toggle" data-i="'+i+'">' + (c.resolved?'Reopen':'Resolve') + '</button>'
+        + '<button data-op="del" data-i="'+i+'">Delete</button></div>';
+      list.appendChild(div);
+    });
+    // block outlines
+    document.querySelectorAll('.cblock').forEach(function(el){
+      var mine = COMMENTS.filter(function(c){ return c.anchor === el.dataset.anchor; });
+      el.classList.toggle('has-comment', mine.length > 0);
+      el.classList.toggle('all-resolved', mine.length > 0 && mine.every(function(c){ return c.resolved; }));
+    });
+  }
+  $('list').addEventListener('click', function(e){
+    var op = e.target.dataset && e.target.dataset.op; if (!op || locked) return;
+    var i = +e.target.dataset.i;
+    if (op === 'del') COMMENTS.splice(i, 1);
+    else COMMENTS[i].resolved = !COMMENTS[i].resolved;
+    refresh(); save();
+  });
+
+  // ── composer ───────────────────────────────────────────────────────
+  function openComposer(x, y, anchor){
+    if (locked) return;
+    pendingAnchor = anchor;
+    var c = $('composer');
+    c.style.display = 'block';
+    c.style.left = Math.min(x, window.innerWidth - 340) + 'px';
+    c.style.top = (y + window.scrollY + 8) + 'px';
+    $('ctext').value = ''; $('ctext').focus();
+  }
+  $('c-cancel').onclick = function(){ $('composer').style.display = 'none'; };
+  $('c-save').onclick = function(){
+    var t = $('ctext').value.trim();
+    if (t && pendingAnchor){ COMMENTS.push({tab: pendingAnchor.tab, anchor: pendingAnchor.id,
+      quote: pendingAnchor.quote, text: t, resolved: false, ts: new Date().toISOString()});
+      refresh(); save(); }
+    $('composer').style.display = 'none';
+  };
+
+  // ── markdown panes ────────────────────────────────────────────────
+  function renderMd(pane, tabKey, text){
+    var ok = typeof marked !== 'undefined';
+    if (ok) {
+      pane.innerHTML = '<div class="md">' + marked.parse(text) + '</div>';
+      // mermaid: ```mermaid fences become <pre><code class="language-mermaid">
+      pane.querySelectorAll('code.language-mermaid').forEach(function(code, i){
+        var div = document.createElement('div'); div.className = 'mermaid'; div.textContent = code.textContent;
+        code.closest('pre').replaceWith(div);
+      });
+      if (typeof mermaid !== 'undefined') { try { mermaid.run({nodes: pane.querySelectorAll('.mermaid')}); } catch(e){} }
+    } else {
+      pane.innerHTML = '<div class="md cdn-fallback"><p class="hint">CDN unavailable — raw markdown.</p><pre>' + esc(text) + '</pre></div>';
+    }
+    // anchor every meaningful block
+    var n = 0;
+    pane.querySelectorAll('.md h1,.md h2,.md h3,.md h4,.md p,.md li,.md table,.md pre,.md .mermaid').forEach(function(el){
+      var id = tabKey + '-b' + (n++);
+      el.classList.add('cblock'); el.dataset.anchor = id;
+      el.addEventListener('click', function(e){
+        if (e.target.closest('a')) return;
+        e.stopPropagation();
+        openComposer(e.clientX, e.clientY, {tab: tabKey, id: id, quote: (el.textContent || '').trim().slice(0, 90)});
+      });
+    });
+  }
+
+  // ── design pane (same-origin iframe; click-to-comment injected) ───
+  function renderDesign(pane){
+    pane.innerHTML = '<p class="hint">Click any element inside the design to comment on it.</p>'
+      + '<iframe id="design-frame" src="/artifact/design.html"></iframe>';
+    var fr = pane.querySelector('#design-frame');
+    fr.addEventListener('load', function(){
+      var doc = fr.contentDocument; if (!doc) return;
+      doc.addEventListener('click', function(e){
+        e.preventDefault(); e.stopPropagation();
+        var el = e.target;
+        var path = [], p = el;
+        while (p && p.tagName && p.tagName !== 'BODY' && path.length < 5){
+          var idx = 1, s = p; while ((s = s.previousElementSibling)) idx++;
+          path.unshift(p.tagName.toLowerCase() + ':nth-child(' + idx + ')'); p = p.parentElement;
+        }
+        var rect = fr.getBoundingClientRect();
+        openComposer(rect.left + 40, rect.top + Math.min(e.clientY, rect.height - 60),
+          {tab: 'design', id: path.join(' > '), quote: (el.textContent || el.tagName).trim().slice(0, 90)});
+      }, true);
+    });
+  }
+
+  // ── verdict ───────────────────────────────────────────────────────
+  function sendVerdict(v){
+    if (locked) return;
+    if (v === 'approved'){
+      var shas = Object.keys(META.artifacts).filter(function(k){ return META.artifacts[k].exists; })
+        .map(function(k){ return k + ' ' + META.artifacts[k].sha256.slice(0, 8); }).join('\n  ');
+      if (!confirm('Approve "' + META.feature + '" (round ' + META.round + ')?\n\nThis binds approval to:\n  '
+        + shas + '\n\nThe approved artifacts become IMMUTABLE.')) return;
+    }
+    fetch('/verdict', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({verdict: v, comments: COMMENTS})})
+      .then(function(r){ return r.json().then(function(j){ return {ok: r.ok, j: j}; }); })
+      .then(function(res){
+        if (!res.ok){ alert('Rejected: ' + (res.j.error || 'unknown')); return; }
+        locked = true; refresh();
+        var b = $('banner');
+        b.className = v === 'approved' ? 'approved' : 'changes';
+        b.textContent = v === 'approved'
+          ? '✓ Approved (sha-bound). Return to your terminal session and continue.'
+          : '↺ Changes requested — ' + COMMENTS.filter(function(c){ return !c.resolved; }).length
+            + ' open comment(s) recorded. Return to your terminal session.';
+      });
+  }
+  $('btn-approve').onclick = function(){ sendVerdict('approved'); };
+  $('btn-changes').onclick = function(){ sendVerdict('changes-requested'); };
+
+  // ── boot ──────────────────────────────────────────────────────────
+  if (typeof mermaid !== 'undefined') mermaid.initialize({startOnLoad: false, securityLevel: 'strict'});
+  api('/meta').then(function(meta){
+    META = meta;
+    $('feature').textContent = meta.feature;
+    $('round').textContent = 'round ' + meta.round;
+    var first = null;
+    TABS.forEach(function(t){
+      var key = t[0], label = t[1], file = t[2];
+      if (!meta.artifacts[file] || !meta.artifacts[file].exists) return;
+      var pane = document.createElement('div'); pane.className = 'pane'; pane.id = 'pane-' + key;
+      $('content').appendChild(pane);
+      var btn = document.createElement('button'); btn.textContent = label;
+      btn.onclick = function(){
+        document.querySelectorAll('.tabs button').forEach(function(b){ b.classList.remove('active'); });
+        document.querySelectorAll('.pane').forEach(function(p){ p.classList.remove('active'); });
+        btn.classList.add('active'); pane.classList.add('active');
+      };
+      $('tabs').appendChild(btn);
+      if (!first){ first = btn; }
+      if (key === 'design') renderDesign(pane);
+      else fetch('/artifact/' + file).then(function(r){ return r.text(); })
+             .then(function(text){ renderMd(pane, key, text); refresh(); });
+    });
+    if (first) first.click();
+    return api('/comments');
+  }).then(function(saved){
+    if (saved && saved.comments){ COMMENTS = saved.comments; }
+    refresh();
+  });
+})();
+</script>
+</body>
+</html>

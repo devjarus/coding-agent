@@ -8,6 +8,7 @@ A Protocol is a named multi-actor workflow. Each is `{Actor → Artifact} + Chec
 | `research` | breadth-heavy question | research.md / cited brief | orchestrator (lead), architect/Explore investigators |
 | `spec-writing` | intent approved | spec.md approved | architect |
 | `plan-writing` | spec approved | plan.md approved | architect |
+| `design-review` | draft spec/plan (+ design.html) returned | sha-bound approved verdict, or comment batch to architect | orchestrator (surface + triage), user (signs) |
 | `implementation` | plan approved | all tasks complete | implementor (orchestrator dispatches) |
 | `review` | implementation complete | review.md written | evaluator |
 | `fix-round` | review FAIL | review PASS or escalation | orchestrator (coordinates) |

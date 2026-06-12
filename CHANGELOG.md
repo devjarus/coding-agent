@@ -5,6 +5,26 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.0] — 2026-06-12 — Design-review surface + prototype mode
+
+The pipeline's approval gates were text-only while product judgment is visual and interactive: chat hides the full design behind a terminal scroll, and every feedback item costs a whole round-trip. This release moves spec/plan review into the browser and adds a disposable-prototype mode for when the product direction itself is unknown.
+
+### Added
+
+- **Design-review surface** — `scripts/design-review.sh start|stop|status <feature_dir>` serves spec.md / plan.md (markdown + mermaid rendered as SVG) and design.html (iframe) on localhost via a stdlib-Python server (`design-review-server.py` + single-file app `design-review.html`, CDN marked/mermaid with raw-markdown fallback). The user pins comments to any block or design element, batches all feedback, and ends the round with **Approve** or **Request changes**. Comments persist to `design-comments.json` (auto-archived per round); the verdict to `design-verdict.json`, **sha-bound server-side** to the exact artifact bytes on disk. Approve is rejected (HTTP 409, enforced server-side, not just UI) while any comment is open.
+- **`protocols/design-review.md`** — the gate loop: serve surface → user batches comments → orchestrator **triages** (trivial → one architect re-dispatch; material → revision machinery; out-of-scope → back to user / open-threads) → round++ until an approved verdict. Honest integrity note on record: sha-binding pins approval to reviewed bytes (post-approval edits mechanically fail the checks); fabrication-resistance is equivalent to the legacy gate — the orchestrator never writes the verdict/comments files, only the server does. Headless fallback = legacy chat gate.
+- **`design.html` look-contract artifact** (`templates/design.template.html`, Plan category) — for UI features the architect now authors real screens (states included, self-contained inline-CSS) reviewed alongside the spec; spec.md stays the behavior contract; the implementor matches structure with the project's real stack, never copies the mock.
+- **`skills/practices/prototype-first/SKILL.md` + orchestrator prototype mode** — for unknown product direction: intake-lite → mock app rounds in quarantined top-level `prototype/` (real frontend, fixture/msw/json-server backend, deterministic seed data; no TDD/evaluator/spec gates, one builds-and-renders self-check per round) → forcing question each round (continue/pivot/graduate/abandon) → graduation distills decisions into intent.md, lifts fixture JSON shapes into the spec's API section, seeds design.html from winning screens, **deletes `prototype/`** (git history is the archive), then runs the full feature pipeline. Production code never imports from `prototype/`; offered (never auto-entered) when the user answers "I don't know" to product-shape discovery.
+
+### Changed
+
+- **`checks/spec-approved.sh` + `checks/plan-approved.sh`** — when `design-verdict.json` exists, approval is additionally sha-verified: verdict `spec_sha`/`plan_sha` must match current bytes (post-approval edit → gate fails with "re-run the design review"); `changes-requested` verdict blocks. No verdict file = legacy frontmatter-only path, unchanged. New `lib.sh` helpers `sha256_file` (shasum/sha256sum portable, matches the server's hashing) + `verify_design_verdict`.
+- **`agents/orchestrator.md`** — approval-gate protocol now routes spec/plan through the review surface (verdict file written ONLY by the server; hand-writing it = forged approval); prototype mode in the classifier + mode table.
+- **`agents/architect.md`** — authors design.html for UI features and a `## Flows` mermaid diagram ("a flow only described in prose is a flow the user can't see"); on changes-requested, addresses the full anchored comment batch in one revision pass.
+- **`protocols/spec-writing.md` / `plan-writing.md`** — gate step 6/7 rewritten: 5-line chat summary + surface URL instead of printing the full body; headless fallback retained.
+- **`templates/spec.template.md` / `plan.template.md`** — optional `## Flows` / `## Wave Graph` mermaid sections (render as SVG in the surface).
+- **`scripts/validate.sh`** — template inventory now counts `*.template.*` (design.template.html was invisible to the `.md`-only glob).
+
 ## [2.5.0] — 2026-06-09 — Fable 5 for orchestrator + architect
 
 Moves the two highest-reasoning, longest-running roles — the orchestrator (the main-thread state machine that runs the whole session) and the architect (spec/plan design) — onto **Fable 5** (`claude-fable-5`), the model tier tuned for the hardest, longest tasks. The execution-heavy implementor stays on Sonnet; the evaluator and debugger stay on Opus.

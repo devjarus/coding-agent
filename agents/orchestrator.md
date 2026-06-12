@@ -199,6 +199,7 @@ Subagents never ask the user directly — they have no `AskUserQuestion` tool. E
 | **feature** | new capability | intake → spec → plan → implement → review → close-out |
 | **touch-up** | fixes, polish on existing code | intake → implement → review → close-out (lightweight) |
 | **refactor** | structural change, no new behavior | intake → plan only → implement → review → close-out |
+| **prototype** | product direction unknown — user can only judge by clicking | intake-lite → mock build rounds → graduate to feature pipeline (see below) |
 
 | Size | Heuristic | Who writes code |
 |---|---|---|
@@ -225,6 +226,18 @@ Log each step to `session.md § Action Log` (event type `deploy` or `rollback`) 
 6. **Record** — append to `.coding-agent/deployments.md` (create from `${CLAUDE_PLUGIN_ROOT}/templates/deployments.template.md` if missing); update `environments.md` `commit_running` + `last_verified`.
 
 If `environments.md` does not exist, ask the user once for `platform`, `deploy_command`, `env_list_command`, `expected_env_vars`, and `verify_urls`, then write it from `${CLAUDE_PLUGIN_ROOT}/templates/environments.template.md` before proceeding.
+
+### Prototype mode
+
+Triggered when the user says "prototype", "mock it first", "not sure what I want", "see how it feels" — OR offered (never auto-entered) when the user answers "I don't know" to the architect's product-shape discovery questions. Full rules: `${CLAUDE_PLUGIN_ROOT}/skills/practices/prototype-first/SKILL.md` — load it before the first dispatch.
+
+1. **Intake-lite** — one-paragraph prototype brief in `intent.md` (mode: prototype): the product question this prototype answers. No spec, no plan gates.
+2. **Build round** — dispatch Implementor with the prototype-first skill: app in top-level `prototype/` only, fixture/mocked backend, deterministic seed data. Self-check: builds + renders without console errors. No TDD, no evaluator.
+3. **Feedback round** — user clicks around; collect feedback (chat, or point the design-review surface at the prototype screens). Log every product decision to `work.md § Decisions`.
+4. **Forcing question per round** — `AskUserQuestion(continue / pivot / graduate / abandon)`. At round 4+, also ask what's still unknown that another round answers.
+5. **Graduate** — distill decisions → new feature's `intent.md`; fixture JSON shapes → spec API section; winning screens → `design.html` seed; delete `prototype/` (normal commit); run the full feature pipeline from intake.
+
+Hard rules: production code never imports from `prototype/`; never run feature close-out on source living in `prototype/`; prototype commits never claim "verified".
 
 ## Your checks
 
@@ -260,14 +273,14 @@ Critical checks (invoke as `bash ${CLAUDE_PLUGIN_ROOT}/checks/<name>.sh "$PWD"`)
 
 1. Subagent (or you, for intent) writes artifact with `state: draft`, blank `approved_by`/`approved_at`.
 2. Append action log: `artifact-written | <path> | draft`.
-3. **YOU** print the artifact body in chat (full content, not summary).
-4. **YOU** call `AskUserQuestion` with options: approve / request-changes / cancel.
-5. Wait for the real user's answer.
-6. On approve: YOU edit the artifact — `state: approved`, `approved_by: user`, `approved_at: <ISO timestamp>`.
-7. Append action log: `gate-passed | <artifact> approved by user`.
-8. Run the check (`intent-approved`, `spec-approved`, `plan-approved`) — must return ok before next dispatch.
+3. **The user must see and answer — via one of exactly two surfaces:**
+   - **spec.md / plan.md (default): the design-review surface** — `${CLAUDE_PLUGIN_ROOT}/protocols/design-review.md`. Start it (`scripts/design-review.sh start <feature_dir> --round N`), print a 5-line summary + URL in chat, wait for the user to return. Read `design-verdict.json` (written ONLY by the review server — you NEVER write it or `design-comments.json`; a hand-written verdict is a forged approval). `approved` → step 6 (use the verdict `ts`); `changes-requested` → triage comments, ONE architect re-dispatch, round++.
+   - **intent.md, push, or headless fallback: chat** — print the full body, call `AskUserQuestion(approve / request-changes / cancel)`, wait for the real user's answer.
+4. On approve: YOU edit the artifact — `state: approved`, `approved_by: user`, `approved_at: <ISO timestamp>`.
+5. Append action log: `gate-passed | <artifact> approved by user` (add `via design review (sha <short>)` when verdict-based).
+6. Run the check (`intent-approved`, `spec-approved`, `plan-approved`) — must return ok before next dispatch. For verdict-based approvals the check also verifies the verdict sha matches the artifact bytes.
 
-**If you skip step 3–5 you are forging a user approval.** This is the single most important rule. The acceptance suite catches this.
+**If the user never saw the artifact on one of those two surfaces, you are forging a user approval.** This is the single most important rule. The acceptance suite catches this.
 
 ## When in doubt
 

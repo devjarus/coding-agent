@@ -17,6 +17,10 @@ PLAN="$DIR/plan.md"
 approved_by=$(read_fm "$PLAN" "approved_by")
 [[ "$approved_by" == "user" ]] || { emit_fail "$NAME" "not approved by user"; exit 1; }
 
+# Sha-bound design-review verdict (if present) must match current plan.md bytes.
+verdict_err=$(verify_design_verdict "$DIR" "plan.md" "plan_sha")
+[[ -n "$verdict_err" ]] && { emit_fail "$NAME" "$verdict_err"; exit 1; }
+
 # Each wave must have evaluation rows.
 grep -qE '^### (T-|Wave )' "$PLAN" || { emit_fail "$NAME" "no tasks/waves found"; exit 1; }
 

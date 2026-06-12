@@ -42,6 +42,48 @@ emit_fail() {
   printf '{"check":"%s","ok":false,"reason":%s}\n' "$name" "$(printf '%s' "$reason" | jq -Rs .)"
 }
 
+# sha256 of a file's bytes (matches design-review-server.py's hashing).
+# Echoes the hex digest, or empty if the file is missing / no hasher found.
+sha256_file() {
+  local file="$1"
+  [[ -f "$file" ]] || { echo ""; return 0; }
+  if command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "$file" | cut -d' ' -f1
+  elif command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$file" | cut -d' ' -f1
+  else
+    echo ""
+  fi
+}
+
+# Validate a sha-bound design-review verdict for one artifact.
+# Usage: verify_design_verdict <feature_dir> <artifact_file> <verdict_key>
+#   e.g. verify_design_verdict "$DIR" spec.md spec_sha
+# Echoes "" when valid (or when no verdict file exists — legacy chat-approval
+# path), else a human-readable failure reason. Requires jq for parsing; if jq
+# is absent the verdict is treated as legacy (degrade open, like commit-msg).
+verify_design_verdict() {
+  local dir="$1" artifact="$2" key="$3"
+  local vfile="$dir/design-verdict.json"
+  [[ -f "$vfile" ]] || { echo ""; return 0; }
+  command -v jq >/dev/null 2>&1 || { echo ""; return 0; }
+  local verdict recorded actual
+  verdict=$(jq -r '.verdict // empty' "$vfile" 2>/dev/null)
+  if [[ "$verdict" != "approved" ]]; then
+    echo "design-verdict.json says '$verdict' — changes were requested in the review surface, not approved"
+    return 0
+  fi
+  recorded=$(jq -r ".$key // empty" "$vfile" 2>/dev/null)
+  [[ -z "$recorded" ]] && { echo ""; return 0; }   # artifact didn't exist at verdict time
+  actual=$(sha256_file "$dir/$artifact")
+  [[ -z "$actual" ]] && { echo ""; return 0; }     # no hasher available — degrade open
+  if [[ "$recorded" != "$actual" ]]; then
+    echo "$artifact changed AFTER the sha-bound approval (verdict ${recorded:0:8}, current ${actual:0:8}) — re-run the design review"
+  else
+    echo ""
+  fi
+}
+
 # Detect if the project has a UI (web or iOS).
 # Echoes "web", "ios", or "" (none).
 detect_ui() {

@@ -25,6 +25,14 @@ supersedes: null
 FR-1: <one sentence, testable>
 FR-2: ...
 
+## Flows
+<!-- optional but strongly preferred for anything with >1 step or actor —
+     mermaid renders as an SVG diagram in the design-review surface -->
+```mermaid
+flowchart LR
+  User -->|action| System --> Outcome
+```
+
 ## Technical Risks
 - <risk + mitigation>
 

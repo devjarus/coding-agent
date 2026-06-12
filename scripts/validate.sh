@@ -260,7 +260,7 @@ agent_count=$(find "$PLUGIN_ROOT/agents" -name "*.md" | wc -l | tr -d ' ')
 skill_count=$(find "$PLUGIN_ROOT/skills" -name "SKILL.md" | wc -l | tr -d ' ')
 protocol_count=$(find "$PLUGIN_ROOT/protocols" -name "*.md" ! -name "README.md" | wc -l | tr -d ' ')
 check_count=$(find "$PLUGIN_ROOT/checks" -name "*.sh" ! -name "lib.sh" | wc -l | tr -d ' ')
-template_count=$(find "$PLUGIN_ROOT/templates" -name "*.template.md" | wc -l | tr -d ' ')
+template_count=$(find "$PLUGIN_ROOT/templates" -name "*.template.*" | wc -l | tr -d ' ')
 mcp_count=$(jq -r '(.mcpServers // {}) | length' "$PLUGIN_ROOT/.mcp.json" 2>/dev/null || echo "?")
 dim "  Agents:      $agent_count"
 dim "  Skills:      $skill_count"

@@ -39,7 +39,7 @@ A durable output on disk. Typed, owned by exactly one Actor, with declared reade
 | Category | Purpose | Typical files |
 |----------|---------|---------------|
 | **Intent** | What we're trying to do, approved by User | `intent.md` |
-| **Plan** | How we'll do it, approved by User | `spec.md`, `plan.md` |
+| **Plan** | How we'll do it, approved by User | `spec.md`, `plan.md`, `design.html` (UI features — the *look* contract; spec.md stays the *behavior* contract) |
 | **Work** | Current state: task ledger, decisions, deviations, revisions, nits — one place | `work.md` |
 | **Findings** | What the Critic saw | `review.md`, `diagnosis.md` |
 | **Research** | Verified, cited research backing a decision | `research.md` |

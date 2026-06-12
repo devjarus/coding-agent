@@ -34,12 +34,12 @@
    - `## Performance Budgets` (only if relevant)
    - `## Non-Goals`
 5. **Write `spec.md` in `state: draft`** with blank approval fields.
-6. **Return to orchestrator.** The architect NEVER calls `AskUserQuestion` for approval — only the main-thread orchestrator can reach the real user. The orchestrator will:
-   - Read `spec.md`
-   - Print its full body in chat
-   - Call `AskUserQuestion(approve/request-changes/cancel)`
-   - On user approve: flip `state: approved`, set `approved_by: user`, set `approved_at: <ts>`
-   - Append action-log: `gate-passed | spec.md approved by user`
+6. **Return to orchestrator.** The architect NEVER calls `AskUserQuestion` for approval — only the main-thread orchestrator can reach the real user. The orchestrator runs the gate via `${CLAUDE_PLUGIN_ROOT}/protocols/design-review.md`:
+   - Print a 5-line summary in chat (not the full body), start the review surface (`scripts/design-review.sh start <feature_dir>`), give the user the URL
+   - User comments + signs in the browser; on `verdict: approved` (sha-bound): flip `state: approved`, set `approved_by: user`, `approved_at: <verdict ts>`
+   - On `changes-requested`: triage the comment batch, ONE re-dispatch to the architect, round++
+   - Append action-log: `gate-passed | spec.md approved via design review (sha <short>)`
+   - Headless fallback (no browser): print full body + `AskUserQuestion(approve/request-changes/cancel)` as before
 
 **Discovery Q&A from the architect subagent is fine** — information-gathering questions reach the user. But approval gates must happen in the orchestrator's conversation, not the subagent's.
 

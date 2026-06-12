@@ -16,12 +16,12 @@
 4. **Mark parallelism explicitly.** Default serial. Add a `parallel: [T-3, T-4]` line per wave only when tasks touch disjoint files AND have no ordering dependency.
 5. **Map risks to tasks** in `## Risk Mitigations`.
 6. **Write `plan.md` in `state: draft`** with blank approval fields.
-7. **Return to orchestrator.** Architect NEVER calls `AskUserQuestion` for approval. The orchestrator will:
-   - Read `plan.md`
-   - Print its full body in chat
-   - Call `AskUserQuestion(approve/request-changes/cancel)`
-   - On user approve: flip `state: approved`, set `approved_by: user`, set `approved_at: <ts>`
-   - Append action-log: `gate-passed | plan.md approved by user`
+7. **Return to orchestrator.** Architect NEVER calls `AskUserQuestion` for approval. The orchestrator runs the gate via `${CLAUDE_PLUGIN_ROOT}/protocols/design-review.md`:
+   - Print a 5-line summary in chat, start the review surface (`scripts/design-review.sh start <feature_dir> --round N`), give the user the URL
+   - User comments + signs in the browser; on `verdict: approved` (sha-bound): flip `state: approved`, set `approved_by: user`, `approved_at: <verdict ts>`
+   - On `changes-requested`: triage comments, ONE architect re-dispatch, round++
+   - Append action-log: `gate-passed | plan.md approved via design review (sha <short>)`
+   - Headless fallback (no browser): print full body + `AskUserQuestion(approve/request-changes/cancel)` as before
 
 Approval gates only work in the main-thread orchestrator's conversation. See `spec-writing.md` for the same rule.
 
