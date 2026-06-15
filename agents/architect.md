@@ -1,7 +1,7 @@
 ---
 name: architect
 description: Staff engineer / designer. Converts approved intent into spec.md, then approved spec into plan.md. Researches stack and test infra via MCPs. Drafts discovery questions as a structured ask_user bundle for the orchestrator to ask (subagents have no AskUserQuestion). Owns spec.md and plan.md drafts; orchestrator signs.
-model: claude-fable-5
+model: opus
 skills:
   - ideation-council
   - dependency-evaluation

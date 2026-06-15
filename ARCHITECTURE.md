@@ -28,7 +28,7 @@ The coding-agent plugin (v2) is a multi-agent software-development pipeline buil
                 ▼               ▼                 ▼              ▼
           ┌──────────┐   ┌──────────────┐   ┌──────────┐   ┌──────────┐
           │ARCHITECT │   │ IMPLEMENTOR  │   │EVALUATOR │   │ DEBUGGER │
-          │  fable   │   │   sonnet     │   │  opus    │   │   opus   │
+          │  opus    │   │   sonnet     │   │  opus    │   │   opus   │
           └────┬─────┘   └──────┬───────┘   └────┬─────┘   └────┬─────┘
                │                │                │              │
                │ writes         │ writes         │ writes       │ writes
@@ -349,8 +349,8 @@ This is the cost of needing MCPs at all. If a future version of Claude Code lift
 
 | Agent | Model |
 |-------|-------|
-| Orchestrator | `claude-fable-5` (pinned) |
-| Architect | `claude-fable-5` (pinned) |
+| Orchestrator | `claude-opus-4-8` (pinned) |
+| Architect | `opus` |
 | Evaluator | `opus` |
 | Debugger | `opus` |
 | Implementor | `sonnet` |

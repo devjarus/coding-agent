@@ -5,6 +5,18 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.2] — 2026-06-15 — Revert orchestrator + architect to Opus (Fable deactivated)
+
+Fable 5 was deactivated upstream, so pinning agents to `claude-fable-5` would point at an unavailable model. Reverts the two roles to their prior Opus tier; implementor stays Sonnet, evaluator + debugger stay Opus.
+
+### Changed
+
+- **`agents/orchestrator.md`** — `model: claude-fable-5` → `claude-opus-4-8`.
+- **`agents/architect.md`** — `model: claude-fable-5` → `opus`.
+- **`ARCHITECTURE.md`** — model-tier table + topology reverted to Opus.
+
+The validators still accept the `fable` alias / `claude-fable-N` IDs (harmless, dormant) so nothing needs re-wiring if Fable returns.
+
 ## [2.6.1] — 2026-06-15 — Design-review surface goes fully offline (drop mermaid + all CDN)
 
 Dogfooding the v2.6.0 surface on the plugin's own design immediately exposed the CDN diagram path as fragile: a malformed mermaid diagram rendered nothing, and a valid one collapsed to a zero-size SVG because mermaid was run inside a `display:none` (inactive) tab. Rather than patch a renderer that can't be tested headless, the surface drops mermaid and `marked.js` entirely and renders **server-side**. It now matches the rest of the plugin: Markdown + Bash + stdlib, no build, works with no network.
