@@ -26,11 +26,12 @@ FR-1: <one sentence, testable>
 FR-2: ...
 
 ## Flows
-<!-- optional but strongly preferred for anything with >1 step or actor —
-     mermaid renders as an SVG diagram in the design-review surface -->
-```mermaid
-flowchart LR
-  User -->|action| System --> Outcome
+<!-- optional but strongly preferred for anything with >1 step or actor.
+     Use an ASCII diagram in a plain code fence (same style as ARCHITECTURE.md) —
+     it renders verbatim in the design-review surface and needs no dependencies. -->
+```
+user → [action] → System → Outcome
+                     └──fail──→ error path
 ```
 
 ## Technical Risks

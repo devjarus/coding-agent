@@ -24,13 +24,94 @@ Stdlib only. Binds 127.0.0.1 exclusively. Started/stopped via design-review.sh.
 """
 import argparse
 import hashlib
+import html as _html
 import json
 import os
+import re
 import sys
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 ARTIFACTS = ("spec.md", "plan.md", "design.html")
+
+
+# ── server-side markdown → HTML (no external deps, fully offline) ────────
+# A compact, DEFENSIVE renderer for the constructs spec.md / plan.md actually
+# use: frontmatter strip, ATX headings, fenced code (incl. ASCII diagrams),
+# pipe tables, lists, blockquote, hr, and inline bold/code/links. Anything it
+# doesn't recognize falls through as a paragraph — it never throws on input.
+def _inline(s):
+    s = _html.escape(s, quote=False)
+    s = re.sub(r'`([^`]+)`', r'<code>\1</code>', s)
+    s = re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', s)
+    s = re.sub(r'\[([^\]]+)\]\(([^)\s]+)\)',
+               r'<a href="\2" target="_blank" rel="noopener">\1</a>', s)
+    return s
+
+
+def _strip_frontmatter(text):
+    if text.startswith('---\n'):
+        end = text.find('\n---', 3)
+        if end != -1:
+            nl = text.find('\n', end + 1)
+            return text[nl + 1:] if nl != -1 else ''
+    return text
+
+
+def render_markdown(text):
+    lines = _strip_frontmatter(text).split('\n')
+    out, para, i, n = [], [], 0, len(lines)
+
+    def flush():
+        if para:
+            out.append('<p>' + _inline(' '.join(para)) + '</p>')
+            para.clear()
+
+    list_re = r'^\s*(?:[-*]|\d+\.)\s+'
+    while i < n:
+        line = lines[i]
+        if line.lstrip().startswith('```'):                      # fenced code / ASCII diagram
+            flush(); i += 1; code = []
+            while i < n and not lines[i].lstrip().startswith('```'):
+                code.append(lines[i]); i += 1
+            i += 1
+            out.append('<pre><code>' + _html.escape('\n'.join(code)) + '</code></pre>')
+            continue
+        m = re.match(r'^(#{1,6})\s+(.*)$', line)
+        if m:                                                    # heading
+            flush(); lvl = len(m.group(1))
+            out.append('<h%d>%s</h%d>' % (lvl, _inline(m.group(2).strip()), lvl)); i += 1; continue
+        if '|' in line and i + 1 < n and re.match(
+                r'^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)+\|?\s*$', lines[i + 1]):  # pipe table
+            flush()
+            def cells(row):
+                row = row.strip().strip('|')
+                return [c.strip() for c in row.split('|')]
+            header = cells(line); i += 2; body = []
+            while i < n and '|' in lines[i] and lines[i].strip():
+                body.append(cells(lines[i])); i += 1
+            t = ['<table><thead><tr>'] + ['<th>' + _inline(c) + '</th>' for c in header] + ['</tr></thead><tbody>']
+            for r in body:
+                t.append('<tr>' + ''.join('<td>' + _inline(c) + '</td>' for c in r) + '</tr>')
+            t.append('</tbody></table>'); out.append(''.join(t)); continue
+        if re.match(r'^\s*---+\s*$', line):                      # horizontal rule
+            flush(); out.append('<hr>'); i += 1; continue
+        if line.lstrip().startswith('>'):                        # blockquote
+            flush(); bq = []
+            while i < n and lines[i].lstrip().startswith('>'):
+                bq.append(re.sub(r'^\s*>\s?', '', lines[i])); i += 1
+            out.append('<blockquote>' + _inline(' '.join(bq)) + '</blockquote>'); continue
+        if re.match(list_re, line):                              # list (ul/ol)
+            flush(); ordered = bool(re.match(r'^\s*\d+\.\s+', line))
+            tag = 'ol' if ordered else 'ul'; items = []
+            while i < n and re.match(list_re, lines[i]):
+                items.append('<li>' + _inline(re.sub(list_re, '', lines[i])) + '</li>'); i += 1
+            out.append('<%s>%s</%s>' % (tag, ''.join(items), tag)); continue
+        if not line.strip():                                     # blank → paragraph break
+            flush(); i += 1; continue
+        para.append(line.strip()); i += 1
+    flush()
+    return '\n'.join(out)
 
 
 def sha256_file(path):
@@ -94,6 +175,14 @@ class ReviewHandler(BaseHTTPRequestHandler):
                     self._send(200, f.read(), ctype)
             else:
                 self._send(404, {"error": "no such artifact"})
+        elif self.path.startswith("/render/"):
+            # server-side markdown → HTML; the browser injects this as-is (no CDN renderer)
+            p = self._artifact_path(self.path[len("/render/"):])
+            if p and os.path.isfile(p) and p.endswith(".md"):
+                with open(p, "r", encoding="utf-8") as f:
+                    self._send(200, render_markdown(f.read()).encode(), "text/html; charset=utf-8")
+            else:
+                self._send(404, {"error": "not a renderable markdown artifact"})
         elif self.path == "/meta":
             self._send(200, {
                 "feature": os.path.basename(self.feature_dir.rstrip("/")),

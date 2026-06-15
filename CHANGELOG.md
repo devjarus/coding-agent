@@ -5,6 +5,20 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.1] — 2026-06-15 — Design-review surface goes fully offline (drop mermaid + all CDN)
+
+Dogfooding the v2.6.0 surface on the plugin's own design immediately exposed the CDN diagram path as fragile: a malformed mermaid diagram rendered nothing, and a valid one collapsed to a zero-size SVG because mermaid was run inside a `display:none` (inactive) tab. Rather than patch a renderer that can't be tested headless, the surface drops mermaid and `marked.js` entirely and renders **server-side**. It now matches the rest of the plugin: Markdown + Bash + stdlib, no build, works with no network.
+
+### Changed
+
+- **`scripts/design-review-server.py`** — adds a compact, dependency-free `render_markdown()` (frontmatter strip, headings, fenced code / ASCII diagrams, pipe tables, lists, blockquote, hr, inline bold/code/links; unrecognized input falls through to a paragraph, never throws) and a `GET /render/<artifact>` endpoint returning HTML. Because rendering is server-side it is now **curl-verifiable** — the previously untestable browser-render path is gone.
+- **`scripts/design-review.html`** — removes both CDN `<script>` tags (mermaid + marked) and all mermaid logic; panes now inject server-rendered HTML and attach the comment layer to it. Fully offline; the only browser JS left is the comment/verdict layer.
+- **`templates/spec.template.md` / `plan.template.md`, `agents/architect.md`, `protocols/design-review.md`** — diagrams are ASCII in plain code fences (the `ARCHITECTURE.md` house style), not mermaid; rich/visual layouts belong in `design.html` (pure HTML), keeping exactly one visual surface and one text surface.
+
+### Why (design note)
+
+`design.html` was always pure self-contained HTML and rendered first-try; mermaid was the lone CDN dependency and the lone source of render bugs. Removing it unifies the surface on "markdown = text contract (server-rendered), design.html = visual contract (pure HTML)" and restores the plugin's no-network, no-build invariant. Caught by the tool reviewing its own design.
+
 ## [2.6.0] — 2026-06-12 — Design-review surface + prototype mode
 
 The pipeline's approval gates were text-only while product judgment is visual and interactive: chat hides the full design behind a terminal scroll, and every feedback item costs a whole round-trip. This release moves spec/plan review into the browser and adds a disposable-prototype mode for when the product direction itself is unknown.

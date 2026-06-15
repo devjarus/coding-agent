@@ -30,11 +30,10 @@ Serial by default. Parallel subsets:
 ### T-4 — ...
 
 ## Wave Graph
-<!-- optional but preferred for 2+ waves — renders as SVG in the design-review surface -->
-```mermaid
-flowchart LR
-  W1[Wave 1 — foundation] --> W2[Wave 2 — slices]
-  W2 --> T3[T-3] & T4[T-4]
+<!-- optional but preferred for 2+ waves. ASCII in a plain code fence (no deps,
+     renders verbatim in the design-review surface). -->
+```
+Wave 1 (foundation) ──→ Wave 2 (slices) ──→ [T-3] [T-4]
 ```
 
 ## Risk Mitigations

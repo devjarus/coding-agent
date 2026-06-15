@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   design-review app — served by design-review-server.py at /.
-  Renders spec.md / plan.md (markdown + mermaid) and design.html (iframe),
+  Renders spec.md / plan.md (server-side markdown → HTML) and design.html (iframe),
   lets the user pin comments to any block/element, and ends the round with
   a verdict: Approve (sha-bound, blocked while comments are open) or
   Request changes. All persistence goes through the local server; nothing
@@ -12,8 +12,8 @@
 <head>
 <meta charset="utf-8">
 <title>Design Review</title>
-<script src="https://cdn.jsdelivr.net/npm/marked@12/marked.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<!-- No CDN, no JS frameworks: markdown is rendered server-side and design.html is
+     plain HTML in an iframe. The surface works fully offline. -->
 <style>
   :root { --bg:#fafafa; --fg:#1a1a1a; --muted:#777; --line:#e2e2e2; --accent:#2563eb;
           --open:#d97706; --resolved:#16a34a; --danger:#dc2626; }
@@ -39,8 +39,7 @@
   /* rendered markdown */
   .md h1,.md h2,.md h3 { line-height:1.25; } .md h2 { border-bottom:1px solid var(--line); padding-bottom:4px; }
   .md table { border-collapse:collapse; } .md td,.md th { border:1px solid var(--line); padding:5px 10px; }
-  .md pre { background:#f0f0f0; padding:12px; border-radius:6px; overflow-x:auto; }
-  .md .mermaid { background:#fff; border:1px solid var(--line); border-radius:8px; padding:10px; margin:14px 0; }
+  .md pre { background:#f0f0f0; padding:12px; border-radius:6px; overflow-x:auto; line-height:1.3; }
   /* commentable blocks */
   .cblock { position:relative; border-radius:4px; }
   .cblock:hover { outline:2px solid #bfdbfe; cursor:pointer; }
@@ -68,7 +67,6 @@
   #banner.approved { display:block; background:#dcfce7; color:#166534; }
   #banner.changes { display:block; background:#fef3c7; color:#92400e; }
   .hint { color:var(--muted); font-size:12px; margin:0 0 14px; }
-  .cdn-fallback pre { white-space:pre-wrap; }
 </style>
 </head>
 <body>
@@ -159,23 +157,16 @@
     $('composer').style.display = 'none';
   };
 
-  // ── markdown panes ────────────────────────────────────────────────
-  function renderMd(pane, tabKey, text){
-    var ok = typeof marked !== 'undefined';
-    if (ok) {
-      pane.innerHTML = '<div class="md">' + marked.parse(text) + '</div>';
-      // mermaid: ```mermaid fences become <pre><code class="language-mermaid">
-      pane.querySelectorAll('code.language-mermaid').forEach(function(code, i){
-        var div = document.createElement('div'); div.className = 'mermaid'; div.textContent = code.textContent;
-        code.closest('pre').replaceWith(div);
-      });
-      if (typeof mermaid !== 'undefined') { try { mermaid.run({nodes: pane.querySelectorAll('.mermaid')}); } catch(e){} }
+  // ── markdown panes (server-rendered HTML, injected as-is) ─────────
+  function renderMd(pane, tabKey, htmlOrNull, rawText){
+    if (htmlOrNull != null) {
+      pane.innerHTML = '<div class="md">' + htmlOrNull + '</div>';
     } else {
-      pane.innerHTML = '<div class="md cdn-fallback"><p class="hint">CDN unavailable — raw markdown.</p><pre>' + esc(text) + '</pre></div>';
+      pane.innerHTML = '<div class="md"><p class="hint">Could not render — raw source below.</p><pre>' + esc(rawText || '') + '</pre></div>';
     }
-    // anchor every meaningful block
+    // anchor every meaningful block for commenting
     var n = 0;
-    pane.querySelectorAll('.md h1,.md h2,.md h3,.md h4,.md p,.md li,.md table,.md pre,.md .mermaid').forEach(function(el){
+    pane.querySelectorAll('.md h1,.md h2,.md h3,.md h4,.md p,.md li,.md table,.md pre,.md blockquote').forEach(function(el){
       var id = tabKey + '-b' + (n++);
       el.classList.add('cblock'); el.dataset.anchor = id;
       el.addEventListener('click', function(e){
@@ -235,7 +226,6 @@
   $('btn-changes').onclick = function(){ sendVerdict('changes-requested'); };
 
   // ── boot ──────────────────────────────────────────────────────────
-  if (typeof mermaid !== 'undefined') mermaid.initialize({startOnLoad: false, securityLevel: 'strict'});
   api('/meta').then(function(meta){
     META = meta;
     $('feature').textContent = meta.feature;
@@ -255,8 +245,10 @@
       $('tabs').appendChild(btn);
       if (!first){ first = btn; }
       if (key === 'design') renderDesign(pane);
-      else fetch('/artifact/' + file).then(function(r){ return r.text(); })
-             .then(function(text){ renderMd(pane, key, text); refresh(); });
+      else fetch('/render/' + file)
+             .then(function(r){ return r.ok ? r.text() : null; })
+             .then(function(html){ renderMd(pane, key, html, null); refresh(); })
+             .catch(function(){ renderMd(pane, key, null, '(render request failed)'); });
     });
     if (first) first.click();
     return api('/comments');

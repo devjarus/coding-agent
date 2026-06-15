@@ -15,8 +15,8 @@ architect returns draft ──► orchestrator runs pre-gate checks (stack-justi
         │
         ▼
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/design-review.sh start <feature_dir> --round N
-        │   serves review UI on localhost (spec/plan rendered + mermaid as SVG;
-        │   design.html in an iframe), opens the browser
+        │   serves review UI on localhost (spec/plan rendered server-side from
+        │   markdown; design.html in an iframe), opens the browser — no CDN, offline
         ▼
 USER, in the browser: reads, clicks any block/element → pinned comment,
 batches all feedback, then ONE of:
