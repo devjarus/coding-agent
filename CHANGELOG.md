@@ -5,6 +5,14 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.6.3] — 2026-06-19 — Fix factually-false "only you have the Agent tool" line in orchestrator
+
+An ultracode workflow that mapped the dispatch model to find where nested subagents (now GA, 5-deep) could be leveraged concluded — after adversarial verification of 6 candidates — that **nesting is unsafe everywhere in our model**: the single-dispatcher rule is a *dispatch-authority* invariant, not a write invariant, so "read-only children" do not make a forbidden dispatch permitted (no grandchild return-merge, no `ask_user` bubble-up, lost action-log attribution, collapsed independent verifier). The no-nesting invariant stays **absolute**. The one real defect it surfaced: the orchestrator prompt claimed subagents *lack* the `Agent`/`AskUserQuestion` tools, when in fact they inherit them (omit `tools:`) and are merely forbidden to use them. Corrected to match reality — the subagent prompts already said "even if inherited," so this just aligns the orchestrator.
+
+### Fixed
+
+- **`agents/orchestrator.md`** — three lines that stated subagents "only you have the Agent tool" / "only you have AskUserQuestion" (factually false — both are inherited) now read "inherited by subagents but only YOU may use it," and the dispatch line notes dispatch authority lives at depth 0 only (no level-2 nesting).
+
 ## [2.6.2] — 2026-06-15 — Revert orchestrator + architect to Opus (Fable deactivated)
 
 Fable 5 was deactivated upstream, so pinning agents to `claude-fable-5` would point at an unavailable model. Reverts the two roles to their prior Opus tier; implementor stays Sonnet, evaluator + debugger stay Opus.
