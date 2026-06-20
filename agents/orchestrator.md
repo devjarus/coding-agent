@@ -74,6 +74,7 @@ You execute these by name. Each protocol file is the authoritative reference —
 ## Your dispatch tools
 
 ```
+Agent(subagent_type="coding-agent:product-lead", prompt="Mode: shape | reflect | review. ... (opt-in — direction, not implementation)")
 Agent(subagent_type="coding-agent:architect",  prompt="Phase: SPEC | PLAN. ...")
 Agent(subagent_type="coding-agent:implementor", prompt="Tasks: T-N from plan.md. Skills: [...]. ...")
 Agent(subagent_type="coding-agent:evaluator",   prompt="Mode: smoke | delta | lightweight | full. Files changed: ... (delta = targeted fix-round re-review; pass prior finding IDs)")
@@ -238,6 +239,19 @@ Triggered when the user says "prototype", "mock it first", "not sure what I want
 5. **Graduate** — distill decisions → new feature's `intent.md`; fixture JSON shapes → spec API section; winning screens → `design.html` seed; delete `prototype/` (normal commit); run the full feature pipeline from intake.
 
 Hard rules: production code never imports from `prototype/`; never run feature close-out on source living in `prototype/`; prototype commits never claim "verified".
+
+### Product direction (opt-in)
+
+For when the user is eager to build but direction is fuzzy — *what* to build, for *whom*, solving *what*, and what "world-class" means here. The `product-lead` agent owns it; full rules in `${CLAUDE_PLUGIN_ROOT}/protocols/product-direction.md`. **Opt-in — you offer, you never impose.** (Distinct from prototype mode: prototype answers "how does it feel to use"; product-direction answers "is this the right thing, and where is it headed.")
+
+| Signal | Action |
+|---|---|
+| "what should I build", "is this the right thing", "I don't know what I want" | **Offer** Shape: *"Want me to pin the direction first — the problem + core flow — before we build?"* Dispatch `product-lead` (`Mode: shape`) only if accepted; gate `product.md` approval before the spec phase. |
+| User says "product review" / periodic step-back | Dispatch `product-lead` (`Mode: review`); gate the evolved `product.md`; the ranked moves become candidate feature intents. |
+| Full close-out completes AND `.coding-agent/product.md` exists | Dispatch `product-lead` (`Mode: reflect`); append its `evolution_entry` to `product.md § Evolution Log` (you own the on-disk append). Skip for touch-up/micro. |
+| User has a clear, decided request ("just build X") | Do **nothing** — never insert a direction gate in front of a decided user. |
+
+When `product.md` is approved, pass its path in the architect's SPEC dispatch — the spec serves the north-star and core flow.
 
 ## Your checks
 

@@ -5,6 +5,26 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.0] — 2026-06-19 — Product-Lead: a 6th agent for product direction (opt-in)
+
+The pipeline was excellent at *building the thing right* but assumed the thing was already decided. This adds the missing upstream layer: **what to build, for whom, solving what problem, and what "world-class" means** — plus an evolution loop so direction compounds across features instead of resetting each time. Adding an Actor is a primitive-level change → major bump.
+
+**Opt-in by design.** The Product-Lead never auto-gates the pipeline. A user who says "just build X" gets built for. It engages only when direction is fuzzy ("what should I build", "is this the right thing"), when invoked, or as a lightweight close-out reflection.
+
+### Added
+
+- **`agents/product-lead.md`** — 6th agent. Founder/product-strategist hat, distinct from the architect's *how*. Owns product *direction*. Like the architect: no dispatch, no `AskUserQuestion`, returns `ask_user` bundles; orchestrator signs. Three modes: **Shape** (concrete problem + core flow + world-class bar), **Reflect** (per-feature north-star delta), **Review** (`/product-review` — maturity assessment + ranked next moves).
+- **`templates/product.template.md`** — `.coding-agent/product.md`, a persistent **Memory** artifact (evolves, not immutable): Problem · Target User & JTBD · North-Star · Core Flows · World-Class Bar · Non-Goals · Principles · Maturity Ladder · Evolution Log (append-only).
+- **`protocols/product-direction.md`** — the opt-in workflow: offer-don't-impose triggers, the Shape approval gate, per-feature Reflect at close-out, periodic Review.
+- **`skills/practices/product-shaping/SKILL.md`** — the method (solution→problem trace, JTBD, one-clean-flow design, testable world-class bar, maturity ladder, compounding evolution).
+
+### Changed
+
+- **`agents/orchestrator.md`** — `product-lead` dispatch line + an opt-in "Product direction" routing table (offer on direction-uncertainty signals; do nothing for a decided user; reflect at close-out; pass approved `product.md` to the architect's SPEC dispatch).
+- **`protocols/close-out.md`** — new opt-in step 4.7 (product reflection; skipped for touch-up/micro and when no `product.md` exists).
+- **`protocols/README.md`**, **`docs/concepts/primitives.md`** — Product-Lead Actor row; `product.md` added to the Memory artifact category.
+- Inventory synced everywhere: **6 agents, 57 skills, 12 protocols, 14 templates** (`AGENTS.md`, `plugin.json`, `marketplace.json`, `ARCHITECTURE.md`, `docs/README.md`).
+
 ## [2.7.0] — 2026-06-19 — Delta re-review: stop re-auditing untouched code on every fix round
 
 The implementation → review → fix loop was the pipeline's real slow path, and the cause wasn't lack of parallelism — it was **redundant full re-verification**. Every fix-round re-review was forced to Full mode (`review.md` mode table), so after the implementor fixed two targeted findings the evaluator re-read spec+plan+work, re-ran the whole build + entire test suite, re-swept every FR, and re-drove every runtime flow — to re-confirm code nobody touched. New **Delta** mode re-verifies *what changed*, not *what didn't*: it re-checks only the named finding IDs + runs the test tiers (regression stays non-negotiable), and skips the from-scratch FR sweep and full runtime re-drive. Tests still run, so integrity is preserved; only the redundant audit of untouched surface is cut. Escalates to Full automatically when a fix isn't targeted (new files, surface beyond the findings) or on same-bug-twice (Round 2+).

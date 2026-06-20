@@ -26,6 +26,7 @@
    - **AGENTS.md** — if a new project-wide convention was established (logger module, test path, shared adapter). Keep it vendor-neutral — see the skill's *§ AGENTS.md is vendor-neutral*. No references to `.coding-agent/`, protocols, checks, or deploy commands.
 4. **Update ARCHITECTURE.md** if a new service/db/queue or cross-module dependency was introduced.
 4.5. **Ensure CI exists (first feature only).** If this was the project's first feature AND there's no `.github/workflows/` (or GitLab/Bitbucket equivalent), dispatch Implementor with `ci-testing-standard` skill to scaffold: test script, CI workflow running lint+typecheck+tests+build on push/PR, optional pre-commit hook. Skip if CI already exists and covers what the evaluator ran.
+4.7. **Product reflection (opt-in — only if `.coding-agent/product.md` exists).** Dispatch Product-Lead (`Mode: reflect`) with the feature's `spec.md` + `review.md` summary + `product.md` path; append its returned `evolution_entry` to `product.md § Evolution Log` (append-only — you own the on-disk write) and update the maturity-ladder "Now:" line if it changed. Append action-log `product-reflect | <slug> | <north-star delta>`. See `${CLAUDE_PLUGIN_ROOT}/protocols/product-direction.md` § Reflect. Skip entirely when no `product.md` exists (no direction was ever shaped) and for touch-up/micro close-out.
 5. **Clear CURRENT.** `: > .coding-agent/CURRENT`
 6. **Update session.md Checkpoint:**
    ```
@@ -53,6 +54,7 @@ After close-out completes, **before** any git commit:
 Touch-up close-out skips:
 - Step 3 (README/AGENTS.md update — touch-ups don't establish conventions or change the project's front page)
 - Step 4 (ARCHITECTURE.md update — touch-ups don't change architecture)
+- Step 4.7 (product reflection — a touch-up doesn't move the north-star)
 - The `docs-current` check in step 8 (a touch-up shouldn't force a README regen)
 
 Steps 1, 2, 5, 6, 7, 8 still run (step 8 minus `docs-current`). `learnings.md` entry only if a real lesson was learned (touch-up reflection is optional).

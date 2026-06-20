@@ -5,6 +5,7 @@ A Protocol is a named multi-actor workflow. Each is `{Actor → Artifact} + Chec
 | Protocol | Entry | Exit | Primary writer |
 |----------|-------|------|----------------|
 | `intake` | user message | intent.md approved | orchestrator |
+| `product-direction` | direction unclear / "what should I build" / close-out reflection / `/product-review` (opt-in) | product.md shaped + confirmed, or evolution entry appended | product-lead (orchestrator gates + owns log append) |
 | `research` | breadth-heavy question | research.md / cited brief | orchestrator (lead), architect/Explore investigators |
 | `spec-writing` | intent approved | spec.md approved | architect |
 | `plan-writing` | spec approved | plan.md approved | architect |

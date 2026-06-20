@@ -13,6 +13,7 @@ An Actor produces work. Each has an identity, a fixed contract (what it promises
 | Actor | Role analog | Unique responsibility |
 |-------|-------------|----------------------|
 | **Orchestrator** | Tech lead / PM | Reads state, classifies requests, dispatches other agents. **Only** actor with dispatch authority. |
+| **Product-Lead** | Founder / product strategist | Sets product *direction* (the what/why/for-whom): real problem, core flow, world-class bar. Owns the evolving `product.md` north-star. **Opt-in** — never auto-gates. |
 | **Architect** | Design / staff eng | Converts intent into `spec.md` and `plan.md`. Makes irreversible choices (stack, scope, test infra, architecture). |
 | **Implementor** | Engineer | Converts plan into code + tests. Shape varies per project via **Skills**. |
 | **Evaluator** | Code reviewer / QA | Independent review of just-written code. Invokes committed test suites; does not write ad-hoc scripts. |
@@ -43,7 +44,7 @@ A durable output on disk. Typed, owned by exactly one Actor, with declared reade
 | **Work** | Current state: task ledger, decisions, deviations, revisions, nits — one place | `work.md` |
 | **Findings** | What the Critic saw | `review.md`, `diagnosis.md` |
 | **Research** | Verified, cited research backing a decision | `research.md` |
-| **Memory** | Durable across features or sessions | `profile.md`, `learnings.md`, `AGENTS.md`, `ARCHITECTURE.md`, `session.md`, `open-threads.md` |
+| **Memory** | Durable across features or sessions | `product.md` (north-star direction, evolves), `profile.md`, `learnings.md`, `AGENTS.md`, `ARCHITECTURE.md`, `session.md`, `open-threads.md` |
 | **Operations** | Deploy history + declared per-env deploy/verify state | `deployments.md`, `environments.md` |
 
 Seven categories, five-to-seven files per active feature at most. (`research.md` is optional — written only when a decision needs breadth-heavy investigation; otherwise research folds inline into `spec.md`.) **Memory and Operations artifacts are global**, not per-feature — they persist across the whole project and are read on session start.

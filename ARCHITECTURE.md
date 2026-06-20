@@ -53,7 +53,7 @@ The coding-agent plugin (v2) is a multi-agent software-development pipeline buil
 │                           PRIMITIVES                                │
 ├─────────────────────────────────────────────────────────────────────┤
 │                                                                     │
-│  ACTOR       produces work       User + 5 agents                    │
+│  ACTOR       produces work       User + 6 agents                    │
 │  ARTIFACT    durable typed state intent/spec/plan/work/review/...   │
 │  SKILL       scoped knowledge    domain / practice / protocol-help  │
 │  CHECK       deterministic verify bash scripts, JSON output         │
@@ -270,11 +270,11 @@ All checks exit 0 (ok) or 1 (fail) with a JSON line to stdout. Failed checks blo
 coding-agent/
 ├── .claude-plugin/plugin.json           ← manifest, v2.1.0
 ├── .mcp.json                            ← 5 MCP servers
-├── agents/                              ← 5 rewritten prompts (each ~150 lines)
-│   ├── orchestrator.md  architect.md  implementor.md  evaluator.md  debugger.md
-├── skills/                              ← 56 scoped-knowledge modules
+├── agents/                              ← 6 rewritten prompts (each ~150 lines)
+│   ├── orchestrator.md  product-lead.md  architect.md  implementor.md  evaluator.md  debugger.md
+├── skills/                              ← 57 scoped-knowledge modules
 │   ├── frontend/  backend/  data/  mobile/  infra/  general/  practices/
-├── protocols/                           ← 11 named workflows (one source of truth each)
+├── protocols/                           ← 12 named workflows (one source of truth each)
 │   ├── intake.md   research.md   spec-writing.md   plan-writing.md   design-review.md
 │   ├── implementation.md   review.md   fix-round.md   close-out.md   redirect.md   recovery.md
 │   └── README.md
@@ -286,8 +286,8 @@ coding-agent/
 │   ├── env-vars-present.sh   no-secrets-staged.sh   review-passed.sh
 │   ├── stack-justified.sh   test-infra-declared.sh   tests-actually-committed.sh
 │   ├── docs-current.sh   commit-gate.sh
-├── templates/                           ← 13 artifact templates (12 .md stubs + design.template.html)
-│   ├── intent.template.md   spec.template.md   plan.template.md
+├── templates/                           ← 14 artifact templates (13 .md stubs + design.template.html)
+│   ├── intent.template.md   product.template.md   spec.template.md   plan.template.md
 │   ├── work.template.md   review.template.md   diagnosis.template.md
 │   ├── research.template.md   session.template.md   learnings.template.md
 │   ├── deployments.template.md   environments.template.md   open-threads.template.md
@@ -331,6 +331,7 @@ The combination means: **a plugin subagent that needs MCP access must omit the `
 | Agent | `tools:` frontmatter | MCP access | Reason |
 |-------|---------------------|-----------|--------|
 | orchestrator | Explicit: `Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion` | None (doesn't need them) | Only orchestrator dispatches (needs `Agent`) and asks user (needs `AskUserQuestion`); both are exclusive to the main thread. |
+| product-lead | Omitted | Context7, Exa inherit | Opt-in product direction; may research market/anchors. Writes only `product.md`. |
 | architect | Omitted | Context7, Exa inherit | Stack research, test-infra research |
 | implementor | Omitted | Context7, Exa inherit | Library API verification |
 | evaluator | Omitted | Playwright, Xcodebuild, iOS Simulator, Context7, Exa inherit | UI runtime testing (REQUIRED for `ui-evidence` check) |

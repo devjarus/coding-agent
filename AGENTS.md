@@ -4,7 +4,7 @@ This file tells agents (and humans) how to work on the coding-agent plugin itsel
 
 ## What This Is
 
-A Claude Code plugin: 5 agents + 56 skills + 11 named protocols + 17 deterministic checks + 13 artifact templates + 5 MCP servers. All Markdown + Bash (plus a stdlib-Python localhost server for the design-review surface). No build step.
+A Claude Code plugin: 6 agents + 57 skills + 12 named protocols + 17 deterministic checks + 14 artifact templates + 5 MCP servers. All Markdown + Bash (plus a stdlib-Python localhost server for the design-review surface). No build step.
 
 ## Project Structure (v2)
 
@@ -12,12 +12,13 @@ A Claude Code plugin: 5 agents + 56 skills + 11 named protocols + 17 determinist
 coding-agent/
 ├── .claude-plugin/plugin.json    # plugin manifest
 ├── .mcp.json                     # MCP server config
-├── agents/                       # 5 agent prompts (each ≤300 lines, references protocols)
-├── skills/                       # 56 skill folders, each with SKILL.md
+├── agents/                       # 6 agent prompts (each ≤300 lines, references protocols)
+│   ├── orchestrator.md   product-lead.md   architect.md   implementor.md   evaluator.md   debugger.md
+├── skills/                       # 57 skill folders, each with SKILL.md
 │   ├── frontend/   backend/   data/   mobile/   infra/
 │   ├── general/   practices/    # practices includes prototype-first (disposable mock-app mode)
-├── protocols/                    # 11 named multi-actor workflows
-│   ├── intake.md   research.md   spec-writing.md   plan-writing.md
+├── protocols/                    # 12 named multi-actor workflows
+│   ├── intake.md   product-direction.md   research.md   spec-writing.md   plan-writing.md
 │   ├── design-review.md          # browser review surface: comment batches + sha-bound verdict gate
 │   ├── implementation.md   review.md   fix-round.md
 │   ├── close-out.md   redirect.md   recovery.md
@@ -30,8 +31,8 @@ coding-agent/
 │   ├── stack-justified.sh   test-infra-declared.sh   tests-actually-committed.sh
 │   ├── docs-current.sh          # close-out: README is real, not framework scaffold
 │   ├── commit-gate.sh            # composite: review-passed→tests-committed→no-secrets→last-verify
-├── templates/                    # 13 artifact templates (12 .md frontmatter + 1 .html)
-│   ├── intent.template.md   spec.template.md   plan.template.md
+├── templates/                    # 14 artifact templates (13 .md frontmatter + 1 .html)
+│   ├── intent.template.md   product.template.md   spec.template.md   plan.template.md
 │   ├── work.template.md   review.template.md   diagnosis.template.md
 │   ├── research.template.md   session.template.md   learnings.template.md
 │   ├── deployments.template.md   environments.template.md   open-threads.template.md
