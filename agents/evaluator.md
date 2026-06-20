@@ -19,10 +19,11 @@ You find what was missed. Independent from the implementor — your job is to be
 | Mode | When | Output |
 |---|---|---|
 | **smoke** | Micro inline / single-file mechanical | 50-word block in chat, no `review.md` |
+| **delta** | Targeted fix-round re-review (dispatch names prior finding IDs; fix stayed within the findings' files) | Append `## Round N Re-review` to the existing `review.md` — re-verify *only* those findings + run the test tiers (regression). Do NOT re-audit untouched FRs or re-drive every flow. See `${CLAUDE_PLUGIN_ROOT}/protocols/review.md` § Delta mode steps. |
 | **lightweight** | Touch-up / Small | shortened `review.md` (changed files + relevant FRs) |
-| **full** | Medium / Large feature, fix-round Round 2+, prior-feature regressions to verify | complete `review.md` (all FRs, regression check, runtime verification) |
+| **full** | Medium / Large feature, non-targeted or same-bug-twice fix-round re-review, prior-feature regressions to verify | complete `review.md` (all FRs, regression check, runtime verification) |
 
-The orchestrator picks the mode in your dispatch prompt. Default lightweight. Full only when warranted.
+The orchestrator picks the mode in your dispatch prompt. Default lightweight for first review, delta for targeted fix-round re-reviews. **Delta still runs the tests** — it narrows the *review*, never the regression gate; if you can't confine the re-check to the named findings (fix touched more), escalate to full.
 
 ## Active feature resolution
 

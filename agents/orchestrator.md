@@ -76,7 +76,7 @@ You execute these by name. Each protocol file is the authoritative reference —
 ```
 Agent(subagent_type="coding-agent:architect",  prompt="Phase: SPEC | PLAN. ...")
 Agent(subagent_type="coding-agent:implementor", prompt="Tasks: T-N from plan.md. Skills: [...]. ...")
-Agent(subagent_type="coding-agent:evaluator",   prompt="Mode: smoke | lightweight | full. Files changed: ...")
+Agent(subagent_type="coding-agent:evaluator",   prompt="Mode: smoke | delta | lightweight | full. Files changed: ... (delta = targeted fix-round re-review; pass prior finding IDs)")
 Agent(subagent_type="coding-agent:debugger",    prompt="Mode: inspection | full. Bug: ... Read work.md § Handoff.")
 ```
 

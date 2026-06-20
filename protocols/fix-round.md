@@ -9,7 +9,7 @@
 1. Read `review.md` `Findings` and `Dispatch Recommendation`.
 2. Update `work.md § Findings` with the review IDs and severities.
 3. **Dispatch Implementor** with: findings list, paths to `review.md` and `work.md`, paths to changed files.
-4. Implementor returns → re-run `review` protocol.
+4. Implementor returns → re-run `review` protocol. **Pick the mode from the fix's blast radius:** if the Implementor's `artifacts_written` ⊆ the files named in the findings and no new files were added → **Delta** (targeted re-review, `Mode: delta`); otherwise → **Full**. Pass the prior finding IDs in the dispatch so the evaluator re-checks exactly those.
 5. PASS → close-out. FAIL → Round 2.
 
 ## Round 2 — Debugger
@@ -27,7 +27,7 @@
 2. Choose Debugger mode:
    - **Inspection** (threshold tuning, config tweak, value adjustment): Debugger reads code/logs, returns 10-line diagnosis, no `diagnosis.md` file. Orchestrator applies the fix inline (Micro) or re-dispatches Implementor (Small).
    - **Full diagnosis** (real bug, wrong mental model, concurrency, integration failure): Debugger writes `diagnosis.md`. Implementor dispatched with `diagnosis.md` path.
-3. Re-run `review` protocol.
+3. Re-run `review` protocol in **Full** mode (not Delta): Round 2 means the same symptom failed twice, so the mental model was wrong once already — a targeted re-check isn't enough.
 4. PASS → close-out. FAIL → Round 3.
 
 ## Round 3 — Escalate

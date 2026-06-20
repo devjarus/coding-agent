@@ -9,10 +9,22 @@
 | Mode | When | Output |
 |------|------|--------|
 | **Smoke** | Micro inline / single-file mechanical change | 50-word block, no `review.md` file |
+| **Delta** | Fix-round **re-review** of a *targeted* fix (implementor's changed files ⊆ the files named in the prior findings; no new files; not same-bug-twice) | Appends `## Round N Re-review` to the existing `review.md` — per-finding resolved/unresolved + Status. Does NOT re-audit untouched code. |
 | **Lightweight** | Touch-up or Small (≤5 files, no design changes) | Shortened `review.md` (changed files + relevant FRs) |
-| **Full** | Medium / Large feature, OR fix-round Round 2+, OR prior `review.md` had unresolved findings | Complete `review.md` (all FRs, regression check, runtime verification) |
+| **Full** | Medium / Large feature, OR fix-round re-review that is NOT targeted (new files, surface beyond the findings, or same-bug-twice), OR prior `review.md` had unresolved findings outside the fixed set | Complete `review.md` (all FRs, regression check, runtime verification) |
 
-Default: Lightweight. Orchestrator escalates to Full automatically on size or regression triggers.
+Default: Lightweight for first review; **Delta for targeted fix-round re-reviews**. Orchestrator picks the re-review mode from the fix's blast radius (see `${CLAUDE_PLUGIN_ROOT}/protocols/fix-round.md`) and escalates Delta→Full automatically when the fix is not targeted.
+
+### Delta mode steps (targeted fix-round re-review)
+
+The point of Delta is to re-verify *what changed*, not re-audit *what didn't*. Tests still run — integrity is preserved; only the from-scratch FR sweep and full runtime re-drive are skipped.
+
+1. **Read** prior `review.md § Findings` (the specific finding IDs that caused FAIL) + the diff since the prior review (changed files only).
+2. **Build** — must pass.
+3. **Run the committed test tiers** (regression — must pass). A fix that turns a test red anywhere is a FAIL, not a Delta pass.
+4. **Verify each prior finding is resolved** at its `file:line` — targeted, not an all-FR re-sweep. Any unresolved finding → that finding stays open.
+5. **Runtime check ONLY if the fix touched UI surface named in the findings** — re-drive just the affected flow + screenshot it; do not re-drive every flow.
+6. **Append `## Round N Re-review`** to the existing `review.md`: per-finding `resolved | unresolved`, regression result, and overall `Status: PASS | FAIL`. Escalate to **Full** instead if step 1's diff shows the fix touched files beyond the findings or added files.
 
 ## Steps
 

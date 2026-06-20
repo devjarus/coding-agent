@@ -5,6 +5,20 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.7.0] — 2026-06-19 — Delta re-review: stop re-auditing untouched code on every fix round
+
+The implementation → review → fix loop was the pipeline's real slow path, and the cause wasn't lack of parallelism — it was **redundant full re-verification**. Every fix-round re-review was forced to Full mode (`review.md` mode table), so after the implementor fixed two targeted findings the evaluator re-read spec+plan+work, re-ran the whole build + entire test suite, re-swept every FR, and re-drove every runtime flow — to re-confirm code nobody touched. New **Delta** mode re-verifies *what changed*, not *what didn't*: it re-checks only the named finding IDs + runs the test tiers (regression stays non-negotiable), and skips the from-scratch FR sweep and full runtime re-drive. Tests still run, so integrity is preserved; only the redundant audit of untouched surface is cut. Escalates to Full automatically when a fix isn't targeted (new files, surface beyond the findings) or on same-bug-twice (Round 2+).
+
+### Added
+
+- **`protocols/review.md`** — `Delta` mode + step-by-step (read prior findings + diff → build → run test tiers → verify each finding at file:line → conditional runtime check → append `## Round N Re-review` to existing `review.md`).
+- **`protocols/fix-round.md`** — Round 1 re-review picks Delta vs Full from the fix's blast radius (changed files ⊆ findings' files → Delta); Round 2 stays Full (same-bug-twice means the mental model was already wrong once).
+
+### Changed
+
+- **`agents/evaluator.md`** — modes table adds `delta`; clarifies Delta narrows the *review*, never the regression gate.
+- **`agents/orchestrator.md`** — evaluator dispatch template lists `delta` and notes it carries the prior finding IDs.
+
 ## [2.6.3] — 2026-06-19 — Fix factually-false "only you have the Agent tool" line in orchestrator
 
 An ultracode workflow that mapped the dispatch model to find where nested subagents (now GA, 5-deep) could be leveraged concluded — after adversarial verification of 6 candidates — that **nesting is unsafe everywhere in our model**: the single-dispatcher rule is a *dispatch-authority* invariant, not a write invariant, so "read-only children" do not make a forbidden dispatch permitted (no grandchild return-merge, no `ask_user` bubble-up, lost action-log attribution, collapsed independent verifier). The no-nesting invariant stays **absolute**. The one real defect it surfaced: the orchestrator prompt claimed subagents *lack* the `Agent`/`AskUserQuestion` tools, when in fact they inherit them (omit `tools:`) and are merely forbidden to use them. Corrected to match reality — the subagent prompts already said "even if inherited," so this just aligns the orchestrator.
