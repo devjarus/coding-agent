@@ -44,7 +44,7 @@ A durable output on disk. Typed, owned by exactly one Actor, with declared reade
 | **Work** | Current state: task ledger, decisions, deviations, revisions, nits — one place | `work.md` |
 | **Findings** | What the Critic saw | `review.md`, `diagnosis.md` |
 | **Research** | Verified, cited research backing a decision | `research.md` |
-| **Memory** | Durable across features or sessions | `product.md` (north-star direction, evolves), `profile.md`, `learnings.md`, `AGENTS.md`, `ARCHITECTURE.md`, `session.md`, `open-threads.md` |
+| **Memory** | Durable across features or sessions | *Runtime (gitignored):* `product.md` (north-star direction, evolves), `profile.md`, `learnings.md`, `session.md`, `open-threads.md`. *Committed doc set (vendor-neutral, distilled from runtime at close-out):* `README.md`, `AGENTS.md`, `PRODUCT.md`, `DESIGN.md`, `docs/architecture.md`, `docs/dataflow.md`, `docs/index.md`, `deployment.md` |
 | **Operations** | Deploy history + declared per-env deploy/verify state | `deployments.md`, `environments.md` |
 
 Seven categories, five-to-seven files per active feature at most. (`research.md` is optional — written only when a decision needs breadth-heavy investigation; otherwise research folds inline into `spec.md`.) **Memory and Operations artifacts are global**, not per-feature — they persist across the whole project and are read on session start.

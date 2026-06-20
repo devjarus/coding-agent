@@ -5,6 +5,26 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.0.0] — 2026-06-19 — Committed project documentation set: cross-referenced, no-duplication, vendor-neutral
+
+A new always-on committed artifact category — the project documentation set any agent (plugin or not) can use to work on a project. Grounded in three published standards: the [agents.md spec](https://agents.md) (AGENTS.md), the [google design.md format](https://github.com/google-labs-code/design.md) (DESIGN.md), and the [Open Knowledge Format](https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing) (link-not-copy single-source-of-truth + a `docs/` bundle with `index.md`). The set is generated from the real codebase at close-out and kept current; **each fact lives in exactly one file, every other mention is a link** — so the docs can't drift into contradiction. Making it an always-generated committed category is a primitive-level change → major bump.
+
+The committed set is portable: a `docs-links` check fails close-out if any committed doc references plugin-runtime state (`.coding-agent/`, `CLAUDE_PLUGIN_ROOT`, role/protocol names) or commits a secret — so removing the plugin leaves every doc working for whatever agent the user switches to.
+
+### Added
+
+- **8 templates** for the committed set — `readme`, `agents`, `product-doc`, `design-doc`, `architecture`, `dataflow`, `docs-index`, `deployment-doc` (`.template.md`). Each carries a one-line single-source-of-truth header, cross-link stubs, and a "never contains" boundary. Vendor-neutral: no plugin references in the produced bodies.
+- **`checks/docs-links.sh`** — close-out gate: presence of the applicable docs (DESIGN only for UI projects via `detect_ui`; deployment only when CI config exists), cross-link integrity (every relative link resolves), and the portability no-leak guard (+ no committed secret in deployment.md).
+
+### Changed
+
+- **`skills/practices/project-docs/SKILL.md`** — rewritten to own the 8-file set: ownership table, cross-link wiring, vendor-neutrality contract, per-doc content sources, new + brownfield setup flows. Drops Mermaid (ASCII only). README solely owns pinned versions + tree; AGENTS owns commands (no versions/tree/decisions body); `docs/architecture.md` + `docs/dataflow.md` replace a root `ARCHITECTURE.md` (legacy root file → one-line pointer).
+- **`protocols/close-out.md`** — step 3 generates the full set; step 4 retargets to `docs/architecture.md` + `docs/dataflow.md` (+ `docs/index.md`); new step 4.6 distills `DESIGN.md` (UI only); step 4.7 re-distills committed `PRODUCT.md` from the runtime north-star; `docs-links` added to step 8; touch-up/micro skip all of it.
+- **`protocols/product-direction.md`** — documents the committed `PRODUCT.md` (close-out snapshot) vs runtime `.coding-agent/product.md` (working strategy) boundary; Shape/Review mutate only the runtime file.
+- **`agents/orchestrator.md`** — `docs-links` in the checks list; an on-demand "set up docs" bootstrap trigger for brownfield repos.
+- **`docs/concepts/primitives.md`** — Memory category split into runtime (gitignored) vs the committed, vendor-neutral doc set distilled at close-out.
+- Inventory synced: **18 checks, 22 templates** (`AGENTS.md`, `plugin.json`, `marketplace.json`, `ARCHITECTURE.md`, `docs/README.md`).
+
 ## [3.0.0] — 2026-06-19 — Product-Lead: a 6th agent for product direction (opt-in)
 
 The pipeline was excellent at *building the thing right* but assumed the thing was already decided. This adds the missing upstream layer: **what to build, for whom, solving what problem, and what "world-class" means** — plus an evolution loop so direction compounds across features instead of resetting each time. Adding an Actor is a primitive-level change → major bump.

@@ -278,15 +278,15 @@ coding-agent/
 │   ├── intake.md   research.md   spec-writing.md   plan-writing.md   design-review.md
 │   ├── implementation.md   review.md   fix-round.md   close-out.md   redirect.md   recovery.md
 │   └── README.md
-├── checks/                              ← 17 deterministic verification scripts (+ lib.sh helper)
+├── checks/                              ← 18 deterministic verification scripts (+ lib.sh helper)
 │   ├── lib.sh
 │   ├── intent-approved.sh   spec-approved.sh   plan-approved.sh
 │   ├── ui-evidence.sh   no-raw-print.sh   close-out-complete.sh
 │   ├── action-logged.sh   active-feature-consistent.sh   revisions-resolved.sh
 │   ├── env-vars-present.sh   no-secrets-staged.sh   review-passed.sh
 │   ├── stack-justified.sh   test-infra-declared.sh   tests-actually-committed.sh
-│   ├── docs-current.sh   commit-gate.sh
-├── templates/                           ← 14 artifact templates (13 .md stubs + design.template.html)
+│   ├── docs-current.sh   docs-links.sh   commit-gate.sh
+├── templates/                           ← 22 artifact templates (21 .md stubs + design.template.html)
 │   ├── intent.template.md   product.template.md   spec.template.md   plan.template.md
 │   ├── work.template.md   review.template.md   diagnosis.template.md
 │   ├── research.template.md   session.template.md   learnings.template.md

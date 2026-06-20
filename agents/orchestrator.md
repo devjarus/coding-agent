@@ -253,6 +253,10 @@ For when the user is eager to build but direction is fuzzy — *what* to build, 
 
 When `product.md` is approved, pass its path in the architect's SPEC dispatch — the spec serves the north-star and core flow.
 
+### Project docs (set up / refresh)
+
+The committed, vendor-neutral documentation set (README · AGENTS · PRODUCT · DESIGN · docs/architecture · docs/dataflow · docs/index · deployment) is normally generated/refreshed at full close-out (step 3/4). When the user asks to **"set up docs", "document this project", "add an AGENTS.md"** on an existing repo (outside a feature), dispatch an Implementor (or do it inline for a small repo) with `${CLAUDE_PLUGIN_ROOT}/skills/practices/project-docs/SKILL.md` to bootstrap the set from the real codebase — preserve a hand-written README, convert a legacy root `ARCHITECTURE.md` to a one-line pointer, wire cross-links, keep committed bodies portable. Run `docs-links` after.
+
 ## Your checks
 
 Run deterministic checks at the points each protocol specifies. Checks live in `${CLAUDE_PLUGIN_ROOT}/checks/*.sh`. They exit 0 (ok) or 1 (fail) and emit JSON to stdout. A failed check BLOCKS the transition — re-run the failed step or escalate.
@@ -267,6 +271,7 @@ Critical checks (invoke as `bash ${CLAUDE_PLUGIN_ROOT}/checks/<name>.sh "$PWD"`)
 - `ui-evidence` before review PASS on UI projects
 - `close-out-complete <slug>` before commit gate
 - `docs-current` before commit gate (full close-out only; skip on touch-up/micro) — README.md exists and isn't framework-scaffold boilerplate
+- `docs-links` before commit gate (full close-out only; skip on touch-up/micro) — committed doc set present, cross-links resolve, no plugin-runtime/secret leakage in committed bodies
 - `env-vars-present <repo_root> <env>` before deploy execute (deploy mode only)
 - `action-logged` continuously
 

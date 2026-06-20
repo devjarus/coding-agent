@@ -47,6 +47,14 @@ Runs as a step in `${CLAUDE_PLUGIN_ROOT}/protocols/close-out.md` (full close-out
 3. **Approval gate (orchestrator):** same as Shape step 3 — print the sharpened direction + ranked moves, `AskUserQuestion(approve / adjust / skip)`. On approve, the evolved `product.md` becomes the new north-star; the ranked moves are candidates the user can turn into feature intents.
 4. Append action-log: `product-review | <N moves proposed> | maturity: <rung>`.
 
+## Committed PRODUCT.md vs runtime product.md
+
+Two states of the same knowledge, never duplicated:
+- **Runtime `.coding-agent/product.md`** (gitignored) — the *evolving* working strategy: north-star, world-class bar, maturity ladder, and the append-only Evolution Log. Owned here (Shape/Review write the body; Reflect appends the log). This is where direction is debated.
+- **Committed `PRODUCT.md`** (repo root, part of the documentation set) — the *distilled current-state snapshot* any agent reads: what the product is, core flows, non-goals, the "Now" line. It carries NO Evolution Log and no unshipped bets.
+
+The committed snapshot is **produced at close-out** (`${CLAUDE_PLUGIN_ROOT}/protocols/close-out.md` steps 3 + 4.7), distilled from the runtime product.md once something has shipped — never authored by hand and never written at Shape time (there's nothing shipped to describe yet). Shape and Review mutate only the runtime file.
+
 ## Hard rules
 
 - **Opt-in, always.** This protocol never blocks shipping on its own. The orchestrator offers; the user decides.

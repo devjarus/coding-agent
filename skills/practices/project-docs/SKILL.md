@@ -1,49 +1,67 @@
 ---
 name: project-docs
-description: Generates minimal project documentation — README.md, ARCHITECTURE.md with Mermaid diagrams, and AGENTS.md. Run after first feature ships or when docs are missing. Reads the actual codebase to generate accurate docs, not boilerplate.
+description: Generates and maintains the committed, vendor-neutral project documentation set — README, AGENTS, PRODUCT, DESIGN, docs/architecture, docs/dataflow, docs/index, deployment — cross-referenced with NO duplicated content (each fact in exactly one file). Reads the real codebase, not boilerplate. Any agent can use the result with no plugin.
 ---
 
-# Project Documentation Generator
+# Project Documentation Set
 
-Creates minimal, accurate project docs by reading the actual codebase. Not boilerplate — every line comes from what's really there.
+Creates and keeps current a portable documentation set that lets **any** coding agent work on the project — built from what's really in the codebase, never boilerplate. Grounded in three published, vendor-neutral conventions: the [agents.md spec](https://agents.md) (AGENTS.md), the [google design.md format](https://github.com/google-labs-code/design.md) (DESIGN.md), and the [Open Knowledge Format](https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing) (link-not-copy, single-source-of-truth, a `docs/` bundle with `index.md`).
 
-## CLAUDE.md and AGENTS.md — no duplication
+## The one rule: each fact lives in exactly ONE file
 
-Claude Code reads `CLAUDE.md` at session startup. Most OSS projects use `AGENTS.md` as the canonical agent workflow document (stack, build/test commands, conventions, known issues). **Do not duplicate content between them** — duplication guarantees drift.
+Duplication guarantees drift. Every fact has a single owning file; every other mention is a **Markdown link**, never a copy. A doc may summarize in one sentence and link (orientation) — it must never carry a second authoritative copy.
 
-The rule: **one file is the source of truth, the other is a pointer.** In practice, `AGENTS.md` holds the content and `CLAUDE.md` is a 5-line redirect:
+## The set + ownership (single source of truth)
 
-```markdown
-# Project Notes
+Generate from these templates (`${CLAUDE_PLUGIN_ROOT}/templates/<name>`). Two entry points: humans start at README, agents start at AGENTS.
 
-This project uses [AGENTS.md](./AGENTS.md) as the canonical agent workflow document.
+| File | Template | Single source of truth — owns ONLY this | Never contains (link instead) |
+|------|----------|------------------------------------------|-------------------------------|
+| `README.md` | `readme.template.md` | install/run quick-start, **pinned** versions, directory tree, Documentation Map | product why, architecture, dataflow, design tokens, deploy commands |
+| `AGENTS.md` | `agents.template.md` | build/test/lint **commands**, conventions, contribution mechanics, gotchas | versions (README pins), tree body, stack rationale, deploy values, product why |
+| `PRODUCT.md` | `product-doc.template.md` | current-state what/why/for-whom, core flows, non-goals, maturity | build commands, architecture, the strategy Evolution Log (runtime-only) |
+| `DESIGN.md` (UI only) | `design-doc.template.md` | design tokens, component look-contracts, guardrails | component file wiring (→ architecture), build commands |
+| `docs/architecture.md` | `architecture.template.md` | topology, Data **Model** (schema), key components, stack rationale | data **flow** traces (→ dataflow), run commands, product why |
+| `docs/dataflow.md` | `dataflow.template.md` | flow traces, state transitions, external boundaries, persistence | schema columns, component inventory (→ architecture) |
+| `docs/index.md` | `docs-index.template.md` | the `docs/` table-of-contents (links only) | any architecture/flow content itself |
+| `deployment.md` | `deployment-doc.template.md` | deploy/CI-CD **procedure**, rollback | secrets, env-var values, per-deploy history, runtime state |
 
-See AGENTS.md for: stack, build/test commands, conventions, architecture decisions, and known issues.
-```
+`docs/architecture.md` is the project's **only** architecture surface — it replaces a root `ARCHITECTURE.md`. (The plugin's own `ARCHITECTURE.md` is unrelated and untouched.)
 
-If this project was created before `AGENTS.md` became standard and already has a detailed `CLAUDE.md`, invert the relationship: keep `CLAUDE.md` as the source of truth and make `AGENTS.md` the redirect. Never maintain both.
+## Cross-link wiring (no orphans)
 
-## AGENTS.md is vendor-neutral
+Wire these in the same pass so both entry points reach everything:
 
-`AGENTS.md` follows the agents.md community spec (https://agents.md). It must be useful to ANY coding agent: Cursor, Aider, Codex, Claude Code with or without this plugin.
+- **README.md** → AGENTS, PRODUCT, docs/architecture, DESIGN, deployment (the Documentation Map).
+- **AGENTS.md** → README, PRODUCT, docs/architecture, docs/dataflow, DESIGN, deployment (Where-to-look-next).
+- **docs/architecture.md** ↔ **docs/dataflow.md** (bidirectional), plus → docs/index, README.
+- **docs/index.md** → architecture, dataflow, README.
+- **PRODUCT.md** → README, docs/architecture, DESIGN. **DESIGN.md** → README, PRODUCT, docs/architecture. **deployment.md** → README, AGENTS, docs/architecture.
 
-❌ No references to `.coding-agent/`, protocols, checks, or skills by name
-❌ No `coding-agent:`-prefixed instructions or dispatch sequences
-❌ No deploy commands, env-var lists, or runtime state — those live in `.coding-agent/environments.md`
-✓ Stack, build/test commands, conventions, architecture, known gotchas
+The `docs-links` close-out check verifies every relative link resolves and that no committed doc leaks plugin-runtime references.
 
-Plugin-specific configuration lives in `.coding-agent/`. The plugin reads its own files; it doesn't need `AGENTS.md` to point at them. A user must be able to remove this plugin and have `AGENTS.md` keep working for whatever agent they switch to.
+## Vendor-neutral — the committed set must be portable
 
-## When to Apply
+A user must be able to remove this plugin and have every doc keep working for whatever agent they switch to. So in the **committed bodies**:
 
-- **After** first feature ships (review PASS) — docs describe what was actually built, not what was planned
-- When project is missing README or architecture docs
-- When significant architectural changes need documenting
-- Never before implementation — you can't document what doesn't exist yet
+❌ No `.coding-agent/`, `${CLAUDE_PLUGIN_ROOT}`, protocol/check/skill/role names, or `coding-agent:` instructions
+❌ No deploy secrets, env-var values, or per-env runtime state — those live outside version control
+✓ Plain Markdown + YAML, links only to each other and to real project artifacts (`.github/workflows`, `package.json`)
+
+`AGENTS.md` follows the agents.md spec (Cursor, Aider, Codex, Gemini CLI, Claude Code, …). If a vendor loader like `CLAUDE.md` exists, make it a one-line pointer to AGENTS.md — never two sources. The single convention any agent must learn is one sentence: *"Start at AGENTS.md (agents) or README.md (humans); each fact lives in one file, follow the links."*
+
+## Where each doc's content comes from
+
+| Doc | Distilled from |
+|-----|----------------|
+| README / AGENTS / architecture / dataflow / index | the **real codebase** (package.json/go.mod/…, routes, schema, entry points, tests) |
+| DESIGN.md | the project's actual theme/tokens/components + the approved per-feature look-contract (the design-review surface's `design.html`) — distilled, not re-invented |
+| PRODUCT.md | the product north-star working notes if direction was shaped, else the spec's problem statement + scope — a **current-state snapshot**, stripped of any strategy log/bets |
+| deployment.md | existing CI config + chosen platform |
 
 ## Replace scaffold READMEs — they are NOT real content
 
-A `create-vite` / `create-react-app` / `create-next-app` scaffold ships a placeholder README describing *the template*, not *your app*. Shipping it is a real failure mode: the repo's front page reads "This template provides a minimal setup…" instead of what the project does. **A scaffold README must be fully replaced, not preserved.** The `docs-current` close-out check (`checks/docs-current.sh`) blocks close-out while any of these fingerprints remain — keep this list in sync with it:
+A `create-vite` / `create-react-app` / `create-next-app` scaffold ships a placeholder README describing *the template*, not *your app*. **A scaffold README must be fully replaced, not preserved.** The `docs-current` close-out check (`checks/docs-current.sh`) blocks close-out while any of these fingerprints remain — keep this list in sync with it:
 
 | Scaffold | Fingerprint phrase |
 |----------|--------------------|
@@ -53,121 +71,36 @@ A `create-vite` / `create-react-app` / `create-next-app` scaffold ships a placeh
 | SvelteKit | `npm create svelte@latest` |
 | Astro | `npm create astro@latest` / `Welcome to your new Astro project` / `Everything you need to know is in the README` |
 
-The check also fails a README that is **byte-identical to its first commit while ≥3 source commits have landed** — i.e. one that was committed at scaffold time and never touched. Either way, the fix is the same: write a real README from the actual codebase (below).
+The check also fails a README **byte-identical to its first commit while ≥3 source commits have landed** — committed at scaffold time and never touched. Either way: write a real README from the actual codebase.
 
-## What It Creates
+## Setup flow
 
-### 1. README.md
+**New project** (at first full close-out, after the first feature ships): generate the whole applicable set from the real codebase in one pass, wiring all cross-links. DESIGN.md only if the project has a UI; deployment.md only if CI config exists. If CI is missing, close-out step 4.5 scaffolds it first so deployment.md/AGENTS.md can point at a real workflow.
 
-```markdown
-# Project Name
+**Existing (brownfield) project** (run on demand, not gated on a feature):
+- **README** — preserve a hand-written one (only fill missing sections + add the Documentation Map); replace a scaffold one wholesale.
+- **AGENTS.md** — always create if missing.
+- **docs/architecture.md + dataflow.md + index.md** — create from the code. If a legacy root `ARCHITECTURE.md` exists, move its content into `docs/architecture.md` and reduce the root file to a one-line pointer (`Architecture lives in [docs/architecture.md](docs/architecture.md)`) — never two architecture docs.
+- **DESIGN.md** — scan existing tokens/components (UI projects).
+- **deployment.md** — from existing CI config.
+- **PRODUCT.md** — from the README/spec problem statement.
+Incremental adoption is fine: land AGENTS + README first, add the `docs/` bundle + DESIGN/PRODUCT on the next close-out.
 
-[1-sentence description from spec.md or package.json]
-
-## Quick Start
-
-[exact install + run commands — read from package.json scripts, Makefile, etc.]
-
-## Tech Stack
-
-[language, framework, database, key deps — from package.json/go.mod/Package.swift/requirements.txt]
-
-## Project Structure
-
-[tree of key directories with 1-line descriptions — from actual file scan]
-
-## Testing
-
-[exact test commands + what they cover]
-
-## API Reference (if applicable)
-
-[endpoints with methods, paths, request/response shapes — from route files]
-
-## License
-
-[from LICENSE file if exists]
-```
-
-### 2. ARCHITECTURE.md
-
-Use ASCII diagrams — they render everywhere with no dependencies. Read the actual code to generate these.
-
-```markdown
-# Architecture
-
-## Overview
-
-[2-3 sentences: what the system does, key design decisions]
-
-## System Diagram
-
-[ASCII box diagram showing major components and connections]
-
-## Data Flow
-
-[ASCII flow showing a primary user flow end-to-end]
-
-## Data Model
-
-[ASCII table showing schema — fields, types, relationships]
-
-## Key Components
-
-[for each major module: what it does, what it depends on, key files]
-
-## Technical Decisions
-
-[from spec.md Technical Risks / Architecture Decisions if available, otherwise infer from code]
-```
-
-### 3. AGENTS.md
-
-```markdown
-# Development Workflow
-
-## Stack
-[language, framework, database, key libraries with versions]
-
-## Build & Run
-[exact commands]
-
-## Test
-[exact commands — unit, integration, e2e]
-
-## Project Structure
-[key directories]
-
-## Conventions
-[patterns, naming, file organization]
-
-## Architecture Decisions
-[key decisions and why]
-
-## Known Issues
-[from review.md findings if available]
-
-## Development Notes
-[gotchas, ordering requirements, env setup]
-```
-
-## How to Generate
+## How to generate
 
 ### Step 1 — Scan the codebase
 
-Read these files to understand what exists:
-- `package.json` / `go.mod` / `Package.swift` / `requirements.txt` → stack + deps
-- `spec.md`, `plan.md` (if in `.coding-agent/`) → requirements + architecture decisions
-- Route/controller files → API surface
-- Schema/migration files → data model
-- Test files → test commands + coverage
-- Entry points (`src/index.*`, `src/app.*`, `main.*`) → how the app starts
+- `package.json` / `go.mod` / `Package.swift` / `requirements.txt` → stack + pinned deps
+- `spec.md`, `plan.md`, product north-star (if present in `.coding-agent/`) → product + decisions (read-only sources; never referenced by name in the output)
+- Route/controller files → API surface; schema/migration files → data model
+- Test files → test commands; entry points (`src/index.*`, `main.*`) → how it starts
+- theme/CSS/component files → design tokens; `.github/workflows/` → CI/deploy
 
 ### Step 2 — Generate ASCII diagrams
 
-Use plain ASCII art. Examples:
+Plain ASCII art — renders everywhere, no dependencies. **No Mermaid, no CDN.**
 
-**System diagram:**
+**System diagram (docs/architecture.md):**
 ```
 ┌──────────────┐    HTTP     ┌──────────────┐    SQL     ┌──────────┐
 │ React Client │───────────→│ Express API  │──────────→│  SQLite  │
@@ -175,38 +108,30 @@ Use plain ASCII art. Examples:
 └──────────────┘             └──────────────┘           └──────────┘
 ```
 
-**Data flow:**
-```
-User → Frontend → POST /api/posts → Validate → INSERT INTO posts → Return 201 → Redirect to /posts/:slug
-```
-
-**Data model:**
+**Data model (docs/architecture.md — schema only):**
 ```
 posts
-├── id          INTEGER  PK  autoincrement
+├── id          INTEGER  PK
 ├── title       TEXT     NOT NULL
 ├── slug        TEXT     UNIQUE
-├── content     TEXT     NOT NULL
-├── excerpt     TEXT
-├── tags        TEXT
-├── createdAt   TEXT
-└── updatedAt   TEXT
+└── createdAt   TEXT
 ```
 
-### Step 3 — Write the files
+**Data flow (docs/dataflow.md — movement only):**
+```
+User → Frontend → POST /api/posts → Validate → INSERT INTO posts → 201 → Redirect to /posts/:slug
+```
 
-Write each file at the project root. Keep them minimal:
-- README.md: under 80 lines
-- ARCHITECTURE.md: under 120 lines
-- AGENTS.md: under 60 lines
+### Step 3 — Write the files + wire cross-links
+
+Write each file from its template, then wire the Documentation Map / Where-to-look-next / docs bundle links. Keep them skimmable:
+- README < 80 lines · AGENTS < 60 · docs/architecture < 120 · others proportionate.
 
 ## Rules
 
-- **Read the code, don't guess.** Every command, path, and diagram must come from the actual codebase.
-- **Pin versions in docs.** If package.json says `express@4.21.0`, write that — not just "Express".
-- **ASCII diagrams are required** in ARCHITECTURE.md. At minimum: system diagram + data flow.
-- **Keep it minimal.** If a section has nothing useful, omit it. Empty sections are worse than no section.
-- **Don't duplicate README and AGENTS.md.** README is for humans browsing the repo. AGENTS.md is for dev workflow (build/test commands, conventions).
-- **Brownfield: preserve a real README, replace a scaffold one.** Read it first. If it's hand-written (custom content, contributing guides, badges), only add missing sections or update outdated ones — preserve it. If it matches a scaffold fingerprint (see *Replace scaffold READMEs* above) or is the untouched generated placeholder, replace it wholesale — there is nothing worth preserving.
-- **Brownfield: always create AGENTS.md** if missing — existing projects rarely have agent workflow docs.
-- **Brownfield: update ARCHITECTURE.md** only if your feature changed the architecture (new components, new data models, new integrations).
+- **Read the code, don't guess.** Every command, path, and diagram comes from the actual codebase.
+- **Pin versions in README only.** AGENTS names tech without versions and links to README.
+- **ASCII diagrams required** (architecture + dataflow). No Mermaid.
+- **One fact, one file.** Schema → architecture; flow → dataflow; versions → README; commands → AGENTS. When in doubt: name-and-link, don't restate.
+- **Committed docs stay portable.** No `.coding-agent/`, no plugin/protocol/role names, no secrets. The `docs-links` check enforces this.
+- **Omit empty sections.** A section with nothing useful is worse than no section.

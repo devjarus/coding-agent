@@ -4,7 +4,7 @@ This file tells agents (and humans) how to work on the coding-agent plugin itsel
 
 ## What This Is
 
-A Claude Code plugin: 6 agents + 57 skills + 12 named protocols + 17 deterministic checks + 14 artifact templates + 5 MCP servers. All Markdown + Bash (plus a stdlib-Python localhost server for the design-review surface). No build step.
+A Claude Code plugin: 6 agents + 57 skills + 12 named protocols + 18 deterministic checks + 22 artifact templates + 5 MCP servers. All Markdown + Bash (plus a stdlib-Python localhost server for the design-review surface). No build step.
 
 ## Project Structure (v2)
 
@@ -30,9 +30,12 @@ coding-agent/
 │   ├── env-vars-present.sh   no-secrets-staged.sh   review-passed.sh
 │   ├── stack-justified.sh   test-infra-declared.sh   tests-actually-committed.sh
 │   ├── docs-current.sh          # close-out: README is real, not framework scaffold
+│   ├── docs-links.sh            # close-out: committed doc set present, cross-links resolve, no plugin-runtime/secret leakage
 │   ├── commit-gate.sh            # composite: review-passed→tests-committed→no-secrets→last-verify
-├── templates/                    # 14 artifact templates (13 .md frontmatter + 1 .html)
+├── templates/                    # 22 artifact templates (21 .md + 1 .html)
 │   ├── intent.template.md   product.template.md   spec.template.md   plan.template.md
+│   ├── # committed vendor-neutral doc set (any agent): readme/agents/product-doc/design-doc/
+│   ├── #   architecture/dataflow/docs-index/deployment-doc .template.md
 │   ├── work.template.md   review.template.md   diagnosis.template.md
 │   ├── research.template.md   session.template.md   learnings.template.md
 │   ├── deployments.template.md   environments.template.md   open-threads.template.md
