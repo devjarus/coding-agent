@@ -1,6 +1,6 @@
 # Architecture
 
-The coding-agent plugin (v2) is a multi-agent software-development pipeline built from four primitives. This document maps the primitive relationships, dispatch topology, artifact flow, and gate/check placement. For formal primitive definitions see `docs/concepts/primitives.md`; for the canonical happy-path flow see `docs/concepts/workflow.md`.
+The coding-agent plugin is a multi-agent software-development pipeline (6 agents) built from four primitives. This document maps the primitive relationships, dispatch topology, artifact flow, and gate/check placement. For formal primitive definitions see `docs/concepts/primitives.md`; for the canonical happy-path flow see `docs/concepts/workflow.md`.
 
 ## High-level topology
 
@@ -44,7 +44,7 @@ The coding-agent plugin (v2) is a multi-agent software-development pipeline buil
   └──────────────────────────────────────────────────────────────────┘
 ```
 
-**Single dispatch tool** — only the Orchestrator has the `Agent` tool. Subagents return artifacts + structured YAML payloads; they never call each other. Subagent AskUserQuestion does NOT reach the real user (stays in subagent context), which is why only the Orchestrator gates user approvals.
+**Single dispatch tool** — only the Orchestrator may dispatch via the `Agent` tool (subagents inherit it but are forbidden by prompt-level discipline to use it). Subagents return artifacts + structured YAML payloads; they never call each other. Subagent AskUserQuestion does NOT reach the real user (stays in subagent context), which is why only the Orchestrator gates user approvals.
 
 ## The four primitives
 
@@ -275,7 +275,7 @@ coding-agent/
 ├── skills/                              ← 57 scoped-knowledge modules
 │   ├── frontend/  backend/  data/  mobile/  infra/  general/  practices/
 ├── protocols/                           ← 12 named workflows (one source of truth each)
-│   ├── intake.md   research.md   spec-writing.md   plan-writing.md   design-review.md
+│   ├── intake.md   product-direction.md   research.md   spec-writing.md   plan-writing.md   design-review.md
 │   ├── implementation.md   review.md   fix-round.md   close-out.md   redirect.md   recovery.md
 │   └── README.md
 ├── checks/                              ← 18 deterministic verification scripts (+ lib.sh helper)
@@ -351,7 +351,8 @@ This is the cost of needing MCPs at all. If a future version of Claude Code lift
 | Agent | Model |
 |-------|-------|
 | Orchestrator | `claude-opus-4-8` (pinned) |
-| Architect | `opus` |
+| Product-Lead | `opus` (effort `xhigh`; opt-in) |
+| Architect | `opus` (effort `xhigh`) |
 | Evaluator | `opus` |
 | Debugger | `opus` |
 | Implementor | `sonnet` |

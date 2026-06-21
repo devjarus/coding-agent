@@ -31,7 +31,7 @@ For day-to-day use you'll mostly look at the project root:
 | [`../protocols/`](../protocols/) | The 12 named workflows agents reference at runtime |
 | [`../checks/`](../checks/) | The 18 deterministic verification scripts (+ `lib.sh`) |
 | [`../templates/`](../templates/) | The 22 artifact templates |
-| [`../skills/`](../skills/) | 56 scoped knowledge modules (domain specialists + practices + general) |
+| [`../skills/`](../skills/) | 57 scoped knowledge modules (domain specialists + practices + general) |
 
 ## Contributing & operations
 

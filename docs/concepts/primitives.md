@@ -2,7 +2,7 @@
 
 The system is built from four primitives. Everything else — Protocols, Sessions, the Pipeline, the shape of each agent prompt — composes from these.
 
-> **Status:** design proposal, not implemented. See `workflow-spec.md` for the canonical flow and `lifecycle.md` for artifact states and close-out.
+> **Status:** implemented and shipping (see [CHANGELOG.md](../../CHANGELOG.md)). See `workflow.md` for the canonical flow and `lifecycle.md` for artifact states and close-out.
 
 ## 1. Actor
 

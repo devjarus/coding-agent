@@ -4,7 +4,7 @@
 
 Drop-in multi-agent pipeline that turns `"build me a notifications system"` into shipped, tested, reviewed code — with human checkpoints at the decisions that matter and real runtime verification before anything ships.
 
-[![Version](https://img.shields.io/badge/version-2.1.0-blue)]() [![Agents](https://img.shields.io/badge/agents-5-green)]() [![Skills](https://img.shields.io/badge/skills-55-green)]() [![License](https://img.shields.io/badge/license-MIT-blue)]()
+[![Version](https://img.shields.io/badge/version-4.2.0-blue)]() [![Agents](https://img.shields.io/badge/agents-6-green)]() [![Skills](https://img.shields.io/badge/skills-57-green)]() [![License](https://img.shields.io/badge/license-MIT-blue)]()
 
 ---
 
@@ -16,6 +16,9 @@ Drop-in multi-agent pipeline that turns `"build me a notifications system"` into
 - **Memory across sessions.** Decisions, gotchas, and patterns survive. Tomorrow's architect reads yesterday's learnings. No cold starts.
 - **Research from real docs, not stale training data.** Architect queries Context7 / Exa for current library APIs. No more `shadcn v2` flags in a v4 project.
 - **Per-task skill manifest.** Architect picks the right specialist skills for each task. Implementor loads them on dispatch. No one-size-fits-all prompt.
+- **Visual design review.** For UI features the architect ships a look-contract (`design.html`) you review in a browser surface — inline comments + a sha-bound approve, not ASCII mockups in a terminal.
+- **Product direction when you need it (opt-in).** A product-lead agent turns *"I don't know what to build"* into a concrete problem, a clean core flow, and a world-class bar — and evolves a `product.md` north-star across features.
+- **Portable docs any agent can use.** Close-out generates a cross-referenced, no-duplication documentation set (README · AGENTS · PRODUCT · DESIGN · docs/architecture · docs/dataflow · deployment) — vendor-neutral, so it keeps working even if you drop this plugin.
 - **Zero-ceremony touch-ups.** Fix a button color? One intent gate, smoke review, commit. Full pipeline only when the work warrants it.
 
 ## Why this exists
@@ -106,7 +109,7 @@ Four human gates (intent, spec, plan, push) + one architect discovery prompt per
 
 ## How it works
 
-Five agents, six artifact categories, nine named protocols, nine deterministic checks.
+Six agents, seven artifact categories, twelve named protocols, eighteen deterministic checks.
 
 ```
                           You
@@ -116,18 +119,19 @@ Five agents, six artifact categories, nine named protocols, nine deterministic c
                     │ Orchestrator│ ← state machine, dispatches, never writes code
                     └──┬──────────┘
                        │
-         ┌─────────────┼──────────────┬────────────┐
-         ▼             ▼              ▼            ▼
-    ┌─────────┐  ┌───────────┐  ┌─────────┐  ┌─────────┐
-    │Architect│  │Implementor│  │Evaluator│  │Debugger │
-    │ (design)│  │  (build)  │  │ (review)│  │(diagnose)│
-    └────┬────┘  └─────┬─────┘  └────┬────┘  └────┬────┘
-         │             │             │             │
-         └─────────────┴─────────────┴─────────────┘
+     ┌───────────┬─────┴─────┬───────────┬───────────┐
+     ▼           ▼           ▼           ▼           ▼
+┌──────────┐┌─────────┐┌───────────┐┌─────────┐┌─────────┐
+│Product-  ││Architect││Implementor││Evaluator││Debugger │
+│Lead (opt)││ (design)││  (build)  ││ (review)││(diagnose)│
+└────┬─────┘└────┬────┘└─────┬─────┘└────┬────┘└────┬────┘
+     └───────────┴───────────┴───────────┴──────────┘
                        │
                        ▼
         .coding-agent/features/<slug>/
-        intent.md → spec.md → plan.md → work.md → review.md
+        intent.md → spec.md (+ design.html for UI) → plan.md → work.md → review.md
+        close-out distills the runtime north-star + code into the committed
+        docs set (README · AGENTS · PRODUCT · DESIGN · docs/ · deployment)
 ```
 
 **Full architecture with ASCII diagrams:** [ARCHITECTURE.md](ARCHITECTURE.md)
@@ -215,7 +219,7 @@ Edit `~/.coding-agent/profile.md` to set your stack defaults — architect reads
 
 ## Status
 
-v2.0.1. Used daily on real projects (blog platforms, research agents, iOS apps). Each iteration shaped by actual failures — see [CHANGELOG.md](CHANGELOG.md) for the full trail and [docs/concepts/](docs/concepts/) for the design rationale.
+v4.2.0. Used daily on real projects (blog platforms, research agents, iOS apps). Each iteration shaped by actual failures — see [CHANGELOG.md](CHANGELOG.md) for the full trail and [docs/concepts/](docs/concepts/) for the design rationale.
 
 ## Contributing
 

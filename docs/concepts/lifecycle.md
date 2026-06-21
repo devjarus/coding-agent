@@ -342,12 +342,13 @@ After every Actor return, Orchestrator updates `work.md` task states. This is th
 | Name | Entry | Exit | Files touched |
 |------|-------|------|--------------|
 | **intake** | user message | intent.md approved | intent.md |
+| **product-direction** | direction unclear / opt-in / `/product-review` | product.md written or evolved | product.md |
 | **spec-writing** | intent approved | spec.md approved | spec.md (+ MCP queries) |
 | **plan-writing** | spec approved | plan.md approved | plan.md (+ MCP queries) |
 | **implementation** | plan approved | all tasks complete | code files, test files, work.md |
 | **review** | implementation complete | review.md written | review.md, screenshots/ |
 | **fix-round** | review FAIL | review PASS or escalation | work.md, diagnosis.md (round 2) |
-| **close-out** | review PASS | commit gate opened | feature dir → archived, learnings.md, AGENTS.md, ARCHITECTURE.md, CURRENT, session.md |
+| **close-out** | review PASS | commit gate opened | feature dir → archived, learnings.md, committed docs set (README.md, AGENTS.md, PRODUCT.md, DESIGN.md (UI), docs/architecture.md, docs/dataflow.md, docs/index.md, deployment.md (CI)), CURRENT, session.md |
 | **redirect** | user message during active pipeline | classified + routed | work.md Decisions Log |
 | **recovery** | dispatch threshold or user pivot | checkpoint written | session.md, work.md |
 
