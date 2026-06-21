@@ -5,6 +5,14 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.3.0] — 2026-06-21 — Fix: tests-actually-committed false-fails on gitignored coordinator artifacts
+
+Found by forensic analysis of two real projects using the plugin. The `wave`-mode ground-truth check required every returned artifact to be **git-visible as changed this cycle** — but evaluator/architect/debugger artifacts (`review.md`, `spec.md`, `diagnosis.md`, screenshots) live under `.coding-agent/`, which is gitignored by design, so the check spuriously failed with *"not visible to git"* on real evaluator returns. (A consumer project's own `learnings.md` had independently diagnosed this as a "plugin improvement candidate.")
+
+### Fixed
+
+- **`checks/tests-actually-committed.sh`** — coordinator/evaluator artifacts (anything resolving under `.coding-agent/`) are now verified by **disk existence**, not git-visibility; the git-changed-this-cycle proof applies only to **source** artifacts. The anti-fabrication guarantee is unchanged where it matters (real source must land; an unchanged or missing file still fails) — the check just stops false-failing on intentionally-gitignored coordinator state. Also probes `…/.coding-agent/<path>` so artifacts returned relative to the coordinator dir resolve. Verified against pass/fail cases.
+
 ## [4.2.0] — 2026-06-20 — Route deployment-patterns / ci-cd-patterns (they were unreachable)
 
 `infra/deployment-patterns` and `infra/ci-cd-patterns` had solid content (production-readiness, hosting/containers, CI-CD rules) but were absent from the architect's `plan-writing.md` skill-routing table and referenced nowhere outside the CHANGELOG — so the architect had no trigger to put them in a task's skill manifest. Centralized config was already correct (`config-management` is in the routing table and cross-linked from 6 specialists); this brings deployment to parity.

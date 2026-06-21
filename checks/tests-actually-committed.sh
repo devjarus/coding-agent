@@ -76,17 +76,32 @@ missing=()
 ungit=()
 for f in "${CLAIMED[@]}"; do
   [[ -z "$f" ]] && continue
-  # Ground truth #1: the claimed path exists on disk.
-  if [[ ! -e "$REPO/$f" && ! -e "$f" ]]; then
+  # Ground truth #1: the claimed path exists on disk. Coordinator/evaluator
+  # artifacts are returned relative to .coding-agent/ (e.g. features/<slug>/review.md),
+  # so also probe under .coding-agent/ before declaring it missing.
+  found=""
+  for cand in "$REPO/$f" "$f" "$REPO/.coding-agent/$f"; do
+    [[ -e "$cand" ]] && { found="$cand"; break; }
+  done
+  if [[ -z "$found" ]]; then
     missing+=("$f")
     continue
   fi
-  # Ground truth #2: git sees the path as CHANGED THIS CYCLE (added/modified/
-  # untracked). Merely being tracked-and-unchanged does NOT count — otherwise a
-  # fabricated return could name any pre-existing file (e.g. README.md) and pass.
-  # The wave check runs before commit, so real new work shows in `git status`.
-  rel="$f"
-  if git status --porcelain -- "$rel" 2>/dev/null | grep -q .; then
+  # Coordinator/evaluator artifacts live under .coding-agent/ and are gitignored
+  # BY DESIGN (so a `git reset --hard` can't nuke them). git can never see them,
+  # so the git-visibility proof below is structurally inapplicable — disk
+  # existence IS the ground truth for them (review.md, diagnosis.md, work.md,
+  # spec.md, screenshots). Anti-fabrication for these is the review-passed +
+  # last-verify record, not git. Only SOURCE artifacts get the git check.
+  case "$found" in
+    *"/.coding-agent/"*) continue ;;
+  esac
+  # Ground truth #2 (source only): git sees the path as CHANGED THIS CYCLE
+  # (added/modified/untracked). Merely being tracked-and-unchanged does NOT count
+  # — otherwise a fabricated return could name any pre-existing file (e.g.
+  # README.md) and pass. The wave check runs before commit, so real new source
+  # work shows in `git status`.
+  if git status --porcelain -- "$f" 2>/dev/null | grep -q .; then
     :                                                   # added/modified/untracked this cycle — real
   else
     ungit+=("$f")
