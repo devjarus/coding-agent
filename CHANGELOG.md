@@ -5,6 +5,22 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.4.0] — 2026-06-21 — Hardening from real-usage forensics (multi-tier gate, live-wiring e2e, forced discovery, decision-density sizing, artifact migration)
+
+Forensic analysis of two real projects (a phased finance app, a 2-month knowledge base) surfaced recurring gaps. This batch addresses four of them; the `tests-actually-committed` fix shipped separately in 4.3.0.
+
+### Added
+
+- **`skills/practices/artifact-migration/`** — opt-in cleanup for legacy `.coding-agent/` artifacts from older plugin conventions (root-level flat `plan/spec/review` + `.prev*` chains, per-feature `progress.md`/`nits.md`/`mode`). Archive-never-delete to `.coding-agent/.archive/<date>/`, never touches the CURRENT feature, idempotent via a `.migrated` marker. The SessionStart hook now detects legacy artifacts and surfaces them so the orchestrator can offer the cleanup; the orchestrator gained the opt-in trigger. (Fixes the KB project's drift into confusing dual state.)
+
+### Changed
+
+- **`protocols/review.md` (multi-tier gate)** — the evaluator must run **every declared test tier**, not a single aggregate command; a green unit/jsdom run while browser/e2e tiers are stale is a false-PASS. New migration/schema sweep rule: if the diff touched a migration or schema-version constant, re-run the browser+e2e tiers (they carry version assertions a unit gate skips). New FAIL conditions enforce both. (Personal project hit silent schema drift twice.)
+- **`protocols/plan-writing.md` + `protocols/review.md` (live-wiring e2e)** — a user-facing FR's E2E must exercise the **live wiring** (drive the real app path end-to-end), not just unit-test the engine; evaluator FAILs an FR with unit coverage but no live-wiring e2e. (Catches the "green tests, dead feature" failure seen twice.)
+- **`agents/architect.md` (forced discovery)** — the architect must surface the 1–3 questions whose answers would *materially change the design or core flow* as `ask_user` BEFORE finalizing the spec, rather than defaulting a fork and forging ahead (which surfaces as re-review churn).
+- **`agents/orchestrator.md` (decision-density sizing)** — task size is weighed by **decisions that can't be made mechanically from the spec**, not file/line volume — a trivial constant sweep across 5 files stays micro; one branching function is small.
+- Inventory synced: **58 skills**.
+
 ## [4.3.0] — 2026-06-21 — Fix: tests-actually-committed false-fails on gitignored coordinator artifacts
 
 Found by forensic analysis of two real projects using the plugin. The `wave`-mode ground-truth check required every returned artifact to be **git-visible as changed this cycle** — but evaluator/architect/debugger artifacts (`review.md`, `spec.md`, `diagnosis.md`, screenshots) live under `.coding-agent/`, which is gitignored by design, so the check spuriously failed with *"not visible to git"* on real evaluator returns. (A consumer project's own `learnings.md` had independently diagnosed this as a "plugin improvement candidate.")

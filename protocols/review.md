@@ -34,10 +34,12 @@ The point of Delta is to re-verify *what changed*, not re-audit *what didn't*. T
    - **If MCP unavailable:** write `review.md` with `Status: FAIL`, `Reason: BROWSER_MCP_UNAVAILABLE`, instruct user to enable, return. Do NOT degrade to HTML grep.
 2. **Read context:** `spec.md`, `plan.md`, `work.md` (especially `## Plan Revisions` — approved revisions supersede plan.md), last feature's `review.md` (regressions), `learnings.md`, changed files list.
 3. **Build:** run the project's actual build command (from AGENTS.md). Capture stdout/stderr.
-4. **Run committed tests** (per tier — never write ad-hoc scripts):
+4. **Run committed tests — EVERY declared tier, not just one aggregate command** (never write ad-hoc scripts):
    - Unit: `npm test` (or project's command)
    - Integration: `npm run test:integration` (or equivalent)
    - E2E: `npm run test:e2e` (only if UI was touched)
+   - **A single aggregate command (e.g. `npm run check`) is NOT the whole gate** when the project has tiers it doesn't run. Run each declared tier and record each via `run-and-record.sh` — a green unit/jsdom run while the browser/e2e tiers are stale is a silent false-PASS.
+   - **Migration / schema sweep:** if the diff changed a migration or a schema-version constant, explicitly re-run the **browser + e2e** tiers and grep them for the old version. Those tiers carry version assertions a unit/jsdom gate skips, so a schema bump can pass the primary command green while other tiers are red.
 5. **Static review:** spec compliance per FR, error handling (no silent suppression), logging present, security patterns.
 6. **Runtime check (UI only, not for API/library):**
    - Web: launch dev server (parse port from stderr — never hardcode), `mcp__playwright__browser_*` to drive primary flow, `mcp__playwright__browser_take_screenshot` to `features/<slug>/screenshots/<descriptive-name>.png`
@@ -52,6 +54,8 @@ The point of Delta is to re-verify *what changed*, not re-audit *what didn't*. T
   - Build fails
   - Any unit/integration/e2e test fails (and was supposed to pass)
   - A required test tier is missing for the change (per plan.md's declared tiers — prose-enforced)
+  - A test tier the project HAS was not actually run (a single aggregate command is not a substitute for running each declared tier; the diff touched a migration/schema constant but the browser/e2e tiers weren't re-run)
+  - A **user-facing** FR has unit/logic coverage but no E2E exercising its **live wiring** (engine tested, feature never reachable in the running app)
   - UI project but no `screenshots/`
   - `BROWSER_MCP_UNAVAILABLE`
   - Pending plan revision exists

@@ -4,7 +4,7 @@ This file tells agents (and humans) how to work on the coding-agent plugin itsel
 
 ## What This Is
 
-A Claude Code plugin: 6 agents + 57 skills + 12 named protocols + 18 deterministic checks + 22 artifact templates + 5 MCP servers. All Markdown + Bash (plus a stdlib-Python localhost server for the design-review surface). No build step.
+A Claude Code plugin: 6 agents + 58 skills + 12 named protocols + 18 deterministic checks + 22 artifact templates + 5 MCP servers. All Markdown + Bash (plus a stdlib-Python localhost server for the design-review surface). No build step.
 
 ## Project Structure (v2)
 
@@ -14,7 +14,7 @@ coding-agent/
 ├── .mcp.json                     # MCP server config
 ├── agents/                       # 6 agent prompts (each ≤300 lines, references protocols)
 │   ├── orchestrator.md   product-lead.md   architect.md   implementor.md   evaluator.md   debugger.md
-├── skills/                       # 57 skill folders, each with SKILL.md
+├── skills/                       # 58 skill folders, each with SKILL.md
 │   ├── frontend/   backend/   data/   mobile/   infra/
 │   ├── general/   practices/    # practices includes prototype-first (disposable mock-app mode)
 ├── protocols/                    # 12 named multi-actor workflows

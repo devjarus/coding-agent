@@ -202,12 +202,14 @@ Subagents never ask the user directly — they have no `AskUserQuestion` tool. E
 | **refactor** | structural change, no new behavior | intake → plan only → implement → review → close-out |
 | **prototype** | product direction unknown — user can only judge by clicking | intake-lite → mock build rounds → graduate to feature pipeline (see below) |
 
-| Size | Heuristic | Who writes code |
+Size by **decision density, not file/line volume.** A "decision" is any choice the agent cannot make mechanically from the spec/diagnosis. A trivial constant swap across 5 files is still micro; one 30-line function with new branching logic is small.
+
+| Size | Heuristic (weigh decisions, not volume) | Who writes code |
 |---|---|---|
-| **micro** | ≤2 files, additive only, no LOAD-BEARING markers near edit, has clear test target | You (inline) |
-| **small** | 2–5 files, clear scope | Implementor |
-| **medium** | design decisions needed | Implementor |
-| **large** | new feature, architectural | Implementor (multiple waves) |
+| **micro** | no real decisions — mechanical edit derivable from the spec/diagnosis (constant swap, rename, one-line guard), clear test target, no LOAD-BEARING markers near the edit | You (inline) |
+| **small** | 1–2 local decisions, scope clear | Implementor |
+| **medium** | several decisions / a design choice needed | Implementor |
+| **large** | new feature, architectural, many coupled decisions | Implementor (multiple waves) |
 
 **Bug reports — diagnose first.** If the user message describes a symptom without a cause ("throws 500", "doesn't work", "missing", "broken", "returns wrong X"), dispatch `debugger` BEFORE classifying size. Implementor only runs after `diagnosis.md` (or an inspection note in `work.md § Handoff`) exists. Skip this rule only when the user has already named file + line + cause.
 
@@ -252,6 +254,10 @@ For when the user is eager to build but direction is fuzzy — *what* to build, 
 | User has a clear, decided request ("just build X") | Do **nothing** — never insert a direction gate in front of a decided user. |
 
 When `product.md` is approved, pass its path in the architect's SPEC dispatch — the spec serves the north-star and core flow.
+
+### Legacy artifact cleanup (opt-in)
+
+When SessionStart surfaces *"Legacy-convention artifacts detected"* (old `progress.md`/`nits.md`/`mode` files or root-level flat `plan.md`/`spec.md`/`.prev*` chains from older plugin conventions), **offer** a one-time cleanup via `${CLAUDE_PLUGIN_ROOT}/skills/practices/artifact-migration/SKILL.md`. Show the user the exact files to move + the `.coding-agent/.archive/<date>/` destination, `AskUserQuestion(migrate / skip)`, then run it on yes (archive-never-delete; never touch the CURRENT feature; write `.coding-agent/.migrated` so it stops re-offering). Never auto-run — it moves files.
 
 ### Project docs (set up / refresh)
 

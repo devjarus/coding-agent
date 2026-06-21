@@ -47,6 +47,20 @@ if [ -f "$STATE_DIR/session.md" ]; then
   [ -n "$tail_lines" ] && ctx="${ctx}${nl}Last action-log entries:${nl}${tail_lines}${nl}"
 fi
 
+# Legacy-convention artifacts (pre-work.md / flat root layout). Surface ONCE so
+# the orchestrator can OFFER a one-time cleanup (artifact-migration skill).
+# Suppressed after a .migrated marker is written.
+if [ ! -f "$STATE_DIR/.migrated" ]; then
+  legacy=$(
+    { ls "$STATE_DIR"/plan.prev*.md "$STATE_DIR"/spec.prev*.md "$STATE_DIR"/review.prev*.md \
+         "$STATE_DIR"/progress.prev*.md "$STATE_DIR"/progress.md 2>/dev/null; \
+      find "$STATE_DIR/features" -maxdepth 2 \( -name 'progress.md' -o -name 'nits.md' -o -name 'mode' \) 2>/dev/null; } | grep -c .
+  )
+  if [ "${legacy:-0}" -gt 0 ]; then
+    ctx="${ctx}${nl}Legacy-convention artifacts detected (${legacy}: root .prev*/progress.md and/or per-feature progress.md/nits.md/mode — predate the work.md + per-feature layout). OFFER the user a one-time cleanup via the artifact-migration skill (archive to .coding-agent/.archive/, never delete; writes .coding-agent/.migrated when done).${nl}"
+  fi
+fi
+
 # Nothing durable to surface -> stay silent.
 [ -n "$ctx" ] || exit 0
 

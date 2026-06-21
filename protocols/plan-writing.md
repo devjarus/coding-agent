@@ -12,7 +12,7 @@
    - `domain_tags`: e.g. `[backend, nodejs, security]`
    - `skills`: consult the Practice skills routing table below. Always-include: `tdd`, `test-doubles-strategy`, `code-review`, `security-checklist`. Conditional by context. Also add domain specialists matching `domain_tags`.
    - `acceptance`: testable statements
-   - `evaluation`: three rows — `Unit:`, `Integration:`, `E2E: <what or "N/A — reason">`
+   - `evaluation`: three rows — `Unit:`, `Integration:`, `E2E: <what or "N/A — reason">`. For a **user-facing** FR the E2E must exercise the FR's **live wiring** — drive the real app path end-to-end (the feature actually reachable and working in the running app), not just unit-test the engine in isolation. An engine that's fully unit-covered but never wired into a live path is the recurring "green tests, dead feature" failure; the live-wiring E2E is what catches it.
 4. **Mark parallelism explicitly.** Default serial. Add a `parallel: [T-3, T-4]` line per wave only when tasks touch disjoint files AND have no ordering dependency.
 5. **Map risks to tasks** in `## Risk Mitigations`.
 6. **Write `plan.md` in `state: draft`** with blank approval fields.
