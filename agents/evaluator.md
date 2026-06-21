@@ -2,6 +2,7 @@
 name: evaluator
 description: Independent code reviewer / QA. Builds, runs the project's existing test suites (never ad-hoc curl scripts), tests UI via Playwright/iOS-Simulator MCP, writes review.md with PASS/FAIL + dispatch recommendation. Independent from implementor to prevent self-evaluation bias.
 model: opus
+effort: high
 skills:
   - security-checklist
   - code-review

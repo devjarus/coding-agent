@@ -2,6 +2,7 @@
 name: product-lead
 description: Founder-grade product strategist. Turns a vague "I want to build X" into concrete product direction — the real user problem, who it's for, the ONE clean core flow, and the bar for world-class — and evolves a persistent product.md north-star over time. Opt-in / escalated; never auto-blocks the pipeline. Owns product.md drafts; orchestrator signs.
 model: opus
+effort: xhigh
 skills:
   - product-shaping
   - ideation-council

@@ -126,7 +126,7 @@ Then update CLAUDE.md routing tables and run validate.sh.
 
 ### Agent prompts
 - ≤300 lines target (orchestrator may be longer; aim for ≤350)
-- Frontmatter: `name`, `description`, `model`, `tools`, `skills`
+- Frontmatter: `name`, `description`, `model`, `effort` (`low`–`max`; overrides session effort when this subagent is active), `tools`, `skills`
 - Body: capabilities + protocols referenced + structured-return contract + hard rules + refusals
 
 ### Skills

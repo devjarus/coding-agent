@@ -5,6 +5,17 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.1.0] — 2026-06-20 — Per-subagent reasoning effort tiers
+
+The Agent SDK / subagents docs expose a per-subagent `effort` frontmatter key (`low`–`max`, overrides session effort when that subagent is active) that the plugin wasn't using — every dispatched agent ran at the session default regardless of how hard its work is. Verified against [the subagents doc](https://code.claude.com/docs/en/subagents) that plugin `agents/` frontmatter honors it, then tuned effort to each role's reasoning load. Independent of the "think hard" prompt instructions (effort sets reasoning depth per response; those instructions still apply).
+
+### Changed
+
+- **`agents/architect.md`**, **`agents/product-lead.md`**, **`agents/debugger.md`** — `effort: xhigh`. The irreversible-judgment roles (stack/scope/architecture, product direction, root-cause / wrong-mental-model debugging) get maximum reasoning depth where a wrong call cascades.
+- **`agents/evaluator.md`**, **`agents/implementor.md`** — `effort: high`. Thorough but more procedural (running suites, following an approved plan); `high` is also the reliable ceiling for the implementor's `sonnet`.
+- **`agents/orchestrator.md`** — left unset: it runs as the main session agent, so it inherits session effort (user-controlled via `/effort` / `/fast`), matching its adaptive-thinking design.
+- **`AGENTS.md`** — agent-prompt frontmatter convention now lists `effort`.
+
 ## [4.0.0] — 2026-06-19 — Committed project documentation set: cross-referenced, no-duplication, vendor-neutral
 
 A new always-on committed artifact category — the project documentation set any agent (plugin or not) can use to work on a project. Grounded in three published standards: the [agents.md spec](https://agents.md) (AGENTS.md), the [google design.md format](https://github.com/google-labs-code/design.md) (DESIGN.md), and the [Open Knowledge Format](https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing) (link-not-copy single-source-of-truth + a `docs/` bundle with `index.md`). The set is generated from the real codebase at close-out and kept current; **each fact lives in exactly one file, every other mention is a link** — so the docs can't drift into contradiction. Making it an always-generated committed category is a primitive-level change → major bump.

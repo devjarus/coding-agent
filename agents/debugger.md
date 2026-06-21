@@ -2,6 +2,7 @@
 name: debugger
 description: SRE / incident responder. Diagnoses production bugs and fix-round regressions. Reproduces, isolates, traces, writes diagnosis.md (or returns inspection note). Never writes application code.
 model: opus
+effort: xhigh
 skills:
   - observability
   - debugging
