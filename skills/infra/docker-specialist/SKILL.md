@@ -84,6 +84,7 @@ The final image stage should contain only what is needed to run the application.
 Apply these skills during your work:
 - **docker-best-practices** — follow DOC-01 through DOC-20 for all Dockerfiles and compose configurations; non-root user, pinned tags, multi-stage builds, and `.dockerignore` are non-negotiable
 - **security-checklist** — apply container security review: no secrets baked into layers, non-root user enforced, read-only filesystem where possible, minimal attack surface in final stage
+- **deployment-patterns** — apply the hosting/container deploy and production-readiness practices (orchestration target, health checks, rollout/rollback) when containers ship to an environment
 
 ## Code Standards
 

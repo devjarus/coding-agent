@@ -39,6 +39,12 @@ HCL, module design, state management, and multi-cloud provider configuration.
 - **Consistent naming** -- `{project}-{env}-{resource}`; `default_tags` in AWS provider
 - **Pin provider versions** -- pessimistic constraints (`~> 5.0`); regular controlled upgrades
 
+## Skills
+
+Apply these skills during your work:
+- **config-management** -- env-specific values via variables/`tfvars`; secrets from Vault/SSM, never hardcoded in state or templates
+- **deployment-patterns** -- the IaC you write provisions deploy targets; apply the deploy/CI-CD and production-readiness practices (rollout/rollback, health checks, environment promotion) so the infrastructure matches the deploy flow
+
 ## Workflow
 
 1. Read existing Terraform files before writing new code

@@ -101,6 +101,7 @@ Deep expertise across the full breadth of AWS services. Apply this skill when de
 Apply these skills during your work:
 - **security-checklist** — apply IAM least-privilege review on every role and policy; enforce encryption at rest and in transit; reject any wildcard `*` actions or hardcoded credentials
 - **config-management** — use Secrets Manager for dynamic secrets and SSM Parameter Store for configuration; never hardcode secrets in IaC templates or environment variables baked into images
+- **deployment-patterns** — apply the deploy/CI-CD and production-readiness practices (hosting choices, rollout/rollback, health checks) when wiring AWS deploys; don't reinvent the deploy flow per service
 
 ## Code Standards
 

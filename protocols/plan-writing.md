@@ -46,6 +46,7 @@ Used in step 3 (`skills:` per task). Rows are additive — all that match the ta
 | Task has user-facing flow | `e2e-testing` |
 | Task touches a new dependency | `dependency-evaluation` |
 | Task migrates data or schema | `migration-safety` |
+| Task touches deployment / CI-CD / hosting / containers / production-readiness | `deployment-patterns`, `ci-cd-patterns` |
 | Feature is a published library | `publish-ready` |
 | First feature in greenfield project | `ci-testing-standard` (invoked by close-out protocol, not by implementor) |
 | Refactoring existing files | `load-bearing-markers` (already preloaded to implementor; mention here for audit) |

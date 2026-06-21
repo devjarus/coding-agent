@@ -226,7 +226,7 @@ Log each step to `session.md § Action Log` (event type `deploy` or `rollback`) 
 5. **Verify** — hit each URL in `verify_urls`. On failure: append a line to `.coding-agent/open-threads.md`, surface to user, do NOT mark deployed.
 6. **Record** — append to `.coding-agent/deployments.md` (create from `${CLAUDE_PLUGIN_ROOT}/templates/deployments.template.md` if missing); update `environments.md` `commit_running` + `last_verified`.
 
-If `environments.md` does not exist, ask the user once for `platform`, `deploy_command`, `env_list_command`, `expected_env_vars`, and `verify_urls`, then write it from `${CLAUDE_PLUGIN_ROOT}/templates/environments.template.md` before proceeding.
+If `environments.md` does not exist, ask the user once for `platform`, `deploy_command`, `env_list_command`, `expected_env_vars`, and `verify_urls`, then write it from `${CLAUDE_PLUGIN_ROOT}/templates/environments.template.md` before proceeding. When first authoring a deploy setup (or hardening an existing one), apply the `deployment-patterns` skill for the production-readiness / rollout / rollback practices — don't improvise the deploy shape.
 
 ### Prototype mode
 

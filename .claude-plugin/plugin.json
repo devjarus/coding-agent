@@ -1,6 +1,6 @@
 {
   "name": "coding-agent",
-  "version": "4.1.0",
+  "version": "4.2.0",
   "description": "Multi-agent software development system. 6 agents, 57 skills, 12 named protocols, 18 deterministic checks, 22 artifact templates. First-principles redesign around 4 primitives (Actor / Artifact / Skill / Check). Real runtime testing via Playwright / iOS-simulator MCPs.",
   "author": {
     "name": "Suraj",

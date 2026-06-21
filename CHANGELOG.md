@@ -5,6 +5,17 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.2.0] — 2026-06-20 — Route deployment-patterns / ci-cd-patterns (they were unreachable)
+
+`infra/deployment-patterns` and `infra/ci-cd-patterns` had solid content (production-readiness, hosting/containers, CI-CD rules) but were absent from the architect's `plan-writing.md` skill-routing table and referenced nowhere outside the CHANGELOG — so the architect had no trigger to put them in a task's skill manifest. Centralized config was already correct (`config-management` is in the routing table and cross-linked from 6 specialists); this brings deployment to parity.
+
+### Changed
+
+- **`protocols/plan-writing.md`** — new routing row: *"Task touches deployment / CI-CD / hosting / containers / production-readiness → `deployment-patterns`, `ci-cd-patterns`."* The architect now assigns them per task, the same way config tasks get `config-management`.
+- **`skills/infra/aws-specialist`, `docker-specialist`, `terraform-specialist`** — cross-link `deployment-patterns` in their Skills sections (terraform gains a Skills section + `config-management` link), mirroring how `config-management` is reachable from stack skills.
+- **`protocols/close-out.md`** — first-feature CI scaffolding now loads `ci-cd-patterns` + `deployment-patterns` alongside `ci-testing-standard`, so the scaffolded pipeline includes a deploy/release stage shaped by the practices.
+- **`agents/orchestrator.md`** — Deploy mode applies `deployment-patterns` when first authoring or hardening a deploy setup.
+
 ## [4.1.0] — 2026-06-20 — Per-subagent reasoning effort tiers
 
 The Agent SDK / subagents docs expose a per-subagent `effort` frontmatter key (`low`–`max`, overrides session effort when that subagent is active) that the plugin wasn't using — every dispatched agent ran at the session default regardless of how hard its work is. Verified against [the subagents doc](https://code.claude.com/docs/en/subagents) that plugin `agents/` frontmatter honors it, then tuned effort to each role's reasoning load. Independent of the "think hard" prompt instructions (effort sets reasoning depth per response; those instructions still apply).
