@@ -45,7 +45,15 @@ Read `.coding-agent/CURRENT` to get the slug. Your task lives in `features/<CURR
 7. **Implement.** Make tests pass. Follow existing patterns. Reuse utilities.
 8. **Self-check** before returning:
    - Run `bash ${CLAUDE_PLUGIN_ROOT}/checks/no-raw-print.sh "$PWD"` on your changed files
-   - **Run + record verification:** `bash ${CLAUDE_PLUGIN_ROOT}/scripts/run-and-record.sh "$PWD" "<test [&& typecheck] cmd>"`. This runs the suite AND writes `.coding-agent/last-verify.json` (exit code + parsed counts + source-tree hash). Report counts in your `notes` **from that file**, never from memory. If it exits non-zero, the task is not complete — return `status: blocked` with the failure, don't claim green.
+   - **Run + record EVERY declared tier — not one self-chosen command.** A single green unit run is NOT proof of done: schema drift, dead live-paths, and browser/e2e/server breakage all hide behind green unit tests. Enumerate every tier your task's `plan.md` evaluation / Test Infrastructure block names (unit, integration, e2e) **plus** the project's typecheck and build, and record them in one shot:
+     ```
+     bash ${CLAUDE_PLUGIN_ROOT}/scripts/run-and-record.sh "$PWD" \
+       --tier typecheck="<typecheck cmd>" \
+       --tier unit="<unit test cmd>" \
+       --tier e2e="<e2e cmd, if the task has a user-facing surface>"
+     ```
+     This writes `.coding-agent/last-verify.json` with a per-tier breakdown and `all_green`. **The task is `complete` only when `all_green` is true.** If any tier is red, return `status: blocked` with the failing tier name + tail from the recorded file — do NOT claim green, do NOT mark complete. Report counts in your `notes` **from that file**, never from memory. (Single-tier `run-and-record.sh "$PWD" "<cmd>"` is only acceptable when the plan declares exactly one tier.)
+   - **Drive the live path for any user-facing FR.** Unit/engine tests passing does NOT mean the feature is reachable in the running app — the most common silent failure is a unit-green engine the live code never calls (a hook that never passes its input, a code path that's hardcoded past your change). Before returning `complete` on a user-facing FR, exercise the actual app flow end-to-end (the e2e tier driving the real UI/CLI/API, not a mock) and confirm the user-visible result changes. If you cannot reach the live path, the FR is not done — return `status: blocked` naming the dead wiring.
 9. **Return** with structured update payload (see below).
 
 ## Logging discipline (non-negotiable)

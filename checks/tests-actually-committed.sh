@@ -101,7 +101,12 @@ for f in "${CLAIMED[@]}"; do
   # — otherwise a fabricated return could name any pre-existing file (e.g.
   # README.md) and pass. The wave check runs before commit, so real new source
   # work shows in `git status`.
-  if git status --porcelain -- "$f" 2>/dev/null | grep -q .; then
+  # Use the RESOLVED path ($found), made repo-relative, not the raw claim ($f).
+  # The implementor may return an absolute or subdir-relative path; `git status
+  # -- <abs-or-wrong-relative>` from $REPO matches nothing and would false-fail a
+  # real, modified file. $found was already resolved against $REPO above.
+  rel="${found#"$REPO"/}"
+  if git status --porcelain -- "$rel" 2>/dev/null | grep -q .; then
     :                                                   # added/modified/untracked this cycle — real
   else
     ungit+=("$f")

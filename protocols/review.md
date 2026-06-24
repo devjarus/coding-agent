@@ -38,7 +38,7 @@ The point of Delta is to re-verify *what changed*, not re-audit *what didn't*. T
    - Unit: `npm test` (or project's command)
    - Integration: `npm run test:integration` (or equivalent)
    - E2E: `npm run test:e2e` (only if UI was touched)
-   - **A single aggregate command (e.g. `npm run check`) is NOT the whole gate** when the project has tiers it doesn't run. Run each declared tier and record each via `run-and-record.sh` — a green unit/jsdom run while the browser/e2e tiers are stale is a silent false-PASS.
+   - **A single aggregate command (e.g. `npm run check`) is NOT the whole gate** when the project has tiers it doesn't run. Record ALL tiers in one shot so the gate is `all_green`, not "one command exit 0": `run-and-record.sh "$PWD" --tier unit="…" --tier integration="…" --tier e2e="…" --tier build="…"`. The recorded `all_green` is true only when every tier passes; a green unit/jsdom run while the browser/e2e tiers are stale now lands as `all_green:false` with the failing tier named, instead of a silent false-PASS.
    - **Migration / schema sweep:** if the diff changed a migration or a schema-version constant, explicitly re-run the **browser + e2e** tiers and grep them for the old version. Those tiers carry version assertions a unit/jsdom gate skips, so a schema bump can pass the primary command green while other tiers are red.
 5. **Static review:** spec compliance per FR, error handling (no silent suppression), logging present, security patterns.
 6. **Runtime check (UI only, not for API/library):**

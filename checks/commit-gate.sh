@@ -57,12 +57,16 @@ else
   passed+=("no-secrets-staged:overridden")
 fi
 
-# last-verify must be green if present (run-and-record should run before the gate)
+# last-verify must be green if present (run-and-record should run before the gate).
+# `all_green` (every declared tier exit 0) is authoritative; `.ok` is its mirror
+# for legacy single-tier records. A green unit tier alone is NOT a pass.
 VF="$REPO/.coding-agent/last-verify.json"
 if [[ -f "$VF" ]] && command -v jq >/dev/null 2>&1; then
-  vok="$(jq -r '.ok // false' "$VF" 2>/dev/null)"
+  vok="$(jq -r 'if has("all_green") then .all_green else (.ok // false) end' "$VF" 2>/dev/null)"
   if [[ "$vok" != "true" ]]; then
-    printf '{"check":"%s","ok":false,"failed":"last-verify","reason":"last-verify.json is red — verification did not pass; re-run run-and-record.sh"}\n' "$NAME"
+    ft="$(jq -r '(.failing_tiers // []) | join(", ")' "$VF" 2>/dev/null)"
+    [[ -n "$ft" ]] && ft=" (failing tier(s): $ft)" || ft=""
+    printf '{"check":"%s","ok":false,"failed":"last-verify","reason":"last-verify.json is red%s — not every declared tier passed; re-run run-and-record.sh with all tiers"}\n' "$NAME" "$ft"
     exit 1
   fi
   passed+=("last-verify")

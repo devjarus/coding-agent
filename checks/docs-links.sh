@@ -58,8 +58,10 @@ for doc in ${present[@]+"${present[@]}"}; do
     case "$target" in
       http://*|https://*|mailto:*|\#*) continue ;;
     esac
-    # Drop any #anchor suffix and surrounding whitespace.
-    path="${target%%#*}"
+    # Drop an optional link title (`[x](path "Title")`) — everything from the
+    # first whitespace — then any #anchor suffix and surrounding whitespace.
+    path="${target%%[[:space:]]*}"
+    path="${path%%#*}"
     path="${path## }"; path="${path%% }"
     [[ -z "$path" ]] && continue
     # Resolve relative to the doc's directory.

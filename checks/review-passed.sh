@@ -39,9 +39,16 @@ status=$(awk '
   f && NF { print; exit }
 ' "$REVIEW" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
 
-status_uc=$(printf '%s' "$status" | tr '[:lower:]' '[:upper:]')
+# Normalize: strip markdown emphasis/list/quote markers, then take the leading
+# word. A real verdict may carry a trailing note ("PASS — all tiers green",
+# "**PASS**", "PASS (live path checked)"); those must pass. The unfilled template
+# placeholder "PASS | FAIL" must NOT — it names FAIL as a word, so reject any
+# status containing FAIL as a whole word.
+status_norm=$(printf '%s' "$status" | sed -E 's/[*`_~>-]//g; s/^[[:space:]]*//')
+first_word=$(printf '%s' "$status_norm" | awk '{print toupper($1)}')
+status_uc=$(printf '%s' "$status_norm" | tr '[:lower:]' '[:upper:]')
 
-if [[ "$status_uc" == "PASS" ]]; then
+if [[ "$first_word" == "PASS" ]] && ! printf '%s' "$status_uc" | grep -qiw 'FAIL'; then
   emit_pass "$NAME"
   exit 0
 fi

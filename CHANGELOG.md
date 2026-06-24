@@ -5,6 +5,23 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.5.0] — 2026-06-23 — The recorded gate tells the truth (multi-tier `run-and-record` + builder live-path self-check) + gate false-FAIL fixes
+
+A second forensic pass over the same two projects pinned the single root cause of "too many iterations" / "long-running with no progress": the pipeline scored progress against a **proxy** — the implementor recorded one self-chosen command (usually jsdom unit tests) as "verified", while the binding rules (all tiers green + live path wired) lived only as prose in the review protocol. So tier drift, dead live-paths, and schema-version breakage surfaced a re-dispatch *later* (at the wave barrier / e2e / sweep), never at build. This batch moves full-tier + live-path verification UP to where work is declared done, and makes the recorded artifact incapable of being green while a tier is red. Three gate false-FAILs (which themselves caused wasted rounds) were fixed in the same pass.
+
+### Changed
+
+- **`scripts/run-and-record.sh` (multi-tier gate)** — now records **every declared tier**, not one command. New `--tier name=cmd …` form runs each tier and writes `last-verify.json` with a per-tier breakdown, `all_green` (true ⟺ every tier exit 0), and `failing_tiers`. The legacy single-command and auto-detect forms still work (one tier named `verify`), and the top-level `ok`/`exit_code`/`tree` fields now mirror the aggregate, so existing consumers get multi-tier semantics for free. A green unit run while browser/e2e/server tiers are stale now lands as `all_green:false` with the failing tier named — the silent false-PASS that drove the 3× schema-drift recurrence is structurally impossible.
+- **`agents/implementor.md` (step 8 self-check)** — the builder now (a) runs **every tier its task's plan declares** plus typecheck/build via the `--tier` form and may only mark a task `complete` when `all_green`, and (b) **drives the live path** for any user-facing FR (exercise the real app flow end-to-end, confirm the user-visible result changes) before returning — catching the unit-green-but-dead-wiring class (`useForecast` never fed `goalMonthlyNets`; `useSuggestions` never passed `portfolio`). Pulls the review protocol's existing live-wiring requirement up to the builder's own gate.
+- **`protocols/review.md`** — the "run every declared tier" step now points at the concrete `--tier` one-shot mechanism and keys the verdict off `all_green`.
+- **`checks/commit-gate.sh` + `scripts/setup.sh` (commit-msg hook)** — both now read `all_green` (falling back to `.ok` for legacy records) and name the failing tier in the rejection, so the anti-fabrication machinery is load-bearing instead of cosmetic: `all_green` cannot be true while any tier is red.
+
+### Fixed
+
+- **`checks/review-passed.sh`** — a valid verdict with a trailing note (`## Status: PASS — all tiers green`, `**PASS**`, `PASS (live path checked)`) false-FAILED the entire commit gate (it required the status line to equal `PASS` exactly). Now matches a leading `PASS` token after stripping markdown markers, while still rejecting the `PASS | FAIL` template placeholder (it names `FAIL` as a word). Verified across 7 pass/reject cases.
+- **`checks/tests-actually-committed.sh`** — wave-mode git-visibility check used the implementor's **raw claimed path**; an absolute or subdir-relative path matched nothing under `git status` and false-FAILED a real, modified file. Now derives the repo-relative path from the already-resolved `$found`. Absolute-path claims now pass; missing files still fail.
+- **`checks/docs-links.sh`** — a standard titled Markdown link (`[x](./foo.md "Title")`) false-FAILED as a broken cross-link because the ` "Title"` suffix was kept in the resolved path. Now strips the title (everything from the first whitespace) before resolving.
+
 ## [4.4.0] — 2026-06-21 — Hardening from real-usage forensics (multi-tier gate, live-wiring e2e, forced discovery, decision-density sizing, artifact migration)
 
 Forensic analysis of two real projects (a phased finance app, a 2-month knowledge base) surfaced recurring gaps. This batch addresses four of them; the `tests-actually-committed` fix shipped separately in 4.3.0.

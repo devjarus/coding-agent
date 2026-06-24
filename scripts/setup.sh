@@ -168,10 +168,13 @@ reject() {
 }
 [ -f "$VF" ] || reject "no .coding-agent/last-verify.json exists"
 command -v jq >/dev/null 2>&1 || exit 0   # cannot validate without jq — degrade open
-ok="$(jq -r '.ok // false' "$VF" 2>/dev/null)"
+# all_green (every declared tier exit 0) is authoritative; .ok mirrors it for
+# legacy single-tier records. A green unit tier alone does not back a "verified" claim.
+ok="$(jq -r 'if has("all_green") then .all_green else (.ok // false) end' "$VF" 2>/dev/null)"
 code="$(jq -r '.exit_code // 1' "$VF" 2>/dev/null)"
+ftiers="$(jq -r '(.failing_tiers // []) | join(", ")' "$VF" 2>/dev/null)"
 vtree="$(jq -r '.tree // ""' "$VF" 2>/dev/null)"
-{ [ "$ok" = "true" ] && [ "$code" = "0" ]; } || reject "last-verify.json is red (exit_code=$code)"
+{ [ "$ok" = "true" ] && [ "$code" = "0" ]; } || reject "last-verify.json is red (exit_code=$code${ftiers:+, failing tiers: $ftiers})"
 # Currency: recompute the all-source tree the SAME way run-and-record did
 # (throwaway index, .coding-agent excluded). If it differs, source changed since
 # the verification was recorded.
