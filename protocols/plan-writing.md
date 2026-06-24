@@ -1,6 +1,6 @@
 # Protocol — Plan Writing
 
-**Entry:** `spec.md` approved.
+**Entry (large):** `spec.md` approved + immutable. **Entry (non-large):** `spec.md` drafted in the SAME architect dispatch (`Phase: SPEC+PLAN`) — the plan is produced against the draft spec and both are approved together in one design-review session. Either way the spec is immutable AFTER the combined approval (post-approval changes route through `work.md § Plan Revisions`, never an edit).
 **Exit:** `plan.md` exists with `state: approved`, per-task skill manifest, per-wave evaluation criteria with three test tiers.
 **Owner:** Architect.
 
@@ -16,11 +16,13 @@
 4. **Mark parallelism explicitly.** Default serial. Add a `parallel: [T-3, T-4]` line per wave only when tasks touch disjoint files AND have no ordering dependency.
 5. **Map risks to tasks** in `## Risk Mitigations`.
 6. **Write `plan.md` in `state: draft`** with blank approval fields.
-7. **Return to orchestrator.** Architect NEVER calls `AskUserQuestion` for approval. The orchestrator runs the gate via `${CLAUDE_PLUGIN_ROOT}/protocols/design-review.md`:
-   - Print a 5-line summary in chat, start the review surface (`scripts/design-review.sh start <feature_dir> --round N`), give the user the URL
-   - User comments + signs in the browser; on `verdict: approved` (sha-bound): flip `state: approved`, set `approved_by: user`, `approved_at: <verdict ts>`
-   - On `changes-requested`: triage comments, ONE architect re-dispatch, round++
-   - Append action-log: `gate-passed | plan.md approved via design review (sha <short>)`
+7. **Return to orchestrator — the gate is size-conditional.** Architect NEVER calls `AskUserQuestion` for approval. The orchestrator runs it via `${CLAUDE_PLUGIN_ROOT}/protocols/design-review.md`:
+   - **NON-LARGE (combined gate):** you returned `spec.md` + `plan.md` together. The orchestrator runs ONE design-review session over both; the single verdict binds BOTH `spec_sha` and `plan_sha`. On `verdict: approved`: verify both shas against disk, flip BOTH spec.md and plan.md to approved atomically (same verdict ts), log a `gate-passed` line for each, and run BOTH `spec-approved` AND `plan-approved` (per `design-review.md` rule 4).
+   - **LARGE (standalone plan gate):** spec is already approved + immutable. Run the plan-only session:
+     - Print a 5-line summary in chat, start the review surface (`scripts/design-review.sh start <feature_dir> --round N`), give the user the URL
+     - User comments + signs in the browser; on `verdict: approved` (sha-bound): flip plan.md `state: approved`, set `approved_by: user`, `approved_at: <verdict ts>`
+     - On `changes-requested`: triage comments, ONE architect re-dispatch, round++
+     - Append action-log: `gate-passed | plan.md approved via design review (sha <short>)`
    - Headless fallback (no browser): print full body + `AskUserQuestion(approve/request-changes/cancel)` as before
 
 Approval gates only work in the main-thread orchestrator's conversation. See `spec-writing.md` for the same rule.

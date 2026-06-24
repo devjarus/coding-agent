@@ -10,8 +10,8 @@ Drop-in multi-agent pipeline that turns `"build me a notifications system"` into
 
 ## What you get
 
-- **A real pipeline, not a one-shot.** Intent → Spec → Plan → Implement → Review → Commit. Each stage has an owner, an artifact, and a deterministic check.
-- **Human gates at the right spots.** You approve intent, spec, plan, and push. No agent fakes your signature.
+- **A real pipeline, not a one-shot.** Intent → Design (spec+plan) → Implement → Review → Commit. Each stage has an owner, an artifact, and a deterministic check. (Large features split Design into separate Spec and Plan gates.)
+- **Human gates at the right spots.** You approve intent, design (spec+plan together for non-large; separate spec + plan gates for large), and push. No agent fakes your signature.
 - **Runtime testing, not just typechecks.** The reviewer launches your app in a real browser (Playwright) or iOS simulator, takes screenshots, runs your committed test suites. "Compiles" isn't evidence.
 - **Memory across sessions.** Decisions, gotchas, and patterns survive. Tomorrow's architect reads yesterday's learnings. No cold starts.
 - **Research from real docs, not stale training data.** Architect queries Context7 / Exa for current library APIs. No more `shadcn v2` flags in a v4 project.
@@ -79,13 +79,9 @@ Orchestrator: surfaces questions in ONE AskUserQuestion
 You: confirm stack
 
 Architect:   researches test infra (Context7/Exa)
-             writes spec.md → orchestrator prints it in chat
-             → AskUserQuestion to approve
-You: approve spec (Gate 2)
-
-Architect:   writes plan.md with per-task skill manifest + test tiers
-             → orchestrator prints it, AskUserQuestion
-You: approve plan (Gate 3)
+             writes spec.md AND plan.md in ONE dispatch (non-large)
+             → orchestrator serves ONE design-review session (both as tabs)
+You: approve design (Gate 2) — one verdict binds spec + plan
 
 Implementor: loads skills from plan, writes tests first, implementation
              returns structured update
@@ -98,12 +94,12 @@ Evaluator:   npm test + integration tests
 Orchestrator: close-out — archives feature, distills to learnings.md,
               updates AGENTS.md if conventions changed
               shows diff + commit message → AskUserQuestion
-You: approve push (Gate 4)
+You: approve push (Gate 3)
 
 Done.
 ```
 
-Four human gates (intent, spec, plan, push) + one architect discovery prompt per feature. Everything else is automated.
+Three human gates for non-large features (intent, design = spec+plan, push); large features split design into separate spec + plan gates (four). Discovery prompts fire only for design-changing forks. Everything else is automated.
 
 ---
 
@@ -150,7 +146,8 @@ Six agents, seven artifact categories, twelve named protocols, eighteen determin
 
 ```
 You:    "Build a rate-limiter middleware with Redis"
-Gates:  Intent → Discovery → Spec → Plan → Push (4 approvals)
+Gates:  Intent → Design (spec+plan, one approval) → Push   (non-large: 3 gates)
+        Large features split Design into Spec then Plan (4 gates — spec locked first)
 Output: Committed feature + learnings entry + updated AGENTS.md
 ```
 

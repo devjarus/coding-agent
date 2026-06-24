@@ -60,8 +60,8 @@ You execute these by name. Each protocol file is the authoritative reference —
 |---|---|---|
 | intake | `${CLAUDE_PLUGIN_ROOT}/protocols/intake.md` | every new user request |
 | research | `${CLAUDE_PLUGIN_ROOT}/protocols/research.md` | breadth-heavy research: fan out parallel investigators, verify, synthesize |
-| spec-writing | `${CLAUDE_PLUGIN_ROOT}/protocols/spec-writing.md` | dispatched to architect (medium/large only) |
-| plan-writing | `${CLAUDE_PLUGIN_ROOT}/protocols/plan-writing.md` | dispatched to architect (medium/large only) |
+| spec-writing | `${CLAUDE_PLUGIN_ROOT}/protocols/spec-writing.md` | architect, non-large: combined SPEC+PLAN dispatch; large: SPEC only, then PLAN after the spec gate |
+| plan-writing | `${CLAUDE_PLUGIN_ROOT}/protocols/plan-writing.md` | same combined dispatch for non-large; separate dispatch for large after spec is approved |
 | implementation | `${CLAUDE_PLUGIN_ROOT}/protocols/implementation.md` | once plan is approved |
 | review | `${CLAUDE_PLUGIN_ROOT}/protocols/review.md` | dispatched to evaluator after implementation |
 | fix-round | `${CLAUDE_PLUGIN_ROOT}/protocols/fix-round.md` | when review = FAIL |
@@ -75,7 +75,7 @@ You execute these by name. Each protocol file is the authoritative reference —
 
 ```
 Agent(subagent_type="coding-agent:product-lead", prompt="Mode: shape | reflect | review. ... (opt-in — direction, not implementation)")
-Agent(subagent_type="coding-agent:architect",  prompt="Phase: SPEC | PLAN. ...")
+Agent(subagent_type="coding-agent:architect",  prompt="Phase: SPEC+PLAN (non-large — returns spec.md AND plan.md for ONE approval) | SPEC then PLAN (large — spec locked first). ...")
 Agent(subagent_type="coding-agent:implementor", prompt="Tasks: T-N from plan.md. Skills: [...]. ...")
 Agent(subagent_type="coding-agent:evaluator",   prompt="Mode: smoke | delta | lightweight | full. Files changed: ... (delta = targeted fix-round re-review; pass prior finding IDs)")
 Agent(subagent_type="coding-agent:debugger",    prompt="Mode: inspection | full. Bug: ... Read work.md § Handoff.")
@@ -167,6 +167,7 @@ return:
     revisions: [{ supersedes, change, why, downstream, status }]
     decisions: [...]
     nits: [...]
+  conventions_probed: { test_path_pattern, logger_module, peer_files_matched: [...] }
   ask_user: { question, options }
   notes: <string>
 ```
@@ -188,6 +189,7 @@ Apply to `work.md`:
 - `revisions` (any `status: pending`) → invoke pending-revision classification (see `${CLAUDE_PLUGIN_ROOT}/protocols/implementation.md`); BLOCK next dispatch until resolved
 - `decisions` → append to `## Decisions Log`
 - `nits` → append to `## Nits`
+- `conventions_probed` → write/refresh `## Conventions Probed` (advisory metadata, single-writer = you; the evaluator reads it from disk for a spot-check, so it must be persisted, not left in dispatch prose). Not a task-state mutation; does not interact with `tests-actually-committed` / `active-feature-consistent`.
 
 If `status: needs-input` → surface `ask_user.questions` via `AskUserQuestion`. The `ask_user` block may contain MULTIPLE questions (typical for architect's discovery bundle). Bundle them into ONE `AskUserQuestion` call with all questions + options + defaults shown. On user answer, re-dispatch the same subagent with the answers pasted into the dispatch prompt. The subagent picks up where it left off.
 
@@ -197,10 +199,12 @@ Subagents never ask the user directly — they have no `AskUserQuestion` tool. E
 
 | Mode | When | Pipeline |
 |---|---|---|
-| **feature** | new capability | intake → spec → plan → implement → review → close-out |
+| **feature** | new capability | intake → **design (spec+plan)** → implement → review → close-out |
 | **touch-up** | fixes, polish on existing code | intake → implement → review → close-out (lightweight) |
 | **refactor** | structural change, no new behavior | intake → plan only → implement → review → close-out |
 | **prototype** | product direction unknown — user can only judge by clicking | intake-lite → mock build rounds → graduate to feature pipeline (see below) |
+
+**The design step is size-conditional.** For **non-large** features the architect produces `spec.md` AND `plan.md` in **one dispatch** (`Phase: SPEC+PLAN`), approved together in **one** design-review session whose single verdict binds **both** `spec_sha` and `plan_sha` (the surface already renders both as tabs). For **large** features, keep the split: dispatch `SPEC`, run the spec gate (locked + immutable), then dispatch `PLAN` against the frozen spec — wave decomposition needs the spec settled first. `refactor` is plan-only (no spec); `touch-up`/`micro` skip the design step entirely. A combined dispatch must not resurrect a spec for modes that intentionally skip it.
 
 Size by **decision density, not file/line volume.** A "decision" is any choice the agent cannot make mechanically from the spec/diagnosis. A trivial constant swap across 5 files is still micro; one 30-line function with new branching logic is small.
 
@@ -269,8 +273,8 @@ Run deterministic checks at the points each protocol specifies. Checks live in `
 
 Critical checks (invoke as `bash ${CLAUDE_PLUGIN_ROOT}/checks/<name>.sh "$PWD"`):
 - `intent-approved` before architect dispatch
-- `stack-justified`, `test-infra-declared` after the architect writes `spec.md` draft, before the spec-approval prompt
-- `spec-approved`, `plan-approved` before implementor dispatch
+- `stack-justified`, `test-infra-declared` after the architect writes the `spec.md` draft, before the approval prompt
+- `spec-approved`, `plan-approved` before implementor dispatch. **Non-large (combined design gate):** after the one SPEC+PLAN draft, run `stack-justified` + `test-infra-declared`, present the single design-review session over both artifacts; the ONE verdict binds both `spec_sha` and `plan_sha`, so run BOTH `spec-approved` AND `plan-approved` against that single verdict before implementor dispatch. **Large (split gates):** `stack-justified`/`test-infra-declared` then `spec-approved` before the plan is drafted; `plan-approved` before implementor dispatch.
 - `tests-actually-committed "$PWD" wave <artifacts_written...>` on every returned task, BEFORE logging `dispatch-returned` or advancing the wave (blocks fabricated wave-complete)
 - `commit-gate "$PWD" <slug>` at the commit gate, FIRST and as ONE call — internally serializes `review-passed` → `tests-actually-committed commit` → `no-secrets-staged` → `last-verify` green, stopping at the first failure. Do NOT hand-run these as separate parallel calls; the script is the serialization. Never substitute your own typecheck/build for the evaluator's `review-passed`.
 - `revisions-resolved` before next-wave dispatch
@@ -300,8 +304,10 @@ Critical checks (invoke as `bash ${CLAUDE_PLUGIN_ROOT}/checks/<name>.sh "$PWD"`)
 2. Append action log: `artifact-written | <path> | draft`.
 3. **The user must see and answer — via one of exactly two surfaces:**
    - **spec.md / plan.md (default): the design-review surface** — `${CLAUDE_PLUGIN_ROOT}/protocols/design-review.md`. Start it (`scripts/design-review.sh start <feature_dir> --round N`), print a 5-line summary + URL in chat, wait for the user to return. Read `design-verdict.json` (written ONLY by the review server — you NEVER write it or `design-comments.json`; a hand-written verdict is a forged approval). `approved` → step 6 (use the verdict `ts`); `changes-requested` → triage comments, ONE architect re-dispatch, round++.
+     - **Non-large = ONE combined session over BOTH spec.md + plan.md.** The surface auto-renders every present artifact as a tab, and the single verdict the server writes hashes both files — so one Approve binds `spec_sha` AND `plan_sha`. On `approved`, flip BOTH artifacts to approved atomically (step 4). On `changes-requested`, the ONE architect re-dispatch is `Phase: SPEC+PLAN` (it may revise either file).
+     - **Large = two sequential sessions:** spec gate first (spec.md only present), then — after the plan is drafted against the locked spec — the plan gate.
    - **intent.md, push, or headless fallback: chat** — print the full body, call `AskUserQuestion(approve / request-changes / cancel)`, wait for the real user's answer.
-4. On approve: YOU edit the artifact — `state: approved`, `approved_by: user`, `approved_at: <ISO timestamp>`.
+4. On approve: YOU edit the artifact — `state: approved`, `approved_by: user`, `approved_at: <ISO timestamp>`. For a combined verdict, flip BOTH spec.md and plan.md in the same turn (both bound by the one verdict); neither is half-approved.
 5. Append action log: `gate-passed | <artifact> approved by user` (add `via design review (sha <short>)` when verdict-based).
 6. Run the check (`intent-approved`, `spec-approved`, `plan-approved`) — must return ok before next dispatch. For verdict-based approvals the check also verifies the verdict sha matches the artifact bytes.
 

@@ -1,6 +1,6 @@
 # Protocol — Design Review
 
-**Entry:** architect returned a draft `spec.md` (spec gate) or `plan.md` (plan gate), plus `design.html` for UI features.
+**Entry:** architect returned a draft `spec.md` (spec gate, large) or `plan.md` (plan gate, large) or **BOTH `spec.md` + `plan.md` together** (combined gate, non-large — one session, one verdict binding both shas), plus `design.html` for UI features.
 **Exit:** sha-bound `design-verdict.json` with `verdict: approved`, frontmatter flipped to `approved` — or escalation back to the architect with the comment batch.
 **Owner:** Orchestrator (runs the surface, triages feedback); User (reviews, comments, signs).
 
@@ -16,7 +16,10 @@ architect returns draft ──► orchestrator runs pre-gate checks (stack-justi
         ▼
 bash ${CLAUDE_PLUGIN_ROOT}/scripts/design-review.sh start <feature_dir> --round N
         │   serves review UI on localhost (spec/plan rendered server-side from
-        │   markdown; design.html in an iframe), opens the browser — no CDN, offline
+        │   markdown; design.html in an iframe), opens the browser — no CDN, offline.
+        │   The surface renders ONE tab per present artifact — for a non-large
+        │   combined gate both spec.md + plan.md show as tabs under a single
+        │   Approve, and the one verdict the server writes binds BOTH shas.
         ▼
 USER, in the browser: reads, clicks any block/element → pinned comment,
 batches all feedback, then ONE of:
@@ -44,7 +47,9 @@ continue pipeline    · out-of-scope/new feature → surface back to user, open-
 1. **Start the surface, don't print the wall.** At the spec/plan gate, print a 5-line summary in chat + the review URL — not the full artifact body. The full body lives in the browser.
 2. **One re-dispatch per round.** Never re-dispatch the architect per-comment. The whole comment batch (verbatim JSON, anchors included) goes into a single dispatch prompt — anchors pin each comment to the exact section/element, so the architect needs no clarification round.
 3. **Triage before forwarding.** Dedupe overlapping comments; classify each as trivial / material / out-of-scope. Material ones flow through the same revision classification used in implementation. Out-of-scope ones go back to the user — they may be the seed of the next feature, not a spec change.
-4. **The Approve button is the gate.** On `verdict: approved`: verify `spec_sha`/`plan_sha` in the verdict matches the file on disk (the `spec-approved`/`plan-approved` checks do this mechanically), flip `state: approved`, `approved_by: user`, `approved_at: <verdict ts>`, log `gate-passed | spec.md approved via design review (sha <short>)`. Do NOT ask a second confirmation in chat — the whole point is removing that round-trip.
+4. **The Approve button is the gate.** On `verdict: approved`: verify the relevant sha(s) in the verdict match the file(s) on disk (the `spec-approved`/`plan-approved` checks do this mechanically), flip `state: approved`, `approved_by: user`, `approved_at: <verdict ts>`, log `gate-passed`. Do NOT ask a second confirmation in chat — the whole point is removing that round-trip.
+   - **Combined gate (non-large):** the one verdict carries BOTH `spec_sha` and `plan_sha` (the server hashes every present artifact). Verify BOTH against disk, flip BOTH spec.md and plan.md to approved atomically (same verdict ts), and log a `gate-passed` line for each (`spec.md` sha, `plan.md` sha). Run BOTH `spec-approved` AND `plan-approved` against the single verdict. A combined verdict missing or mismatching either sha is rejected — the gate is not satisfied.
+   - **Single gate (large):** one artifact, one sha, as before.
 5. **Round archives.** `design-review.sh start --round N+1` auto-archives the previous round's comments to `design-comments.round-N.json`. Never delete them — they're the feedback trail.
 6. **Headless fallback.** No browser available (SSH, CI)? Fall back to the legacy gate: print full body in chat + `AskUserQuestion(approve/request-changes/cancel)`. Same semantics, no verdict file (checks then run frontmatter-only).
 7. **Stop the server before dispatching.** A running server holds the old round; stop it, re-dispatch, restart with `--round N+1` when the revision returns.

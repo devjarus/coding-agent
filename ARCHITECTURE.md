@@ -75,25 +75,20 @@ The coding-agent plugin is a multi-agent software-development pipeline (6 agents
                     ▼
   intent.md (state: approved, approved_by: user)
                     │
-                    │ dispatch Architect (phase=SPEC)
+                    │ dispatch Architect — NON-LARGE: phase=SPEC+PLAN (one dispatch)
+                    │                       LARGE: phase=SPEC, then phase=PLAN (two)
                     ▼
-               spec-writing
+            design (spec + plan)
                     │
-                    │ architect writes spec.md (+ design.html for UI)
-                    │ orchestrator serves design-review surface
-                    │ user comments in browser; sha-bound verdict (Gate 2: Spec)
-                    ▼
-   spec.md (state: approved, approved_by: user, IMMUTABLE forever)
+                    │ NON-LARGE: architect writes spec.md AND plan.md (+ design.html for UI)
+                    │   in ONE dispatch; orchestrator serves ONE design-review session
+                    │   (both render as tabs); single sha-bound verdict binds BOTH
+                    │   spec_sha + plan_sha (Gate 2: Design). Flip both → approved.
                     │
-                    │ dispatch Architect (phase=PLAN)
+                    │ LARGE: phase=SPEC → spec gate (spec.md locked, IMMUTABLE) →
+                    │   phase=PLAN against frozen spec → plan gate. Two verdicts.
                     ▼
-               plan-writing
-                    │
-                    │ architect writes plan.md (state: draft)
-                    │ orchestrator serves design-review surface
-                    │ user comments in browser; sha-bound verdict (Gate 3: Plan)
-                    ▼
-   plan.md (state: approved, approved_by: user, IMMUTABLE forever)
+   spec.md + plan.md (state: approved, approved_by: user, IMMUTABLE forever)
                     │
                     │ orchestrator creates work.md (active)
                     │ dispatch Implementor(s) (serial or parallel per plan)
@@ -127,7 +122,7 @@ The coding-agent plugin is a multi-agent software-development pipeline (6 agents
               │  7. append close-out entry to Action Log
               │  8. run all close-out checks
               ▼
-          commit gate (Gate 4: Push)
+          commit gate (Push gate)
               │
               │ orchestrator shows diff + commit message
               │ AskUserQuestion (approve push / local-only / redo)
@@ -135,7 +130,7 @@ The coding-agent plugin is a multi-agent software-development pipeline (6 agents
             DONE
 ```
 
-**Four user gates** total per medium feature: Intent, Spec, Plan, Push. Plus Architect's discovery-Q&A bundle (one `AskUserQuestion` at start of spec-writing). Touch-up skips Gate 2 and Gate 3. Micro skips all but intent + push.
+**User gates are size-conditional.** Non-large (small/medium): **three** — Intent, Design (spec+plan in one approval), Push. Large: **four** — Intent, Spec, Plan, Push (spec locked before plan). Architect's discovery-Q&A bundle fires only for design-changing forks; ≤2 low-stakes forks are defaulted and flagged in the spec's `## Assumed Defaults`, resolved inside the single Design approval. Touch-up skips the design gate(s); micro skips all but intent + push; refactor is plan-only (no spec).
 
 ## Artifact lifecycle and mutability
 

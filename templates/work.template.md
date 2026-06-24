@@ -48,5 +48,12 @@ _None_
 ## Nits (deferred fixes)
 _None_
 
+## Conventions Probed (advisory — implementor's discovery, evaluator's spot-check starting point)
+<!-- Orchestrator writes this from each implementor return's `conventions_probed`.
+     The evaluator reads it to VERIFY (not trust): did tests land inside the pattern? is the logger the real one? -->
+- **Test-path pattern:** _not yet recorded_
+- **Logger module:** _not yet recorded_
+- **Peer files matched:** _none recorded_
+
 ## Handoff (for fix rounds — populated only when transferring between agents)
 _None_

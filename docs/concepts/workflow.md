@@ -11,11 +11,8 @@ User typed request
   Intake ─── (approval) ───> Intent signed
       │
       ▼
-  Spec-writing ── (approval) ───> spec.md signed
-      │
-      ▼
-  Plan-writing ── (approval) ───> plan.md signed
-      │
+  Design (spec + plan) ── (ONE approval, non-large) ───> spec.md + plan.md signed
+      │                    (LARGE: two gates — spec locked, then plan)
       ▼
   Implementation (serial by default; parallel only where plan declares)
       │
@@ -25,7 +22,7 @@ User typed request
            └── FAIL ───> Fix-round ───> Review
 ```
 
-Four User-facing gates: **Intent, Spec, Plan, Push**. Everything else is automated with deterministic Checks.
+User-facing gates are **size-conditional**: non-large (small/medium) has **three** — **Intent, Design (spec+plan in one approval), Push**; large has **four** — **Intent, Spec, Plan, Push** (spec locked before the plan is written). Everything else is automated with deterministic Checks.
 
 ## Session Start (T=0)
 
@@ -65,7 +62,7 @@ User types a request. Orchestrator responds with:
 2. **Path proposal**:
    - Mode: `feature` / `touch-up` / `refactor`
    - Size: `micro` / `small` / `medium` / `large`
-   - Gates this pass: Intent → Spec → Plan → Push (or reduced for touch-up)
+   - Gates this pass: Intent → Design (spec+plan, one approval) → Push for non-large; Intent → Spec → Plan → Push for large (or reduced for touch-up)
    - Estimated waves
 3. **`AskUserQuestion`** — approve / redirect / cancel.
 
@@ -97,7 +94,7 @@ Add push + in-app notifications for comment replies and mentions. Must persist
 read state per-user. Existing Postgres user schema is the source of truth.
 
 ## Path
-Gates: Intent ✓ | Spec | Plan | Push
+Gates: Intent ✓ | Design (spec+plan) | Push   (non-large: one combined design gate)
 Waves: ~3 (schema, API, UI+realtime)
 ```
 
@@ -113,9 +110,11 @@ Collapses to: restate → `AskUserQuestion` → direct Implementor dispatch → 
 
 ## T=2–3 — Spec-writing
 
+> **Size note (combined Design phase).** This walkthrough shows a *large* feature, where spec-writing and plan-writing are two sequential dispatches with two gates (the spec is locked before the plan is decomposed). For **non-large** (small/medium) features these T-stages run as **one** combined Design phase: the architect writes `spec.md` **and** `plan.md` in a single `Phase: SPEC+PLAN` dispatch, and the orchestrator runs **one** design-review session over both (one verdict binds both shas). Read T=2–3 and T=4 below as a single approval for non-large.
+
 ### Step A — Profile-driven discovery
 
-Architect reads the profile. For any unknown the profile can't answer, bundles all questions into one `AskUserQuestion` with profile defaults bolded:
+Architect reads the profile. For **design-changing** forks the profile can't answer (or when more than 2 forks remain), it bundles the questions into one `AskUserQuestion` with profile defaults bolded. For **≤2 low-stakes** forks it does NOT round-trip — it picks sane defaults, records them in the spec's `## Assumed Defaults` (so they render in the review surface), and returns `status: complete`; the user confirms or overrides them inside the single approval pass. The bundle below is the design-changing case:
 
 > *I'll build this with: **Next 15** (profile default), **shadcn** (profile), **TanStack Query** (profile), **json-render** if AI output ✓. Decisions needed:*
 > *(1) Delivery — **push + in-app** / email / push only?*

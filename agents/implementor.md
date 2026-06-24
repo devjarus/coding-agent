@@ -90,11 +90,18 @@ return:
       - "chose msw over nock — first-class v2 TS types"
     nits:                                   # deferred fixes
       - "consider extracting webhook router to its own module"
+  conventions_probed:                       # what you DISCOVERED while probing (steps 4/6 + logger) —
+    test_path_pattern: "tests/**/*.test.ts" #   the ACTIVE include/testMatch/testpaths you placed tests under
+    logger_module: "@/lib/log (pino)"       #   the structured logger you used (step: logging discipline)
+    peer_files_matched:                     #   the 2-3 peer files whose conventions you mirrored
+      - src/notifications/email/route.ts
   ask_user:                                 # populated only if needs-input
     question: ""
     options: []
   notes: "T-3 complete. Tests pass: 12 unit / 4 integration. msw fixtures recorded for FCM."
 ```
+
+**`conventions_probed` is recorded probe output, not new work.** You already discovered the active test-path pattern (step 6), the logger module (logging discipline), and the peer files you mirrored (step 4) — write them here so the evaluator spot-checks them instead of re-deriving from scratch (did the tests land *inside* the active pattern? is the reported logger the one actually used?). It is advisory metadata: it never substitutes for `artifacts_written` and is not a success signal — the completion invariant below is unchanged.
 
 **Completion invariant.** `status: complete` REQUIRES a non-empty `artifacts_written` listing files you actually created or edited this dispatch. If you wrote nothing — repo empty, blocked on missing input, contract unbuildable — return `status: blocked` (or `needs-input`) with `task_states: { T-N: blocked }` and explain in `notes`. Reporting `complete` with an empty or non-existent `artifacts_written` is a contract violation: the orchestrator's `tests-actually-committed` wave check will catch it against git ground truth and convert the task to `failed`.
 

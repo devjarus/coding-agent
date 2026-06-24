@@ -24,14 +24,19 @@ for f in "${files[@]}"; do
   case "$f" in
     test/*|tests/*|*.test.*|*.spec.*|*__tests__*|scripts/*|*.test.tsx) continue ;;
   esac
-  # JS/TS console
-  if grep -nE '^[^*//]*console\.(log|error|warn|info|debug)\(' "$full" >/dev/null 2>&1; then
+  # JS/TS console. Two-step: drop comment-only lines (first non-space chars are
+  # `//` or a `*` JSDoc continuation), THEN match a real console.* call anywhere
+  # on what remains. (The old single `^[^*//]*` class was a typo — `[^*/]` — that
+  # exempted any line with a `/` before console, e.g. a string literal "a/b",
+  # silently letting raw console calls through.) POSIX grep -E has no lookahead,
+  # so comment-skip is a filter, not an inline anchor.
+  if grep -vE '^[[:space:]]*(//|\*)' "$full" | grep -E 'console\.(log|error|warn|info|debug)\(' >/dev/null 2>&1; then
     violations+="$f"$'\n'
   fi
-  # Python print
+  # Python print — same two-step comment-skip shape (drop full-line `#` comments).
   case "$f" in
     *.py)
-      if grep -nE '^[^#]*\bprint\(' "$full" >/dev/null 2>&1; then
+      if grep -vE '^[[:space:]]*#' "$full" | grep -E '\bprint\(' >/dev/null 2>&1; then
         violations+="$f"$'\n'
       fi
       ;;

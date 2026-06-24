@@ -25,6 +25,14 @@ supersedes: null
 FR-1: <one sentence, testable>
 FR-2: ...
 
+## Assumed Defaults
+<!-- The architect records ≤2 LOW-STAKES forks it defaulted instead of asking, so
+     the user sees + can override them in the SINGLE design-review approval pass.
+     Design-changing forks never go here — they are ask_user questions. Empty = none. -->
+| Fork | Chosen default | Why | How to override |
+|------|----------------|-----|-----------------|
+| _none_ | | | |
+
 ## Flows
 <!-- optional but strongly preferred for anything with >1 step or actor.
      Use an ASCII diagram in a plain code fence (same style as ARCHITECTURE.md) —

@@ -76,6 +76,10 @@ return:
       - "chose msw over nock — msw has first-class v2 TS types"
     nits:                                   # deferred style-level items
       - "consider extracting webhook router into its own module (T-4)"
+  conventions_probed:                       # advisory: implementor's discovery → work.md § Conventions Probed
+    test_path_pattern: "tests/**/*.test.ts" #   orchestrator persists it; evaluator reads it to SPOT-CHECK (verify, not trust)
+    logger_module: "@/lib/log (pino)"
+    peer_files_matched: ["src/notifications/email/route.ts"]
   ask_user:                                 # populated if status == needs-input
     question: ""
     options: []
@@ -103,6 +107,7 @@ state: active
 ## Checkpoint (mutable — overwritten on update)
 active_feature: none
 phase: idle                              # idle | intake | spec | plan | implement | review | fix-round | close-out
+                                         #   (non-large runs spec+plan in one dispatch under a single Design gate; the phase still steps spec→plan for resume/recovery signals)
 last_completed: notifications-v1 @ 2026-04-20T16:42:00Z
 pending_pushes: 1 (commit 7b5f5e0)
 resume_hint: null                        # or "pick up at wave 2 T-4"
@@ -343,8 +348,8 @@ After every Actor return, Orchestrator updates `work.md` task states. This is th
 |------|-------|------|--------------|
 | **intake** | user message | intent.md approved | intent.md |
 | **product-direction** | direction unclear / opt-in / `/product-review` | product.md written or evolved | product.md |
-| **spec-writing** | intent approved | spec.md approved | spec.md (+ MCP queries) |
-| **plan-writing** | spec approved | plan.md approved | plan.md (+ MCP queries) |
+| **spec-writing** | intent approved | spec.md approved (non-large: drafted, approved with plan in one combined gate) | spec.md (+ MCP queries) |
+| **plan-writing** | spec approved (large) / drafted with spec in same dispatch (non-large) | plan.md approved | plan.md (+ MCP queries) |
 | **implementation** | plan approved | all tasks complete | code files, test files, work.md |
 | **review** | implementation complete | review.md written | review.md, screenshots/ |
 | **fix-round** | review FAIL | review PASS or escalation | work.md, diagnosis.md (round 2) |
