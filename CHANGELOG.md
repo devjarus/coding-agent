@@ -5,7 +5,14 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [4.6.0] — 2026-06-23 — Fewer round-trips: combined design gate, draft-with-defaults, conventions hand-off, no-raw-print fix
+## [4.7.0] — 2026-06-24 — The design-review surface is required, not optional (it was never actually shown)
+
+Real-usage finding: across both dogfood projects, `design.html` was being generated but **no `design-verdict.json` / `design-comments.json` ever existed** — the interactive design-review surface was never launched. Every spec/plan approval went through chat instead. Root cause (same pattern as the verification forensics): the gate framed chat as an always-available "headless fallback," `spec-approved`/`plan-approved` accept chat approval just as readily, and starting a localhost server is friction — so the model took the cheaper path by preference. The surface itself is fully functional (verified end-to-end: server serves `/meta` + renders spec at HTTP 200 against a real feature dir).
+
+### Changed
+
+- **`agents/orchestrator.md` (approval gate)** — the design-review surface is now **REQUIRED, not a preference**, for spec/plan/design gates. The orchestrator must **actually run** `design-review.sh start` as a tool call and confirm `{"ok":true,"url":…}` before asking the user; printing the spec and calling `AskUserQuestion` *without* launching the surface is explicitly called out as **skipping the gate**. The chat path is now a **conditional fallback** — used only when `start` returns `{"ok":false}` (python3 missing, port in use, genuinely headless), and the fallback must be logged (`gate-fallback | design-review surface unavailable: <reason> → chat`) so a skipped surface is visible, not silent.
+- **`protocols/design-review.md`** — rule 1 now requires actually running the `start` command (not just "print a summary + URL"); the "Headless fallback" rule is rescoped to fire only on a real `ok:false`, with convenience/speed explicitly excluded, and the fallback logged.
 
 v4.5.0 made each iteration *honest*; this batch reduces the *number of round-trips per feature*, from the agents/protocols audit. The pipeline flow changed for non-large features — verified internally consistent by an adversarial pass tracing both medium (combined) and large (split) features end-to-end across all 15 touched files.
 
