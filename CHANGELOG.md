@@ -5,6 +5,21 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.0] — 2026-07-09 — v5 scaffold, adversarially vetted, committed
+
+The v5 reimagining lands as an inert scaffold under `v5/` — nothing is wired into the plugin manifest, so v4 behavior is unchanged. This commit exists to preserve the design and its vet before any fixes land.
+
+v5 collapses v4's four primitives into one axiom — *no claim advances without evidence; evidence is recorded by execution, never written by the agent* — and derives the machinery from it: one conductor (single writer of an append-only ledger) runs a 7-gate pipeline and dispatches four stateless kind-specific agents (planner / developer / designer / deployer).
+
+### Added
+
+- **`v5/`** — the scaffold: 5 agent prompts, 7 gate scripts + `gates/lib.sh`, `lib/record.sh` (the only writer of `evidence.jsonl`) + `lib/ledger.sh`, `hooks/` (evidence wall + session resume, unwired), `templates/` (product + feature ledger), `principles.md` (the craft plane).
+- **`docs/concepts/v5-design.md`** — the canonical design: the axiom, three primitives (ledger / evidence / gate), two roles, arc sizing without modes, failure routing, the concurrency model.
+- **`v5/design-vet.md`** — findings from a 25-agent adversarial review (3 critical, 10 major, 11 minor, 2 note), plus a scenario-by-scenario v4-vs-v5 lifecycle comparison across 12 non-happy paths and product iteration.
+- **`v5/PLAN.md`** — the executable promotion plan: 24 dependency-ordered tasks across 6 phases, each with Files / Change / Verify.
+
+Known state: 3 critical wiring breaks block any real run (`designed?` unclearable, `architected?` cannot see the planner's ADR, agents unregistered), and 3 load-bearing v4 capabilities are missing (qualitative review, escalation ladder, redirect mechanics). All are enumerated in `v5/design-vet.md` and scheduled in `v5/PLAN.md`.
+
 ## [4.7.0] — 2026-06-24 — The design-review surface is required, not optional (it was never actually shown)
 
 Real-usage finding: across both dogfood projects, `design.html` was being generated but **no `design-verdict.json` / `design-comments.json` ever existed** — the interactive design-review surface was never launched. Every spec/plan approval went through chat instead. Root cause (same pattern as the verification forensics): the gate framed chat as an always-available "headless fallback," `spec-approved`/`plan-approved` accept chat approval just as readily, and starting a localhost server is friction — so the model took the cheaper path by preference. The surface itself is fully functional (verified end-to-end: server serves `/meta` + renders spec at HTTP 200 against a real feature dir).
