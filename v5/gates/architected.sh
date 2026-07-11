@@ -6,7 +6,7 @@ set -uo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 GATE_NAME=architected
 intent="$(ledger_section "$(ca_ledger)" intent | strip_comments)"
-echo "$intent" | grep -qi 'consequential: *yes' || gate_result n/a "routine change"
+echo "$intent" | grep -qiE '^[[:space:]]*consequential:[[:space:]]*yes\b' || gate_result n/a "routine change"
 slug="$(ca_current)"
 # strip_comments so the template's commented-out ADR example (which contains the
 # literal "feature: <slug>") can't false-pass; the real ADR carries "feature: <slug>"

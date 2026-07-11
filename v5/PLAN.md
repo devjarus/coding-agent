@@ -143,7 +143,7 @@ nothing here may change v4 behavior.
   Verify: scratch repo — record a passing observe, change a file: `observed.sh`
   now BLOCKS (before the fix it passed).
 
-- [ ] **T1.6 Close the conductor's control-loop gaps (one conductor.md edit).**
+- [x] **T1.6 Close the conductor's control-loop gaps (one conductor.md edit).**
   *(F: clean-no-owner, missing-branch-routes, first-value-regex, bare-paths,
   rollup-timing, agent-tool-name — majors + minors)*
   Files: `v5/agents/conductor.md`, `v5/gates/designed.sh`,

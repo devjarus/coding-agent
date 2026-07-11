@@ -22,6 +22,16 @@ Fixing the vetted breaks in the v5 scaffold so it can actually run. v5 is still 
 - **`ca_tree_sha` rotated on a byte-identical commit** (T1.4, major) — it hashed `rev-parse HEAD` + `git diff HEAD`, so committing (HEAD moves, diff empties) produced a new sha over unchanged files, silently invalidating every tree-bound proof across the natural prove → commit → ship walk. Rewrote `v5/gates/lib.sh` to hash per-file working-tree content over `git ls-files -co` (excluding `.coding-agent/`) — invariant across `git add` and `git commit`, still changes on any real edit or rename. Verified: sha holds across add + commit, `proven?` survives the commit, a real edit re-blocks it.
 - **`observed?` was the only evidence gate not tree-bound** (T1.5, major) — it grepped for any `kind=observe` + `exit:0` ever recorded, so a healthy observation from a previous tree still passed after the code moved. Now uses `evidence_match observe` (kind + exit 0 + current `tree_sha`), matching `shipped?`/`designed?`. Also hardened validator check 9.5 to ignore comment lines so prose mentioning `evidence_match` can't false-flag. Verified: passes at current tree, blocks when stale, n/a without `deploys:`.
 
+### Changed
+
+- **Conductor control-loop gaps closed** (T1.6, majors + minors) — one `v5/agents/conductor.md` edit plus regex fixes across the four conditional gates:
+  - `clean?` now has an owner: an explicit stage-and-commit loop step before `shipped?` (the conductor is the single writer, so it owns the commit; its secret/debug scan runs on the staged diff).
+  - Branch routing became a full table with fail edges for **every** gate (`framed?`, `architected?`, `clean?` were previously unrouted) plus a default rule and a two-strike escalation hook (no infinite re-dispatch).
+  - ADRs are appended to `product.md ## decisions` **immediately** on a `planner(architect)` return — `architected?` reads them before build, so end-of-feature rollup was too late.
+  - Build/diagnose returns are verified against `git status --porcelain` before being logged — an empty diff behind a completion claim is a failed dispatch.
+  - Conditional-gate applicability is word-boundary anchored (`^…touches:.*\bui\b`), so `touches: api, ui` correctly applies `designed?` (previously only matched `ui` as the first value) and a stray `ui` in a goal line no longer trips it.
+  - All `ledger.sh` command references use the full `${CLAUDE_PLUGIN_ROOT}/v5/lib/ledger.sh` path (bare name isn't on `PATH`); dropped the nonexistent `Agent` tool from frontmatter (kept `Task`).
+
 ## [4.8.0] — 2026-07-09 — v5 scaffold, adversarially vetted, committed
 
 The v5 reimagining lands as an inert scaffold under `v5/` — nothing is wired into the plugin manifest, so v4 behavior is unchanged. This commit exists to preserve the design and its vet before any fixes land.

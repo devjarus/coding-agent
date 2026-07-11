@@ -6,7 +6,7 @@ set -uo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 GATE_NAME=observed
 intent="$(ledger_section "$(ca_ledger)" intent | strip_comments)"
-echo "$intent" | grep -qi 'deploys: *yes' || gate_result n/a "no deploy required"
+echo "$intent" | grep -qiE '^[[:space:]]*deploys:[[:space:]]*yes\b' || gate_result n/a "no deploy required"
 # Tree-bind like shipped?/designed?: a healthy observation from an earlier tree
 # must not satisfy the gate after the code moved. evidence_match requires
 # kind=observe, exit 0, AND the current tree_sha.
