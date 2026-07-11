@@ -7,6 +7,8 @@ l="$(ca_ledger)"
 [ -f "$l" ] || gate_result block "no ledger for active feature"
 sec="$(ledger_section "$l" intent | strip_comments)"
 [ -n "$(echo "$sec" | tr -d '[:space:]')" ] || gate_result block "intent is empty"
-echo "$sec" | grep -q 'frozen: agreed @' \
+# Anchor to the blockquote marker ledger.sh freeze writes ("> frozen: agreed @").
+# An unanchored match false-passes on the frame template's own placeholder text.
+echo "$sec" | grep -q '^> frozen: agreed @' \
   && gate_result pass "intent frozen + agreed" \
   || gate_result block "intent not yet agreed (ledger.sh freeze intent)"

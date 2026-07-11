@@ -34,30 +34,38 @@ Produce an intent block for the user to agree to. This is the entry gate
 (`framed?`) — nothing builds until the user agrees.
 
 ### What to produce
+Fill the `## intent` section the conductor already created from
+`ledger.template.md`. Emit **only the conditional tags that apply**, each with a
+single concrete value (not the menu) — a stray `ui` in the tag line turns on the
+design gate:
 ```markdown
-## intent — <feature-slug>
-
 goal: <one sentence — the user-visible outcome>
-touches: ui | api | data | infra | docs        # one or more; drives conditional gates
-consequential: yes | no                         # yes → architected? gate applies
-deploys: yes | no                              # yes → shipped? + observed? gates apply
-frozen: agreed @ <user-confirmed timestamp>    # LEFT BLANK — conductor fills on agreement
+touches: <replace with the applicable list, e.g. api, data>
+consequential: <yes only if this is a one-way / structural change; else omit>
+deploys: <yes only if this must be deployed; else omit>
 
-### scope
-<what is in; what is explicitly out>
+scope: <what is in; what is explicitly out>
+non-goals: <what this deliberately does not do>
 
-### acceptance
+acceptance:
 - [ ] <observable, testable criterion>
 - [ ] ...
 ```
+Do **not** write a `frozen:` line. The conductor stamps
+`> frozen: agreed @<ts>` via `ledger.sh freeze intent` only after the user
+agrees — that blockquote marker is what `framed?` checks, and nothing you paste
+can satisfy it.
 
 ### How to fill it
 1. Read the brief + any prior ledger context the conductor passed.
 2. Read `product.md` (if it exists) to understand existing boundaries.
 3. Draft conservatively — small scope, clear acceptance criteria.
-4. Flag `consequential: yes` when the change touches a one-way door (data model,
-   public API contract, auth boundary, infra topology).
-5. Leave `frozen:` blank — the conductor fills it after the user agrees.
+4. Set `consequential: yes` only for a one-way door (data model, public API
+   contract, auth boundary, infra topology) — it turns on the `architected?`
+   gate, which blocks build until an ADR exists.
+5. Emit each conditional tag with a real value; omit the ones that don't apply.
+   Never leave the `ui | api | ...` menu in place — a verbatim paste would feed
+   bogus tags to the conditional gates.
 6. Surface ambiguities as `open_questions`, not assumptions.
 
 ---
@@ -69,13 +77,19 @@ This gates `architected?` — build cannot start until the conductor records the
 ADR in `product.md ## decisions` and the user agrees.
 
 ### What to produce
+The conductor pastes this under `product.md ## decisions`. The heading MUST be
+level-3 (`###`) — a level-2 `##` heading would terminate the decisions section,
+putting the ADR (and its slug) outside what `architected?` reads. The
+`feature: <slug>` line is the canonical anchor the gate matches, so it survives
+any title rewording:
 ```markdown
-## ADR — <feature-slug> — <decision-title>
+### ADR — <feature-slug> — <decision-title>
+feature: <feature-slug>
 
-### context
+#### context
 <the forces at play; why a decision is needed now>
 
-### options considered
+#### options considered
 1. **<Option A>** — <one-line summary>
    - Forces with: <what it aligns to>
    - Forces against: <what it trades away>
@@ -83,7 +97,7 @@ ADR in `product.md ## decisions` and the user agrees.
 
 2. **<Option B>** — ...
 
-### decision
+#### decision
 **Chosen: <Option N>**
 
 Reasoning: <why this option given the forces above>
@@ -91,7 +105,7 @@ Reasoning: <why this option given the forces above>
 One-way door? yes | no
 If yes — what cannot be undone: <list>
 
-### consequences
+#### consequences
 - <what becomes easier>
 - <what becomes harder>
 - <what must be watched>

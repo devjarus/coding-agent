@@ -8,6 +8,9 @@ GATE_NAME=architected
 intent="$(ledger_section "$(ca_ledger)" intent | strip_comments)"
 echo "$intent" | grep -qi 'consequential: *yes' || gate_result n/a "routine change"
 slug="$(ca_current)"
-ledger_section "$(ca_product)" decisions | grep -qi "$slug" \
+# strip_comments so the template's commented-out ADR example (which contains the
+# literal "feature: <slug>") can't false-pass; the real ADR carries "feature: <slug>"
+# as a live line under a "### ADR — <slug> —" heading.
+ledger_section "$(ca_product)" decisions | strip_comments | grep -qi "$slug" \
   && gate_result pass "ADR recorded for $slug" \
   || gate_result block "consequential change needs an ADR in product.md ## decisions"

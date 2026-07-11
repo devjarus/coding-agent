@@ -106,7 +106,7 @@ nothing here may change v4 behavior.
   `design-verdict.json` → `v5/gates/designed.sh` passes; delete it → blocks.
   Every subcommand designer.md names exists (validator check 4 green).
 
-- [ ] **T1.3 Fix the planner→gate artifact contracts.** *(F: adr-invisible + frozen-false-pass — critical + major)*
+- [x] **T1.3 Fix the planner→gate artifact contracts.** *(F: adr-invisible + frozen-false-pass — critical + major)* — done: ADR heading→###+feature anchor, frozen placeholder deleted, framed.sh anchored. Verified both gates block-then-pass.
   Files: `v5/agents/planner.md`, `v5/gates/framed.sh`, `v5/gates/architected.sh`.
   Change:
   1. ADR heading `## ADR —` → `### ADR — <slug> — <title>` and add a
