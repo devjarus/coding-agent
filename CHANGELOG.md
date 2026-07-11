@@ -31,6 +31,7 @@ Fixing the vetted breaks in the v5 scaffold so it can actually run. v5 is still 
   - Build/diagnose returns are verified against `git status --porcelain` before being logged — an empty diff behind a completion claim is a failed dispatch.
   - Conditional-gate applicability is word-boundary anchored (`^…touches:.*\bui\b`), so `touches: api, ui` correctly applies `designed?` (previously only matched `ui` as the first value) and a stray `ui` in a goal line no longer trips it.
   - All `ledger.sh` command references use the full `${CLAUDE_PLUGIN_ROOT}/v5/lib/ledger.sh` path (bare name isn't on `PATH`); dropped the nonexistent `Agent` tool from frontmatter (kept `Task`).
+- **record.sh hardening** (T1.7, minors) — (1) `kind` is now validated against `test|deploy|design|observe|review|run`; a worker that records its *dispatch* kind (`prove`, `build`, `ship`) instead of an evidence kind gets exit 64 instead of writing an entry no gate will ever read. (2) `ca_root` (in `v5/gates/lib.sh`) resolves via `git --git-common-dir`, so a `build` worker running in an isolated worktree records into the **main** repo's `evidence.jsonl` — previously it hit "no active feature" (exit 64) because the worktree has no `.coding-agent/`. Root-caused in the shared `ca_root` rather than special-casing record.sh, so gates and record agree on where the ledger lives. Verified: invalid kind → 64; worktree record lands in main, no local `.coding-agent/` created.
 
 ## [4.8.0] — 2026-07-09 — v5 scaffold, adversarially vetted, committed
 

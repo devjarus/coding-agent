@@ -15,6 +15,14 @@ source "$HERE/../gates/lib.sh"
 cmd="${1:?usage: record.sh \"<command>\" [kind]}"
 kind="${2:-run}"
 
+# Guard the taxonomy: gates read evidence kinds, so a worker recording its
+# *dispatch* kind (build, prove, ship, diagnose, frame, architect) instead of an
+# evidence kind would silently never satisfy any gate. Only evidence kinds pass.
+case "$kind" in
+  test|deploy|design|observe|review|run) ;;
+  *) echo "record.sh: invalid kind '$kind' (allowed: test deploy design observe review run — did you pass a dispatch kind like 'prove'/'build'/'ship'?)" >&2; exit 64 ;;
+esac
+
 ev="$(ca_evidence)"
 [ -n "$(ca_current)" ] || { echo "no active feature — run: ledger.sh init <slug>" >&2; exit 64; }
 mkdir -p "$(dirname "$ev")"; [ -f "$ev" ] || : > "$ev"

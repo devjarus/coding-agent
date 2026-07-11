@@ -171,7 +171,7 @@ nothing here may change v4 behavior.
   remain in conductor.md; scratch test: `echo 'touches: api, ui' | grep -qiE
   'touches:.*\bui\b'` succeeds.
 
-- [ ] **T1.7 record.sh hardening.** *(F: kind-unvalidated + worktree-record — minors)*
+- [x] **T1.7 record.sh hardening.** *(F: kind-unvalidated + worktree-record — minors)*
   File: `v5/lib/record.sh`.
   Change: (1) validate `kind` against `test|deploy|design|observe|review|run`,
   exit 64 with usage on anything else (prevents workers recording their

@@ -3,7 +3,18 @@
 # Source this; do not execute. Intentionally NO `set -e` (grep no-match is fine).
 set -uo pipefail
 
-ca_root()    { git rev-parse --show-toplevel 2>/dev/null || pwd; }
+# The MAIN worktree root — where the single .coding-agent/ ledger lives. Uses
+# --git-common-dir (shared by all linked worktrees) so a `build` worker running
+# in an isolated worktree records evidence into the main repo's evidence.jsonl,
+# which the conductor's gates read. Falls back to show-toplevel, then pwd.
+ca_root() {
+  local cdir
+  if cdir="$(git rev-parse --git-common-dir 2>/dev/null)" && [ -n "$cdir" ]; then
+    cdir="$(cd "$cdir" 2>/dev/null && pwd)"   # absolutize (can be relative ".git")
+    case "$cdir" in */.git) echo "${cdir%/.git}" ; return ;; esac
+  fi
+  git rev-parse --show-toplevel 2>/dev/null || pwd
+}
 ca_dir()     { echo "$(ca_root)/.coding-agent"; }
 ca_current() { local f="$(ca_dir)/CURRENT"; [ -f "$f" ] && tr -d '[:space:]' < "$f" || echo ""; }
 ca_feature_dir() { echo "$(ca_dir)/${1:-$(ca_current)}"; }
