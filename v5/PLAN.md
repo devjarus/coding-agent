@@ -126,7 +126,7 @@ nothing here may change v4 behavior.
   heading under `## decisions` → `architected.sh` PASSES; with `##` → blocked
   (proving the fix was needed).
 
-- [ ] **T1.4 Make `ca_tree_sha` commit-invariant.** *(F: tree-sha-rotates — major)*
+- [x] **T1.4 Make `ca_tree_sha` commit-invariant.** *(F: tree-sha-rotates — major)* — done: per-file content hash over ls-files -co; verified invariant across add+commit, changes on edit.
   File: `v5/gates/lib.sh`.
   Change: replace the `rev-parse HEAD + diff HEAD` hash with working-tree
   content hashing:

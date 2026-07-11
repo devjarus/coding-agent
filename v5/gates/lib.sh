@@ -39,15 +39,23 @@ ledger_section() { # file name
 # templates. Frozen markers are blockquotes (> ...), not comments, so they survive.
 strip_comments() { perl -0777 -pe 's/<!--.*?-->//gs' 2>/dev/null || sed '/<!--/,/-->/d'; }
 
-# A stable hash of the working tree state (git diff vs HEAD + untracked),
-# or a content hash when not in a git repo. Never mutates the index.
+# A stable hash of the working-tree CONTENT (tracked + untracked, excluding
+# .coding-agent/), or a content hash when not in a git repo. Never mutates the
+# index.
+#
+# Content-only by design: hashing `rev-parse HEAD` + `git diff HEAD` rotates the
+# sha on a byte-identical commit (HEAD moves, the diff empties), which silently
+# invalidates every tree-bound proof across the natural prove → commit → ship
+# walk. Per-file digests over `ls-files -co` are invariant across both `git add`
+# and `git commit` and still change on any real edit or rename (the path rides
+# in each shasum line). The while-loop (vs `xargs`) is hang-safe on empty input
+# and skips staged-but-deleted paths.
 ca_tree_sha() {
-  if git rev-parse HEAD >/dev/null 2>&1; then
-    { git rev-parse HEAD
-      git diff HEAD
-      git ls-files --others --exclude-standard -z -- ':(exclude).coding-agent/' \
-        | xargs -0 cat 2>/dev/null
-    } | shasum -a 256 | cut -d' ' -f1
+  if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    git ls-files -co --exclude-standard -z -- ':(exclude).coding-agent/' \
+      | sort -z \
+      | while IFS= read -r -d '' f; do [ -f "$f" ] && shasum -a 256 "$f"; done \
+      | shasum -a 256 | cut -d' ' -f1
   else
     find "$(ca_root)" -type f -not -path '*/.git/*' -not -path '*/.coding-agent/*' -print0 2>/dev/null \
       | sort -z | xargs -0 cat 2>/dev/null | shasum -a 256 | cut -d' ' -f1
