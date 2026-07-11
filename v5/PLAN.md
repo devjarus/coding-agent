@@ -136,7 +136,7 @@ nothing here may change v4 behavior.
   Verify: in a scratch git repo — record evidence, `git add -A && git commit`,
   re-run `proven?` → still PASSES; edit a source file → BLOCKS.
 
-- [ ] **T1.5 Tree-bind `observed?`.** *(F: observed-not-tree-bound — major)*
+- [x] **T1.5 Tree-bind `observed?`.** *(F: observed-not-tree-bound — major)* — done: uses evidence_match observe; verified stale observation now blocks.
   File: `v5/gates/observed.sh`.
   Change: replace the raw `grep '"kind":"observe"' ... '"exit":0'` with
   `evidence_match observe` (same helper `shipped?`/`designed?` use).

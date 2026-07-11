@@ -7,7 +7,9 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 GATE_NAME=observed
 intent="$(ledger_section "$(ca_ledger)" intent | strip_comments)"
 echo "$intent" | grep -qi 'deploys: *yes' || gate_result n/a "no deploy required"
-ev="$(ca_evidence)"
-{ [ -f "$ev" ] && grep '"kind":"observe"' "$ev" | grep -q '"exit":0'; } \
-  && gate_result pass "post-deploy health recorded" \
-  || gate_result block "no healthy post-deploy observation (kind=observe)"
+# Tree-bind like shipped?/designed?: a healthy observation from an earlier tree
+# must not satisfy the gate after the code moved. evidence_match requires
+# kind=observe, exit 0, AND the current tree_sha.
+evidence_match observe >/dev/null \
+  && gate_result pass "post-deploy health recorded at current tree" \
+  || gate_result block "no healthy post-deploy observation at current tree (kind=observe)"

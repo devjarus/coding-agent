@@ -318,7 +318,8 @@ if [ -d "$PLUGIN_ROOT/v5" ]; then
     [ -z "$kind" ] && continue
     echo "$recorded" | grep -qx "$kind" \
       || { error "gates expect evidence kind '$kind' but no v5 agent records it via record.sh"; v5_kind_ok=0; }
-  done < <(grep -rhoE '"kind":"[a-z]+"|evidence_match[[:space:]]+[a-z]+' "$PLUGIN_ROOT/v5/gates" 2>/dev/null \
+  done < <(for gf in "$PLUGIN_ROOT"/v5/gates/*.sh; do grep -vE '^[[:space:]]*#' "$gf"; done 2>/dev/null \
+           | grep -oE '"kind":"[a-z]+"|evidence_match[[:space:]]+[a-z]+' \
            | sed -E 's/.*"kind":"([a-z]+)".*/\1/; s/evidence_match[[:space:]]+//' | sort -u)
   [ "$v5_kind_ok" -eq 1 ] && pass "v5 evidence kinds are all recordable by some agent"
 
