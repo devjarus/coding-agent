@@ -252,7 +252,80 @@ pass "content quality checked"
 
 echo ""
 
-# ─── 9. Inventory ───────────────────────────────────────────────────
+# ─── 9. v5 ──────────────────────────────────────────────────────────
+# v5 lives beside v4 and is not registered in the plugin manifest yet. These
+# checks lint it on its own terms so a break is caught before it ships.
+if [ -d "$PLUGIN_ROOT/v5" ]; then
+  echo "▸ v5"
+
+  # 9.1 Agent frontmatter: required keys present, `name` matches the filename.
+  v5_agent_ok=1
+  while IFS= read -r f; do
+    rel="${f#$PLUGIN_ROOT/}"
+    base="$(basename "$f" .md)"
+    fm=$(awk 'NR==1&&/^---$/{f=1;next} f&&/^---$/{exit} f{print}' "$f")
+    for key in name description model tools; do
+      echo "$fm" | grep -qE "^$key:" || { error "$rel frontmatter missing '$key:'"; v5_agent_ok=0; }
+    done
+    fm_name=$(echo "$fm" | grep -E '^name:' | head -1 | sed 's/^name:[[:space:]]*//' | tr -d '"'"'"' ')
+    if [ -n "$fm_name" ] && [ "$fm_name" != "$base" ]; then
+      error "$rel declares name '$fm_name' but the file is '$base.md'"; v5_agent_ok=0
+    fi
+  done < <(find "$PLUGIN_ROOT/v5/agents" -name "*.md" 2>/dev/null)
+  [ "$v5_agent_ok" -eq 1 ] && pass "v5 agent frontmatter valid (name/description/model/tools)"
+
+  # 9.2 Shell scripts: executable and syntactically valid.
+  v5_sh_ok=1
+  while IFS= read -r f; do
+    rel="${f#$PLUGIN_ROOT/}"
+    [ -x "$f" ] || { error "$rel is not executable (chmod +x)"; v5_sh_ok=0; }
+    bash -n "$f" 2>/dev/null || { error "$rel has a bash syntax error"; v5_sh_ok=0; }
+  done < <(find "$PLUGIN_ROOT/v5/gates" "$PLUGIN_ROOT/v5/lib" "$PLUGIN_ROOT/v5/hooks" -name "*.sh" 2>/dev/null)
+  [ "$v5_sh_ok" -eq 1 ] && pass "v5 shell scripts executable + syntax-clean"
+
+  # 9.3 Referenced plugin-internal paths resolve (CLAUDE_PLUGIN_ROOT = repo root).
+  v5_path_ok=1
+  while IFS= read -r ref; do
+    target="$PLUGIN_ROOT/${ref#\$\{CLAUDE_PLUGIN_ROOT\}/}"
+    [ -e "$target" ] || { error "v5 references a missing path: $ref"; v5_path_ok=0; }
+  done < <(grep -rhoE '\$\{CLAUDE_PLUGIN_ROOT\}/[A-Za-z0-9_./-]+' \
+             "$PLUGIN_ROOT/v5/agents" "$PLUGIN_ROOT/v5/gates" "$PLUGIN_ROOT/v5/lib" 2>/dev/null \
+           | sed 's/[.,)]*$//' | sort -u)
+  [ "$v5_path_ok" -eq 1 ] && pass "v5 \${CLAUDE_PLUGIN_ROOT} paths all resolve"
+
+  # 9.4 Subcommand contract: every design-review.sh subcommand an agent invokes
+  #     must exist in the script's case statement. (A prompt telling an agent to
+  #     run a nonexistent subcommand silently blocks its gate forever.)
+  drs="$PLUGIN_ROOT/scripts/design-review.sh"
+  if [ -f "$drs" ]; then
+    known=$(grep -oE '^[[:space:]]+[a-z][a-z|-]*\)' "$drs" | tr -d ' )' | tr '|' '\n' | sort -u)
+    v5_cmd_ok=1
+    while IFS= read -r sub; do
+      [ -z "$sub" ] && continue
+      echo "$known" | grep -qx "$sub" \
+        || { error "v5 agents invoke 'design-review.sh $sub' but the script has no such subcommand (has: $(echo "$known" | tr '\n' ' '))"; v5_cmd_ok=0; }
+    done < <(grep -rhoE 'design-review\.sh[[:space:]]+[a-z][a-z-]*' "$PLUGIN_ROOT/v5/agents" 2>/dev/null \
+             | awk '{print $2}' | sort -u)
+    [ "$v5_cmd_ok" -eq 1 ] && pass "v5 design-review.sh subcommands all exist"
+  fi
+
+  # 9.5 Kind taxonomy: every evidence kind a gate greps for must be recordable —
+  #     i.e. some agent prompt instructs `record.sh ... <kind>`.
+  v5_kind_ok=1
+  recorded=$(grep -rhoE 'record\.sh[^\n]*"[[:space:]]+[a-z]+' "$PLUGIN_ROOT/v5/agents" 2>/dev/null \
+             | awk '{print $NF}' | sort -u)
+  while IFS= read -r kind; do
+    [ -z "$kind" ] && continue
+    echo "$recorded" | grep -qx "$kind" \
+      || { error "gates expect evidence kind '$kind' but no v5 agent records it via record.sh"; v5_kind_ok=0; }
+  done < <(grep -rhoE '"kind":"[a-z]+"|evidence_match[[:space:]]+[a-z]+' "$PLUGIN_ROOT/v5/gates" 2>/dev/null \
+           | sed -E 's/.*"kind":"([a-z]+)".*/\1/; s/evidence_match[[:space:]]+//' | sort -u)
+  [ "$v5_kind_ok" -eq 1 ] && pass "v5 evidence kinds are all recordable by some agent"
+
+  echo ""
+fi
+
+# ─── 10. Inventory ──────────────────────────────────────────────────
 echo "▸ Inventory"
 
 # Derive real counts from the directories (single source of truth).

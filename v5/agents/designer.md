@@ -30,11 +30,20 @@ open_questions: [<anything requiring conductor or user decision>]
 
 ## The design loop
 
-### 1. Start the surface
+The feature dir is `.coding-agent/<slug>/` (the conductor names `<slug>` in the
+brief). The surface takes the **dir**, not the slug.
+
+### 1. Write the look-contract, then start the surface
+The surface renders `spec.md` / `plan.md` / `design.html` from the feature dir —
+it needs at least one to exist. Write your `design.html` look-contract into the
+feature dir first, then start:
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/design-review.sh start <feature-slug>
+# write .coding-agent/<slug>/design.html first (the thing under review), then:
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/design-review.sh start .coding-agent/<slug>
 ```
-Note the localhost URL it prints.
+It prints `{"ok":true,"url":"http://127.0.0.1:PORT",...}`. If it returns
+`{"ok":false,...}`, return `gate_status: block` with that error — do not fake a
+verdict.
 
 ### 2. Render
 Navigate to the surface URL. Take a screenshot to confirm it loaded.
@@ -42,26 +51,31 @@ Navigate to the surface URL. Take a screenshot to confirm it loaded.
 ### 3. Review + iterate
 - Read the brief's acceptance criteria and any prior comment thread the conductor
   passed.
-- If comments exist: address each one, re-render, take a new screenshot.
-- For layout/spacing/color issues: edit the relevant template/component, reload.
+- If comments exist: address each one, edit `design.html`, reload, re-screenshot.
 - **Don't paper over comments.** Each comment must be addressed or explicitly
   surfaced as an `open_question` (design constraint conflict, missing asset, etc.).
 
-### 4. Capture approval
-When the surface looks correct per the acceptance criteria:
-```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/design-review.sh approve <feature-slug>
-```
-Then record the verdict:
+### 4. The HUMAN approves — you do not
+Approval is the user clicking approve in the browser; the server writes
+`.coding-agent/<slug>/design-verdict.json` (sha-bound to the exact bytes). There
+is **no agent-run approve command** — an agent approving its own design would
+defeat the gate. Tell the user the surface is ready and wait for them to approve.
+
+### 5. Record the verdict as evidence
+Once the user has approved, record the sha-bound check. `verify` exits 0 only
+when the verdict is `approved` and the artifacts are unchanged since sign-off:
 ```bash
 bash ${CLAUDE_PLUGIN_ROOT}/v5/lib/record.sh \
-  "bash ${CLAUDE_PLUGIN_ROOT}/scripts/design-review.sh verify <feature-slug>" \
+  "bash ${CLAUDE_PLUGIN_ROOT}/scripts/design-review.sh verify .coding-agent/<slug>" \
   design
 ```
+Recording writes only under `.coding-agent/` (excluded from `tree_sha`), so it
+does not invalidate the design it just approved. If `verify` exits non-zero (no
+approval yet, or the design changed after approval), return `gate_status: block`.
 
-### 5. Stop the surface
+### 6. Stop the surface
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/scripts/design-review.sh stop <feature-slug>
+bash ${CLAUDE_PLUGIN_ROOT}/scripts/design-review.sh stop .coding-agent/<slug>
 ```
 
 ---
@@ -69,6 +83,8 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/design-review.sh stop <feature-slug>
 ## Hard rules
 - Do not claim design approval in prose. Only a recorded `kind=design` evidence
   entry with exit 0 satisfies `designed?`.
+- **Never approve your own design.** The `verdict=approved` state comes only from
+  the user on the surface; you record it, you do not create it.
 - If the surface fails to start, return `gate_status: block` with the error —
   do not substitute a screenshot of a local file.
 - If comments conflict with the acceptance criteria, surface as `open_question` —

@@ -5,6 +5,19 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.8.1] — 2026-07-10 — v5 Phase 1: correctness fixes (from the vet)
+
+Fixing the vetted breaks in the v5 scaffold so it can actually run. v5 is still unwired (v4 unchanged); this phase makes the gates, agents, and evidence chain internally consistent. Tasks tracked in `v5/PLAN.md`.
+
+### Added
+
+- **`scripts/validate.sh` v5 section** (T1.1) — the regression net for the rest of the phase. Lints v5 agent frontmatter (name matches filename), gate/lib/hook shell scripts (executable + `bash -n`), `${CLAUDE_PLUGIN_ROOT}` path resolution, the design-review.sh **subcommand contract** (an agent invoking a nonexistent subcommand now fails the build — this alone catches the worst critical), and the evidence-kind taxonomy (every kind a gate greps for must be recordable by some agent).
+- **`scripts/design-review.sh verify <feature_dir>`** (T1.2) — machine-checkable design gate: exits 0 only when `design-verdict.json` says `approved` AND the artifacts are byte-identical to sign-off (reuses `verify_design_verdict` from `checks/lib.sh`). Additive; v4 unaffected.
+
+### Fixed
+
+- **`designed?` was permanently unclearable** (T1.2, critical) — `v5/agents/designer.md` instructed nonexistent `design-review.sh approve/verify <slug>` calls against a script that only had `start|stop|status` and takes a feature **dir**. Rewrote the design loop: the designer writes `design.html` into `.coding-agent/<slug>/` and starts the surface with the dir; the **human** approves in the browser (no agent self-approval); the designer records the sha-bound `verify` check as `kind=design` evidence. Verified end-to-end: gate blocks → record approval → gate passes → mutate design → `verify` blocks on sha mismatch.
+
 ## [4.8.0] — 2026-07-09 — v5 scaffold, adversarially vetted, committed
 
 The v5 reimagining lands as an inert scaffold under `v5/` — nothing is wired into the plugin manifest, so v4 behavior is unchanged. This commit exists to preserve the design and its vet before any fixes land.

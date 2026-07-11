@@ -12,6 +12,12 @@
 #   design-review.sh start <feature_dir> [--port N] [--round N]   # background + opens browser
 #   design-review.sh stop  <feature_dir>
 #   design-review.sh status <feature_dir>
+#   design-review.sh verify <feature_dir>   # exit 0 iff an approved, sha-current verdict exists
+#
+# `verify` is the machine-checkable gate: it exits 0 only when the user has
+# approved on the surface (design-verdict.json verdict=approved) AND the
+# artifacts are byte-identical to what was approved. v5's designer records it
+# via record.sh so `designed?` reads real evidence, not a prose claim.
 #
 # State: <feature_dir>/design-review.pid while running.
 set -uo pipefail
@@ -19,7 +25,7 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 CMD="${1:-}"
 DIR="${2:-}"
-[[ -z "$CMD" || -z "$DIR" ]] && { echo '{"ok":false,"error":"usage: design-review.sh start|stop|status <feature_dir> [--port N] [--round N]"}'; exit 1; }
+[[ -z "$CMD" || -z "$DIR" ]] && { echo '{"ok":false,"error":"usage: design-review.sh start|stop|status|verify <feature_dir> [--port N] [--round N]"}'; exit 1; }
 [[ -d "$DIR" ]] || { echo "{\"ok\":false,\"error\":\"feature dir not found: $DIR\"}"; exit 1; }
 shift 2
 
@@ -85,6 +91,31 @@ case "$CMD" in
     else
       echo '{"ok":true,"running":false}'
     fi
+    ;;
+  verify)
+    vfile="$DIR/design-verdict.json"
+    [[ -f "$vfile" ]] || { echo "{\"ok\":false,\"error\":\"no design-verdict.json in $DIR — drive the surface to approval\"}"; exit 1; }
+    verdict=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('verdict',''))" "$vfile" 2>/dev/null || echo "")
+    if [[ "$verdict" != "approved" ]]; then
+      echo "{\"ok\":false,\"error\":\"verdict is '$verdict', not approved\"}"; exit 1
+    fi
+    # sha-binding: if the shared helper + jq are available, confirm each artifact
+    # is byte-identical to what was approved (reject edits after sign-off).
+    # shellcheck disable=SC1091
+    source "$SCRIPT_DIR/../checks/lib.sh" 2>/dev/null || true
+    reason=""
+    if declare -f verify_design_verdict >/dev/null 2>&1; then
+      for pair in "design.html:design_sha" "spec.md:spec_sha" "plan.md:plan_sha"; do
+        art="${pair%:*}"; key="${pair##*:}"
+        [[ -f "$DIR/$art" ]] || continue
+        msg="$(verify_design_verdict "$DIR" "$art" "$key")"
+        [[ -n "$msg" ]] && reason="$msg"
+      done
+    fi
+    if [[ -n "$reason" ]]; then
+      echo "{\"ok\":false,\"error\":\"$reason\"}"; exit 1
+    fi
+    echo '{"ok":true,"approved":true}'
     ;;
   *)
     echo "{\"ok\":false,\"error\":\"unknown command: $CMD\"}"

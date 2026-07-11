@@ -55,7 +55,7 @@ nothing here may change v4 behavior.
 
 ## Phase 0 — preserve
 
-- [ ] **T0.1 Commit the v5 scaffold as-is.**
+- [x] **T0.1 Commit the v5 scaffold as-is.** — done: `e2a4f75`, v4.8.0, validator PASSED.
   Files: `v5/**`, `docs/concepts/v5-design.md`.
   Change: none — snapshot commit before fixes so the vet report's line
   references stay meaningful. CHANGELOG entry (Added: v5 scaffold + design doc
@@ -67,8 +67,9 @@ nothing here may change v4 behavior.
 
 ## Phase 1 — fix (make it correct)
 
-- [ ] **T1.1 Extend `scripts/validate.sh` with a v5 section — FIRST, it's the
-  regression net for everything after.**
+- [x] **T1.1 Extend `scripts/validate.sh` with a v5 section — FIRST, it's the
+  regression net for everything after.** — done: 5 v5 checks added; check 4
+  (subcommand contract) caught the T1.2 break automatically.
   Checks to add (each prints a line; any failure fails the run):
   1. Every `v5/agents/*.md` has frontmatter keys `name`, `description`,
      `model`, `tools`; name matches filename.
@@ -86,7 +87,7 @@ nothing here may change v4 behavior.
   Verify: `./scripts/validate.sh` PASSED and prints the v5 section; then break
   one agent frontmatter key locally → validator FAILS → revert.
 
-- [ ] **T1.2 Repair the `designed?` evidence chain.** *(F: designed-unclearable — critical)*
+- [x] **T1.2 Repair the `designed?` evidence chain.** *(F: designed-unclearable — critical)* — done: `verify` subcommand added, designer rewired (human approves), verified end-to-end (block→approve→pass→mutate→block).
   Files: `v5/agents/designer.md`, `scripts/design-review.sh` (additive).
   Change:
   1. designer.md step 1: the designer writes `design.html` into
