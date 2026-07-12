@@ -312,7 +312,10 @@ if [ -d "$PLUGIN_ROOT/v5" ]; then
   # 9.5 Kind taxonomy: every evidence kind a gate greps for must be recordable —
   #     i.e. some agent prompt instructs `record.sh ... <kind>`.
   v5_kind_ok=1
-  recorded=$(grep -rhoE 'record\.sh[^\n]*"[[:space:]]+[a-z]+' "$PLUGIN_ROOT/v5/agents" 2>/dev/null \
+  # `.*` (not `[^\n]`): grep is line-based so `.` never crosses lines, and a
+  # bracket `[^\n]` would treat \n as the literal chars \ and n — breaking on a
+  # recorded command that contains backslashes (e.g. the review verdict's \$/\[).
+  recorded=$(grep -rhoE 'record\.sh.*"[[:space:]]+[a-z]+' "$PLUGIN_ROOT/v5/agents" 2>/dev/null \
              | awk '{print $NF}' | sort -u)
   while IFS= read -r kind; do
     [ -z "$kind" ] && continue

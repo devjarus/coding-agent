@@ -186,7 +186,7 @@ nothing here may change v4 behavior.
 
 ## Phase 2 — port (the load-bearing v4 muscles)
 
-- [ ] **T2.1 Add the `review` kind (qualitative review, evidence-honest).**
+- [x] **T2.1 Add the `review` kind (qualitative review, evidence-honest).**
   *(Lifecycle vet S2 — v5's biggest regression vs v4)*
   Files: `v5/agents/developer.md`, new `v5/gates/reviewed.sh`,
   `v5/agents/conductor.md`, `v5/principles.md`.

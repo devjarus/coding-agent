@@ -5,6 +5,18 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.9.0] — 2026-07-11 — v5 Phase 2: porting the load-bearing v4 muscles
+
+Phase 1 made v5 correct; Phase 2 makes it complete — porting the three v4 capabilities the lifecycle vet flagged as load-bearing (qualitative review, escalation, redirect), which the gates-only model had dropped. Still unwired; v4 unchanged. Tasks in `v5/PLAN.md`.
+
+### Added
+
+- **`review` kind + `reviewed?` gate** (T2.1) — v5's biggest regression vs v4 was having no qualitative review: `proven?` reads exit codes, which catch breakage but not wrong-but-green code, missed acceptance criteria, or security smells. New `v5/gates/reviewed.sh` sits between `proven?` and `clean?`, is `n/a` until code is proven, and passes only on a `kind=review` verdict (exit 0 = zero blocking findings) bound to the current tree. New `review` kind in `v5/agents/developer.md`: reads the diff against the intent's acceptance criteria + ADR, writes `- [blocking]`/`- [advisory]` findings (citing `file:line`) to `.coding-agent/<slug>/review.md`, and records an evidence-honest verdict that recomputes the blocking count from the file. Conductor gets the gate in its order, `review → developer` in the dispatch table, a `reviewed?` branch route (scoped `build` on blocking findings → re-`review`), a `review` principle tier, and a parallel-review fan-out option (correctness · security · simplicity → merge → one verdict). Verified: blocking finding blocks, advisory-only passes.
+
+### Fixed
+
+- **validator taxonomy check was silently pattern-fragile** (found during T2.1) — check 9.5 used `record\.sh[^\n]*"…`; grep treats `\n` in a bracket expression as the literal chars `\` and `n`, so a recorded command containing backslashes (the review verdict's `\$`/`\[`) broke the match and the kind read as unrecorded. Switched to `.*` (grep is already line-based). The check now reliably catches a gate expecting an unrecordable evidence kind.
+
 ## [4.8.1] — 2026-07-10 — v5 Phase 1: correctness fixes (from the vet)
 
 Fixing the vetted breaks in the v5 scaffold so it can actually run. v5 is still unwired (v4 unchanged); this phase makes the gates, agents, and evidence chain internally consistent. Tasks tracked in `v5/PLAN.md`.

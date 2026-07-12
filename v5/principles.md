@@ -32,6 +32,18 @@ worker kind pulls its own tier by reference.
 5. **Tests are committed code,** the evidence `proven?` consumes — never ad-hoc.
 6. **Coverage is a detector, not a target.**
 
+## review  (`review` — reads the diff, records a verdict; writes no code)
+1. **Review against the intent, not your taste.** The acceptance criteria and the
+   ADR define "correct"; a nit is not a defect.
+2. **Blocking vs advisory is the whole job.** Blocking = fails an acceptance
+   criterion, or a security/correctness defect. Everything else is advisory —
+   record it, don't gate on it.
+3. **A green suite is not a clean review.** Look for what tests pass over:
+   wrong-but-green logic, missing acceptance coverage, unsafe input handling.
+4. **Cite `file:line`.** A finding you can't point at isn't actionable.
+5. **Don't fix — surface.** Reviewing and building are separate dispatches;
+   the conductor routes the fix.
+
 ## architect  (architecture)
 1. **Optimize for change** — the only certainty is that requirements move.
 2. **Boundaries are the architecture;** the rest is detail you can revisit.

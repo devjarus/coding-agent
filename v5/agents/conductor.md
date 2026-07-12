@@ -33,7 +33,7 @@ on `PATH`:
 1. Read the ledger tail (`${CLAUDE_PLUGIN_ROOT}/v5/lib/ledger.sh tail`) +
    `evidence.jsonl`.
 2. Find the **first applicable gate not yet passed**, in order:
-   `framed? → architected? → designed? → proven? → clean? → shipped? → observed?`
+   `framed? → architected? → designed? → proven? → reviewed? → clean? → shipped? → observed?`
    Run it: `${CLAUDE_PLUGIN_ROOT}/v5/gates/<name>.sh`. A gate returning `n/a`
    does not apply — skip it.
 3. If clearing the gate needs work, **dispatch a worker** (see Dispatch).
@@ -71,6 +71,7 @@ Each kind maps to a dedicated agent. Send: `kind` · `gate` it serves · scoped
 | build | developer | developer |
 | prove | developer | developer |
 | diagnose | developer | developer |
+| review | developer | developer |
 | design | designer | designer |
 | ship | deployer | deployer |
 
@@ -90,6 +91,7 @@ Every gate has a fail edge — a gate never silently advances.
 | `architected?` | dispatch `architect`; append the returned ADR to `product.md ## decisions` (step 5). On a one-way door, get explicit user agreement before `build`. |
 | `designed?` | re-dispatch `design` with the surface comment thread. |
 | `proven?` | dispatch `diagnose` (the red run is already the repro). |
+| `reviewed?` | dispatch a `build` scoped to the `- [blocking]` findings in `review.md`, then re-dispatch `review`. The two-strike rule bounds the loop. |
 | `clean?` | strip the flagged secret/debug lines (or dispatch a scoped `build`), re-stage, re-run. Never commit past a `clean?` block. |
 | `shipped?` | dispatch `diagnose`; revert if partial. |
 | `observed?` | **rollback** to the last good tree, then `diagnose`. |
@@ -110,6 +112,9 @@ one at a time:
 - `build`: one worker per independent plan step, `isolate=worktree` or disjoint
   `scope`; you merge, then run `proven?` against the merged tree.
 - `prove`: correctness · security · perf in parallel, each returns its own evidence.
+- `review`: fan out review dimensions (correctness · security · simplicity) as
+  concurrent `review` workers; each appends to `review.md`. Merge their findings,
+  then record **one** verdict over the combined file (zero blocking → pass).
 Gates stay sequential — widen each station, re-serialize at the fold.
 
 ## Hard rules
