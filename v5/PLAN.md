@@ -215,7 +215,7 @@ nothing here may change v4 behavior.
   fix the line to `- [advisory]` + re-record → passes. Validator PASSED
   (gate script + taxonomy checks green — add `review` to T1.1 check 5 list).
 
-- [ ] **T2.2 Two-strike escalation in the conductor.** *(Lifecycle vet S11)*
+- [x] **T2.2 Two-strike escalation in the conductor.** *(Lifecycle vet S11)*
   File: `v5/agents/conductor.md`.
   Change: hard rule — if the SAME gate blocks twice with no new evidence ids
   between the two runs, STOP dispatching. Surface to the user: the gate, both
@@ -225,7 +225,7 @@ nothing here may change v4 behavior.
   Verify: prompt inspection (rule present, placed in Hard rules) + the W-run
   in T4.2 exercises it with a deliberately unfixable test.
 
-- [ ] **T2.3 Redirect mechanics: `ledger.sh revise`.** *(Lifecycle vet S3)*
+- [x] **T2.3 Redirect mechanics: `ledger.sh revise`.** *(Lifecycle vet S3)*
   Files: `v5/lib/ledger.sh`, `v5/gates/framed.sh`, `v5/agents/conductor.md`.
   Change: new subcommand `revise <section> "<reason>"` — appends
   `> revision @<ts>: <reason>` to the section. `framed.sh` logic becomes: the
@@ -236,7 +236,7 @@ nothing here may change v4 behavior.
   Verify: scratch ledger — freeze → framed? PASSES; revise → BLOCKS;
   freeze again → PASSES.
 
-- [ ] **T2.4 Close/abandon primitive: `ledger.sh close`.** *(Lifecycle vet S8)*
+- [x] **T2.4 Close/abandon primitive: `ledger.sh close`.** *(Lifecycle vet S8)*
   Files: `v5/lib/ledger.sh`, `v5/agents/conductor.md`.
   Change: `close [--abandoned|--superseded]` — appends a rollup skeleton
   (feature summary line, learnings stub, deployment line if any) to

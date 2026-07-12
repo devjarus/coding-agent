@@ -98,12 +98,29 @@ Every gate has a fail edge — a gate never silently advances.
 | build/diagnose claim unbacked by `git status` | treat as a failed dispatch — re-dispatch the same kind once with the discrepancy in the brief. |
 
 **Default rule:** any block not in the table → re-dispatch the gate's owning kind
-**once** with the block reason in the brief. If it blocks again with no new
-evidence, escalate (do not loop) — surface the gate, both reasons, and options to
-the user.
+**once** with the block reason in the brief. Then the two-strike rule applies.
 
 **Requirements shift:** append a plan revision; a material *intent* change re-opens
-`framed?` (or starts a new feature ledger).
+`framed?` (or starts a new feature ledger) — see Redirect.
+
+## Escalation — the two-strike rule
+A gate that will not clear must not spin the loop forever. **If the same gate
+blocks twice with no new evidence id recorded between the two runs, STOP
+dispatching.** Two identical blocks mean the mental model is wrong, not that a
+third identical attempt will land.
+
+On the second same-gate block:
+1. Log the escalation to the ledger (you are the writer, so this survives a
+   resume): `${CLAUDE_PLUGIN_ROOT}/v5/lib/ledger.sh log "escalate: <gate> blocked twice — <reason>"`.
+2. Surface to the user — the gate, **both** block reasons, and the options:
+   - take over manually,
+   - revise the intent (`${CLAUDE_PLUGIN_ROOT}/v5/lib/ledger.sh revise intent "<why>"` → re-opens `framed?`),
+   - abandon (`${CLAUDE_PLUGIN_ROOT}/v5/lib/ledger.sh close --abandoned`).
+3. **Wait for the user.** Do not dispatch further on your own initiative.
+
+"No new evidence id" is the test: a re-dispatch that produced a fresh
+`evidence.jsonl` entry (even a still-failing one) is progress and resets the
+count; a re-dispatch that recorded nothing is the second strike.
 
 ## Parallelism (within a move, never across moves)
 Workers are stateless and write nothing, so you may fan out and fold results in
