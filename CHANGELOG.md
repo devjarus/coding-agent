@@ -5,6 +5,18 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.0.0] — 2026-07-11 — v5 Phase 3: wired live (coexists with v4)
+
+The five v5 agents are now **registered in the plugin manifest** and the v5 hooks are wired, so the conductor and its workers are dispatchable as `subagent_type`. v4 is untouched and remains the default entry — this registers v5, it does not promote it (promotion to default is Phase 4/5, gated on dogfooding). Major bump because agents were added to the manifest (per AGENTS.md semver).
+
+### Changed
+
+- **Plugin manifest registers all 11 agents + both hook files** (T3.1, T3.2) — the plugin reference documents that an explicit `agents`/`hooks` field **replaces** default directory discovery (confirmed against docs.claude.com), so `plugin.json` now lists all six v4 agents **and** the five v5 agents explicitly (omitting the v4 six would have silently dropped them), plus `"hooks": ["./hooks/hooks.json", "./v5/hooks/hooks.json"]`. All names are unique across the combined set. New validator check 9.6 fails if any manifest path stops resolving.
+- **v5 hooks made safe for coexistence** (T3.2) — v4 and v5 share `.coding-agent/`, so `v5/hooks/session-start.sh` now no-ops unless a genuine v5 ledger exists at `.coding-agent/<slug>/ledger.md` (v4 keeps features under `.coding-agent/features/<slug>/`), preventing a bogus v5 banner in v4 projects. The evidence-wall PreToolUse hook only acts on paths ending in `evidence.jsonl`, so it is a no-op everywhere else.
+- **Docs truth pass** (T3.3) — `v5/README.md` (rewrote the two-agent `worker.md` model to the four kind-specific agents + 8 gates, updated wiring status), `ARCHITECTURE.md` (added a v5 topology note), `docs/concepts/v5-design.md` (implementation note reconciling the one-`worker.md`/seven-kinds spec with the as-built four agents + `reviewed?` gate; fixed the file-layout tree), and `.claude-plugin/marketplace.json` (v4+v5 description).
+
+**Live verification still owed (needs an interactive session):** dispatching `subagent_type: conductor|planner|developer|designer|deployer` resolving in a fresh session, and confirming both SessionStart hooks fire cleanly in a real v4 and v5 project. Structural checks (JSON validity, all 13 manifest paths resolve, name uniqueness, hook no-op logic) pass.
+
 ## [4.9.0] — 2026-07-11 — v5 Phase 2: porting the load-bearing v4 muscles
 
 Phase 1 made v5 correct; Phase 2 makes it complete — porting the three v4 capabilities the lifecycle vet flagged as load-bearing (qualitative review, escalation, redirect), which the gates-only model had dropped. Still unwired; v4 unchanged. Tasks in `v5/PLAN.md`.

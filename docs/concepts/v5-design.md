@@ -8,6 +8,16 @@ set (Actor / Artifact / Skill / Check). v4 grew to 6 agents + 58 skills +
 one valuable core: *making "done" mean demonstrably done.* v5 keeps that core
 and deletes the scaffolding.
 
+> **Implementation note (as built).** Where this document says one `worker.md`
+> with seven kinds, the implementation splits it into **four kind-specific
+> agents** — `planner` (frame · architect), `developer` (build · prove · diagnose
+> · review), `designer` (design), `deployer` (ship) — so each carries only the
+> tools its kinds need (Context7/Playwright for the developer, the design surface
+> for the designer, etc.). The spine, the single-writer law, and the dispatch
+> model are unchanged; only the packaging differs. An eighth gate, `reviewed?`
+> (with the `review` kind), was added after this spec. See `v5/agents/` and
+> `v5/PLAN.md` for the current shape.
+
 ---
 
 ## 1. The axiom
@@ -133,7 +143,7 @@ principle set.
 | `diagnose` | repro captured, fix proven | red repro → green repro |
 | `ship` | deployed + healthy | deploy exit + health, tree-bound |
 
-The spine lives once in `worker.md`; kinds are compact playbooks. Variation
+The spine is shared across the worker agents; kinds are compact playbooks. Variation
 enters at **dispatch**: the conductor sends `kind=<x>` + scoped brief + skills.
 
 ---
@@ -254,11 +264,11 @@ coding-agent/
 ├── .claude-plugin/plugin.json
 ├── agents/
 │   ├── conductor.md          # the loop + single-writer law
-│   └── worker.md             # one spine + seven kind playbooks
-├── principles.md             # the craft plane: operating · code · test · architecture
+│   ├── planner.md  developer.md  designer.md  deployer.md   # kind-specific workers
+├── principles.md             # the craft plane: operating · build · prove · review · architect
 ├── skills/                   # ~12, lightly grouped
 ├── gates/
-│   ├── lib.sh  framed.sh  architected.sh  designed.sh  proven.sh  clean.sh  shipped.sh  observed.sh
+│   ├── lib.sh  framed.sh  architected.sh  designed.sh  proven.sh  reviewed.sh  clean.sh  shipped.sh  observed.sh
 ├── lib/
 │   ├── record.sh             # the only writer of evidence.jsonl
 │   └── ledger.sh             # read-tail / append-log / freeze-section
@@ -366,14 +376,16 @@ layers**, mapping directly onto how Claude Code subagents run:
   invocation.
   - `conductor.md`: the loop (§4.1), the single-writer law, the dispatch
     protocol, the concurrency rules (§15).
-  - `worker.md`: the spine (§4.2) + operating principles (§12.1) + the return
-    contract + "you act as exactly one kind, named in your brief."
+  - each worker agent (`planner`/`developer`/`designer`/`deployer`): the spine
+    (§4.2) + operating principles (§12.1) + the return contract + "you act as
+    exactly one kind, named in your brief."
 - **Dynamic dispatch** — the free-form task prompt the conductor writes when it
   spawns the worker. This is where per-invocation variation enters.
 
-**The role/kind is not baked into a file.** There is *one* `worker.md` for all
-seven kinds. The kind is chosen at dispatch — which is why 7 kinds is not 7
-agents. The dispatch message schema:
+**The kind is chosen at dispatch, not baked into a prompt.** Each worker agent
+covers a small set of related kinds; the conductor names the exact kind in the
+brief — which is why the kinds map onto four agents, not one-file-per-kind. The
+dispatch message schema:
 
 ```
 kind     = build
@@ -388,7 +400,7 @@ isolate  = worktree | none        # set when run in parallel (§15)
 **Are principles injected?** Layered, not blobbed — one copy of each, never
 duplicated:
 
-- **Operating principles (12.1)** are static in `worker.md` — every worker
+- **Operating principles (12.1)** are static in every worker agent — each worker
   always carries them.
 - **Kind principles (12.2–12.4)** are *pulled by reference*: the dispatch names
   the kind, and the worker reads `principles.md#<kind>` + its playbook. The

@@ -258,7 +258,7 @@ nothing here may change v4 behavior.
 
 ## Phase 3 — wire (make it live)
 
-- [ ] **T3.1 Register the v5 agents in the plugin manifest.**
+- [x] **T3.1 Register the v5 agents in the plugin manifest.**
   Files: `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`.
   Change: add the five v5 agent files to the manifest `agents` field. CAUTION:
   if setting `agents` explicitly disables default `agents/` dir discovery,
@@ -268,7 +268,7 @@ nothing here may change v4 behavior.
   `subagent_type: planner` (and each of the other four) resolves; v4's
   `orchestrator` still resolves.
 
-- [ ] **T3.2 Wire the v5 hooks.**
+- [x] **T3.2 Wire the v5 hooks.**
   Files: `hooks/hooks.json` (root), `v5/hooks/*`.
   Change: merge v5's two hook entries into the root hook config in the SAME
   commit as T3.1 (registration without the evidence wall leaves the one law
@@ -279,7 +279,7 @@ nothing here may change v4 behavior.
   `evidence.jsonl` is BLOCKED; `record.sh "true" test` still works; new
   session shows the injected v5 resume context AND v4's context.
 
-- [ ] **T3.3 Docs truth pass.**
+- [x] **T3.3 Docs truth pass.**
   Files: `v5/README.md`, `ARCHITECTURE.md`, `docs/README.md`, `AGENTS.md`.
   Change: v5/README Layout block says `conductor.md · worker.md — the two
   system prompts` — update to the five actual agents + gate list; add a v5
@@ -287,7 +287,7 @@ nothing here may change v4 behavior.
   Verify: validator PASSED (count sync); no stale `worker.md` references:
   `grep -rn "worker.md" v5/ docs/ ARCHITECTURE.md` returns nothing.
 
-- [ ] **T3.4 Release commit.** Major version bump (agents added), CHANGELOG
+- [x] **T3.4 Release commit.** Major version bump (agents added), CHANGELOG
   rollup of phases 1–3, `release: vX.0.0 — v5 wired` commit.
   Verify: validator PASSED; both `.claude-plugin/*.json` carry the new version.
 

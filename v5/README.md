@@ -1,29 +1,39 @@
 # coding-agent v5 (parallel build)
 
 A from-scratch reimagining grounded in primitives. Built alongside the live v4
-plugin so both can run; v5 is **not yet wired as a plugin** — it's a runnable
-skeleton you can dogfood by hand while we harden it.
+plugin so both can run. As of v5.0.0 the five v5 agents are **registered in the
+plugin manifest** (dispatchable as `subagent_type: conductor|planner|developer|
+designer|deployer`) and the v5 hooks are wired — but the conductor is **not the
+default entry** yet. Promotion to default is gated on dogfooding (see
+[`PLAN.md`](PLAN.md) Phase 4).
 
 **Design:** [`docs/concepts/v5-design.md`](../docs/concepts/v5-design.md)
 **Craft plane:** [`principles.md`](principles.md)
 
 ## The shape
-One ledger, one law, three moves, two roles.
+One ledger, one law, one conductor + four kind-specific agents.
 
 - **Law:** no claim advances without evidence; evidence is recorded only by `record.sh`.
 - **Primitives:** ledger · evidence · gate.
-- **Roles:** conductor (single writer) + worker (stateless, 7 kinds).
-- **Lifecycle:** Frame → [Architect] → [Design] → Build → Prove → [Ship → Observe].
+- **Roles:** conductor (single writer) dispatches four stateless agents —
+  planner (frame · architect) · developer (build · prove · diagnose · review) ·
+  designer (design) · deployer (ship).
+- **Gates:** framed? → architected? → designed? → proven? → reviewed? → clean? →
+  shipped? → observed? (conditional gates go `n/a` when they don't apply).
+- **Lifecycle:** Frame → [Architect] → [Design] → Build → Prove → Review →
+  [Ship → Observe].
 
 ## Layout
 ```
 v5/
-├── agents/      conductor.md · worker.md      # the two system prompts
-├── principles.md                              # operating · build · prove · architect
+├── agents/      conductor.md + planner · developer · designer · deployer
+├── principles.md                              # operating · build · prove · review · architect
 ├── lib/         record.sh · ledger.sh         # record.sh = the only evidence writer
-├── gates/       lib.sh + 7 gate predicates
+├── gates/       lib.sh + 8 gate predicates
 ├── hooks/       hooks.json · evidence-wall.sh · session-start.sh
-└── templates/   product.template.md · ledger.template.md
+├── templates/   product.template.md · ledger.template.md
+├── PLAN.md      the promotion plan (phased task list)
+└── design-vet.md  the adversarial review + v4-vs-v5 lifecycle comparison
 ```
 
 ## Try it by hand
@@ -44,10 +54,11 @@ bash $v5/lib/record.sh "<real test cmd>" test
 bash $v5/gates/proven.sh          # → pass (bound to current tree)
 ```
 
-## Promotion path (when it earns it)
-1. Add frontmatter wiring: register `agents/` + merge `hooks/hooks.json` into the
-   plugin manifest, scoping paths under `v5/`.
-2. Port the ~12 surviving skills into `v5/skills/`.
-3. Build the design surface under `v5/surface/`.
-4. Dogfood on `~/workspace/personal`; compare against v4 on real runs.
-5. When v5 wins, retire v4 and lift `v5/` to the root.
+## Promotion path (tracked in [`PLAN.md`](PLAN.md))
+1. ~~Fix the vetted breaks~~ (Phase 1) and ~~port the load-bearing v4 muscles~~
+   (Phase 2) — **done**.
+2. ~~Register the agents + wire the hooks in the manifest~~ (Phase 3) — **done**
+   (v5.0.0); live subagent-resolution verification is the one interactive step.
+3. Dogfood on the test suite + a real feature; A/B vs v4 (Phase 4).
+4. When v5 wins, make the conductor the default and retire v4 incrementally
+   (Phase 5).

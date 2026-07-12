@@ -326,6 +326,16 @@ if [ -d "$PLUGIN_ROOT/v5" ]; then
            | sed -E 's/.*"kind":"([a-z]+)".*/\1/; s/evidence_match[[:space:]]+//' | sort -u)
   [ "$v5_kind_ok" -eq 1 ] && pass "v5 evidence kinds are all recordable by some agent"
 
+  # 9.6 Manifest paths resolve: the agents[]/hooks[] arrays REPLACE default
+  #     discovery (per the plugin reference), so a bad path silently drops an
+  #     agent/hook instead of erroring at load. Every listed file must exist.
+  man_ok=1
+  while IFS= read -r rel; do
+    [ -z "$rel" ] && continue
+    [ -e "$PLUGIN_ROOT/${rel#./}" ] || { error "plugin.json lists a missing path: $rel"; man_ok=0; }
+  done < <(python3 -c "import json;d=json.load(open('$PLUGIN_ROOT/.claude-plugin/plugin.json'));[print(x) for x in d.get('agents',[])+d.get('hooks',[])]" 2>/dev/null)
+  [ "$man_ok" -eq 1 ] && pass "plugin.json agents[]/hooks[] paths all resolve"
+
   echo ""
 fi
 

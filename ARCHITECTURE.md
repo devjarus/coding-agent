@@ -2,6 +2,8 @@
 
 The coding-agent plugin is a multi-agent software-development pipeline (6 agents) built from four primitives. This document maps the primitive relationships, dispatch topology, artifact flow, and gate/check placement. For formal primitive definitions see `docs/concepts/primitives.md`; for the canonical happy-path flow see `docs/concepts/workflow.md`.
 
+> **v5 (as of v5.0.0).** A second architecture ships alongside this one under `v5/`: a single **conductor** (sole writer of an append-only ledger) runs an 8-gate evidence pipeline (`framed? → architected? → designed? → proven? → reviewed? → clean? → shipped? → observed?`) and dispatches four stateless kind-specific agents (planner · developer · designer · deployer). Verification is structural — `record.sh` is the only writer of `evidence.jsonl`, gates read evidence bound to the working-tree sha, and one PreToolUse wall enforces it. Both agent sets are registered in the manifest and coexist; the v4 pipeline below remains the default entry. Canonical design: [`docs/concepts/v5-design.md`](docs/concepts/v5-design.md); promotion status: [`v5/PLAN.md`](v5/PLAN.md).
+
 ## High-level topology
 
 ```

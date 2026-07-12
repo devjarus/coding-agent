@@ -8,7 +8,7 @@
     {
       "name": "coding-agent",
       "source": "./",
-      "description": "Multi-agent software development system. 6 agents, 58 skills, 12 named protocols, 18 deterministic checks, 22 artifact templates. First-principles redesign around 4 primitives (Actor / Artifact / Skill / Check). Real runtime testing via Playwright / iOS-simulator MCPs."
+      "description": "Multi-agent software development system. v4 (6 agents / 12 protocols / 18 checks / 22 templates / 58 skills, built on 4 primitives) + v5 (conductor + 4 kind-specific agents over an evidence-gated ledger). Real runtime testing via Playwright / iOS-simulator MCPs."
     }
   ]
 }
