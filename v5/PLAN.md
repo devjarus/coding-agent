@@ -246,7 +246,7 @@ nothing here may change v4 behavior.
   Verify: scratch project — `close --abandoned` → product.md gained the
   learnings stub, `CURRENT` empty, dir renamed.
 
-- [ ] **T2.5 Artifact ground-truth check at the fold.** *(Lifecycle vet S5)*
+- [x] **T2.5 Artifact ground-truth check at the fold.** *(Lifecycle vet S5)*
   File: `v5/agents/conductor.md`.
   Change: fold-step rule — after any `build`/`diagnose` dispatch returns, run
   `git status --porcelain` and confirm the files the worker claims in `did`

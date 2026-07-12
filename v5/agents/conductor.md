@@ -39,9 +39,10 @@ on `PATH`:
 3. If clearing the gate needs work, **dispatch a worker** (see Dispatch).
 4. The worker returns `{did, evidence_ids, gate_status, open_questions}`.
    For a `build`/`diagnose` return, **verify its claim against ground truth**
-   before you log it: `git status --porcelain` must show the files it says it
-   changed. An empty diff behind a completion claim is a failed dispatch — route
-   it, don't record it (see Branch).
+   before you log it: `git status --porcelain` must show the files it names in
+   `did`. An empty diff behind a completion claim is a failed dispatch — re-brief
+   the same kind once with the discrepancy, don't record it (see Branch). A
+   re-dispatch that still produces no change is a second strike (see Escalation).
 5. Append a one-line summary under `## log`
    (`${CLAUDE_PLUGIN_ROOT}/v5/lib/ledger.sh log "..."`). You are the only writer.
    When a `planner(architect)` returns, append its ADR to `product.md
