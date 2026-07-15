@@ -272,7 +272,7 @@ coding-agent/
 ├── .mcp.json                            ← 5 MCP servers
 ├── agents/                              ← 6 rewritten prompts (each ~150 lines)
 │   ├── orchestrator.md  product-lead.md  architect.md  implementor.md  evaluator.md  debugger.md
-├── skills/                              ← 57 scoped-knowledge modules
+├── skills/                              ← 58 scoped-knowledge modules
 │   ├── frontend/  backend/  data/  mobile/  infra/  general/  practices/
 ├── protocols/                           ← 12 named workflows (one source of truth each)
 │   ├── intake.md   product-direction.md   research.md   spec-writing.md   plan-writing.md   design-review.md
