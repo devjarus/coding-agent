@@ -155,7 +155,18 @@ Then update CLAUDE.md routing tables and run validate.sh.
 
 ## Testing Changes
 
-The test suite lives in `~/workspace/test-agents/`:
+**In-repo eval harness (v5-first): `evals/`** — scenario prompts + deterministic
+assertion scripts. Assertions judge artifacts (ledger, `evidence.jsonl`, git
+state), never prose. See [`evals/README.md`](evals/README.md).
+
+```bash
+evals/run.sh 00-smoke      # zero-cost machinery check — run after ANY v5 script edit
+evals/run.sh all           # full suite, headless (claude -p in scratch repos)
+evals/run.sh 03-escalation --manual   # you drive the session interactively
+evals/compare.sh evals/results/<A> evals/results/<B>   # before/after or v4-vs-v5
+```
+
+**Legacy v4 test suite** lives in `~/workspace/test-agents/`:
 - W1 — greenfield backend (Todo API)
 - W2 — fullstack with parallel dispatch (Blog dashboard)
 - W3 — brownfield (extend W2)

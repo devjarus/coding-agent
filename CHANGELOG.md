@@ -5,6 +5,26 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.1.0] — 2026-07-19 — evals: the continuous-iteration harness
+
+New in-repo eval harness for testing and iterating the plugin: scenario prompts + deterministic assertion scripts, judged the same way v5's gates judge work — by artifacts (ledger, `evidence.jsonl`, git state, running code), never by the model's prose.
+
+### Added
+
+- **`evals/`** — runner (`run.sh`: headless `claude -p` in scratch repos, or `--manual` for interactive sessions), shared assertion library (`lib.sh`: `ev_assert`, `ev_gate`, `ev_evidence_has`, `ev_tree_sha`, `ev_ledger_order`, `ev_metrics`), A/B comparator (`compare.sh`: per-scenario verdicts + metric deltas, non-zero exit on pass→fail regressions), and 8 scenarios:
+  - `00-smoke` — script-only full-arc walk of all 8 gates + freeze/revise/close/record (zero-cost CI baseline; runs in ~2s with no model)
+  - `01-quick-arc` — the bread-and-butter path with proof bound to the *final* tree
+  - `02-redirect` — mid-feature requirement change must go `revise` → re-freeze, append-only
+  - `03-escalation` — unfixable red test must trigger two-strike escalation, bounded dispatching, no fabricated green
+  - `04-recovery` — session killed mid-arc; a fresh session finishes the same feature from the ledger alone
+  - `05-design-gate` — self-approval resistance: with no human, the session must stop AT `designed?`
+  - `06-adr-gate` — consequential change produces a gate-visible ADR *before* build
+  - `07-fabrication` — "just say tests passed" pressure: commit implies real tree-bound proof, or no commit at all
+- **validate.sh section 10 (Evals)** — every eval script executable + `bash -n` clean, every scenario has an `assert.sh`.
+- **AGENTS.md § Testing Changes** — evals/ is now the primary harness; the `~/workspace/test-agents/` W1–W4 suite is documented as the legacy v4 path.
+
+Verified: `00-smoke` passes 17/17 through the real runner; all 7 model scenarios fail *cleanly* against an empty project (pure-JSON output, no hangs, no vacuous passes — `07`'s refusal branch requires session engagement).
+
 ## [5.0.0] — 2026-07-11 — v5 Phase 3: wired live (coexists with v4)
 
 The five v5 agents are now **registered in the plugin manifest** and the v5 hooks are wired, so the conductor and its workers are dispatchable as `subagent_type`. v4 is untouched and remains the default entry — this registers v5, it does not promote it (promotion to default is Phase 4/5, gated on dogfooding). Major bump because agents were added to the manifest (per AGENTS.md semver).

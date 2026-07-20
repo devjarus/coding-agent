@@ -1,6 +1,6 @@
 {
   "name": "coding-agent",
-  "version": "5.0.0",
+  "version": "5.1.0",
   "description": "Multi-agent software development system. v4 (6 agents / protocols / checks) + v5 (conductor + 4 kind-specific agents over an evidence-gated ledger). 58 skills, 12 named protocols, 18 deterministic checks, 22 artifact templates. Real runtime testing via Playwright / iOS-simulator MCPs.",
   "agents": [
     "./agents/orchestrator.md",

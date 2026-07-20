@@ -339,7 +339,30 @@ if [ -d "$PLUGIN_ROOT/v5" ]; then
   echo ""
 fi
 
-# ─── 10. Inventory ──────────────────────────────────────────────────
+# ─── 10. Evals ──────────────────────────────────────────────────────
+# The eval harness (evals/) is how the plugin is iterated; a syntactically
+# broken assert script would silently corrupt every future eval verdict.
+if [ -d "$PLUGIN_ROOT/evals" ]; then
+  echo "▸ Evals"
+
+  ev_sh_ok=1
+  while IFS= read -r f; do
+    rel="${f#$PLUGIN_ROOT/}"
+    [ -x "$f" ] || { error "$rel is not executable (chmod +x)"; ev_sh_ok=0; }
+    bash -n "$f" 2>/dev/null || { error "$rel has a bash syntax error"; ev_sh_ok=0; }
+  done < <(find "$PLUGIN_ROOT/evals" -name "*.sh" -not -path "*/results/*" 2>/dev/null)
+  [ "$ev_sh_ok" -eq 1 ] && pass "eval scripts executable + syntax-clean"
+
+  ev_struct_ok=1
+  for sdir in "$PLUGIN_ROOT"/evals/scenarios/*/; do
+    [ -f "$sdir/assert.sh" ] || { error "${sdir#$PLUGIN_ROOT/} has no assert.sh — a scenario without assertions can't fail"; ev_struct_ok=0; }
+  done
+  [ "$ev_struct_ok" -eq 1 ] && pass "every scenario has an assert.sh"
+
+  echo ""
+fi
+
+# ─── 11. Inventory ──────────────────────────────────────────────────
 echo "▸ Inventory"
 
 # Derive real counts from the directories (single source of truth).
