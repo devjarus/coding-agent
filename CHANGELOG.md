@@ -5,6 +5,22 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [4.3.0] — 2026-07-15 — Add architecture-visualization skill (IR → validated → self-contained HTML/SVG)
+
+New `skills/general/architecture-visualization`, inspired by [archify](https://github.com/tt-a1i/archify). Instead of hand-editing SVG or fragile Mermaid, the agent authors a **typed JSON intermediate representation (IR)**; a stdlib-Python renderer validates it and emits a **zero-dependency HTML** diagram with a light/dark theme toggle (persisted, follows `prefers-color-scheme`) and PNG export at 2×/4×. Supports five diagram types — architecture, workflow, sequence, data-flow, lifecycle — with layered-graph layout for four and a lifeline layout for sequences. The skill guides grounding the IR in a real codebase (modules → nodes, calls → edges, boundaries → groups) rather than inventing components.
+
+### Added
+
+- **`skills/general/architecture-visualization/SKILL.md`** — the describe → author IR → validate → render → verify → iterate pipeline, diagram-type routing table, and codebase-grounding guidance.
+- **`skills/general/architecture-visualization/scripts/render.py`** — stdlib-only validator + renderer. `--check` validates the IR (unknown type, empty/duplicate nodes, dangling edge/group refs) without rendering; the render path emits self-contained HTML/SVG and runs a post-render artifact check for degenerate/oversized canvases.
+- **`skills/general/architecture-visualization/rules/ir-schema.md`** — full IR field tables and layout model.
+- **`skills/general/architecture-visualization/examples/`** — worked `architecture.json` and `sequence.json`.
+
+### Changed
+
+- **`protocols/plan-writing.md`** — practice-skills routing gains a row so the architect assigns `architecture-visualization` to tasks that call for a rendered architecture / flow / sequence / data-flow diagram.
+- **Inventory** — skill count 57 → 58 across `AGENTS.md`, `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json`, `ARCHITECTURE.md`, `docs/README.md`.
+
 ## [4.2.0] — 2026-06-20 — Route deployment-patterns / ci-cd-patterns (they were unreachable)
 
 `infra/deployment-patterns` and `infra/ci-cd-patterns` had solid content (production-readiness, hosting/containers, CI-CD rules) but were absent from the architect's `plan-writing.md` skill-routing table and referenced nowhere outside the CHANGELOG — so the architect had no trigger to put them in a task's skill manifest. Centralized config was already correct (`config-management` is in the routing table and cross-linked from 6 specialists); this brings deployment to parity.

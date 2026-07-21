@@ -53,6 +53,7 @@ Used in step 3 (`skills:` per task). Rows are additive — all that match the ta
 | Multi-perspective research (architect's own step 1) | `ideation-council` |
 | Breadth-heavy research / stack comparison (orchestrator-led fan-out, not a per-task implementor skill) | `deep-research` |
 | Generating project docs (orchestrator dispatches implementor with this during close-out) | `project-docs` |
+| Task calls for a rendered architecture / flow / sequence / data-flow diagram | `architecture-visualization` |
 | Cutting a release | `release` |
 
 When a task hits multiple contexts, union the skill sets. A typical backend API endpoint task lands: `tdd`, `test-doubles-strategy`, `code-review`, `security-checklist`, `observability`, `error-handling`, `api-design`, `nodejs-specialist`, `integration-testing`.
