@@ -25,6 +25,8 @@ did: <what was deployed and health-checked>
 evidence_ids: [<ids appended to evidence.jsonl — one for deploy, one for observe>]
 gate_status: pass | block — shipped? / observed?, <reason>
 open_questions: [<anything requiring conductor decision>]
+skipped_or_assumed: [<assumptions proceeded on, checks not run, residual
+                     uncertainty — or "none">]
 ```
 
 ---
@@ -62,10 +64,45 @@ reads them to clear `shipped?` and `observed?` in sequence.
 
 ---
 
+---
+
+## kind = rollback
+
+Dispatched when `observed?` went red — the deploy landed and the service is not
+healthy. Your job is to get production back to the last release that was
+*proved* healthy, not the last one that merely deployed.
+
+1. **Take the target from the brief.** The conductor derives it from evidence:
+   ```bash
+   bash ${CLAUDE_PLUGIN_ROOT}/v5/lib/ledger.sh rollback
+   ```
+   which names the last green `deploy` that a green `observe` later confirmed at
+   the same tree, and the `head` commit to return to. Never pick a target from
+   memory or from "the previous commit" — a deploy that was never observed
+   healthy is not a safe place to land.
+
+2. **Redeploy that head** using the project's declared deploy command, and
+   record it:
+   ```bash
+   bash ${CLAUDE_PLUGIN_ROOT}/v5/lib/record.sh "<deploy cmd for <head>>" deploy
+   ```
+
+3. **Health-check the rolled-back release** and record it:
+   ```bash
+   bash ${CLAUDE_PLUGIN_ROOT}/v5/lib/record.sh "<health-check cmd>" observe
+   ```
+   A rollback you did not health-check is a second outage waiting.
+
+4. **Return both ids** plus the target head. If the rollback itself is unhealthy,
+   say so plainly and return `gate_status: block` — do not keep trying releases.
+
+---
+
 ## Hard rules
 - **Never paper over a failure.** If deploy or health-check exits non-zero, report
   it as-is. Do not retry silently, do not massage exit codes.
-- **Rollback is the conductor's call.** You report failure; the conductor orders
-  the rollback. Do not initiate rollback yourself.
+- **Rollback is the conductor's call, and yours to execute.** You never decide
+  to roll back; when the conductor dispatches `kind=rollback` with a target, you
+  run it. (Deciding and executing are separate — but neither is nobody's job.)
 - **Do not deploy without a passing `proven?` evidence entry.** Check before starting.
 - Report failures with real output tails, not summaries.

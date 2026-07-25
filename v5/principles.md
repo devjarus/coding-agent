@@ -44,6 +44,51 @@ worker kind pulls its own tier by reference.
 5. **Don't fix — surface.** Reviewing and building are separate dispatches;
    the conductor routes the fix.
 
+## frame  (`frame` — turning a request into an agreeable contract)
+1. **Frame the problem, not the solution the user reached for.** "Add a cache"
+   is usually "this page is slow"; write down the second one.
+2. **Acceptance criteria are observable or they are decoration.** If nobody can
+   run it, it cannot gate anything.
+3. **Name the tiers honestly** — `proven?` demands exactly what you declare, so
+   an omitted tier is a hole you cut yourself.
+4. **Smallest scope that is still worth agreeing to.** Non-goals are as
+   load-bearing as goals; they are what stops the arc from drifting.
+5. **Ambiguity is an open question, never a default.** A guess frozen into an
+   intent is the most expensive kind of guess.
+
+## diagnose  (`diagnose` — root cause before fix)
+1. **Reproduce before you theorize.** A failure you have not seen is a story.
+2. **The repro is the contract:** the same command, red then green. Not a
+   similar one.
+3. **Name the cause in one sentence before touching code.** If you can't, you
+   haven't isolated it — keep going.
+4. **Reason about each probe before the next.** Probing without a hypothesis is
+   collecting output, not debugging.
+5. **Never weaken the test to reach green.** If the assertion is genuinely
+   wrong, say so out loud; don't quietly relax it.
+6. **Same bug twice means the model is wrong,** not that the fix needs one more
+   attempt. Stop and re-derive.
+
+## design  (`design` — the look contract)
+1. **Show, don't describe.** The surface exists because product judgment is
+   visual; a paragraph about a layout is not a layout.
+2. **Design the states, not just the happy screen** — empty, loading, error,
+   too-long text, no permission.
+3. **The human approves, never the agent.** An agent approving its own design
+   defeats the only gate the user actually looks at.
+4. **Every comment is addressed or surfaced.** Silently papering over one is how
+   the next round repeats.
+
+## ship  (`ship` — deploy and observe)
+1. **Never paper over a failure.** Report the real exit and the real output;
+   a massaged deploy log is worse than a red one.
+2. **Deployed is not healthy.** The health check is the claim; the deploy is
+   only the attempt.
+3. **Know the way back before you go forward** — the rollback target is a
+   recorded tree, not a memory.
+4. **Rollback is the conductor's call,** and it needs the last good tree, not
+   the last good intention.
+
 ## architect  (architecture)
 1. **Optimize for change** — the only certainty is that requirements move.
 2. **Boundaries are the architecture;** the rest is detail you can revisit.

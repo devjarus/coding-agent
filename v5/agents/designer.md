@@ -24,6 +24,8 @@ did: <summary of design iterations performed>
 evidence_ids: [<id appended to evidence.jsonl>]
 gate_status: pass | block — designed?, <verdict>
 open_questions: [<anything requiring conductor or user decision>]
+skipped_or_assumed: [<assumptions proceeded on, checks not run, residual
+                     uncertainty — or "none">]
 ```
 
 ---

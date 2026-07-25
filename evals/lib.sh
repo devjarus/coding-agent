@@ -46,7 +46,9 @@ ev_summary() {
 ev_ledger()   { ls "$EV_PROJECT_DIR"/.coding-agent/*/ledger.md 2>/dev/null | head -1; }
 ev_evidence() { ls "$EV_PROJECT_DIR"/.coding-agent/*/evidence.jsonl 2>/dev/null | head -1; }
 ev_product()  { echo "$EV_PROJECT_DIR/.coding-agent/product.md"; }
-ev_current()  { cat "$EV_PROJECT_DIR/.coding-agent/CURRENT" 2>/dev/null | tr -d '[:space:]'; }
+# CURRENT is a stack (one slug per line); the ACTIVE feature is the last line.
+# Mirrors ca_current() in v5/gates/lib.sh — keep the two in step.
+ev_current()  { grep -v '^[[:space:]]*$' "$EV_PROJECT_DIR/.coding-agent/CURRENT" 2>/dev/null | tail -1 | tr -d '[:space:]'; }
 
 # ev_gate <name> — run a v5 gate in the project, echo its status word.
 # NB: a BLOCKING gate exits 1 by design, and pipefail makes the pipeline carry

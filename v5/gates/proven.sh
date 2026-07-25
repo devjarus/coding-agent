@@ -1,14 +1,43 @@
 #!/usr/bin/env bash
-# proven? — the load-bearing gate. Passes only when a TEST run (kind=test,
-# exit 0) is bound to the CURRENT tree sha. Requiring kind=test is what gives
-# the gate teeth: a hollow `record.sh "echo ok"` (kind=run) cannot satisfy it,
-# and a pass against stale code is rejected because the tree sha won't match.
+# proven? — the load-bearing gate. Passes only when EVERY verification tier the
+# intent declares has a green test run (kind=test, exit 0) bound to the CURRENT
+# tree sha.
+#
+# Three things give this gate teeth:
+#   1. kind=test — a hollow `record.sh "echo ok"` records as kind=run and
+#      satisfies nothing.
+#   2. tree binding — a pass against stale code is rejected, so any later edit
+#      necessarily re-opens the gate.
+#   3. every declared tier — one self-chosen green command cannot stand in for
+#      the suite. This is v4's `all_green` promoted into the gate: "a green unit
+#      run while browser/e2e tiers are stale is a false PASS" (CHANGELOG 4.5.0).
+#      That release moved the rule from prose to structure after it caused three
+#      schema-drift recurrences in real projects; it stays structural here.
 set -uo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 GATE_NAME=proven
+
 ev="$(ca_evidence)"
-[ -f "$ev" ] || gate_result block "no evidence recorded — run tests via record.sh \"<test cmd>\" test"
+[ -f "$ev" ] || gate_result block "no evidence recorded — run tests via record.sh \"<test cmd>\" test <tier>"
+
+tiers="$(declared_tiers)"
+[ -n "$tiers" ] || gate_result block "intent declares no verification tiers — add a \`tiers:\` line (e.g. \`tiers: unit, e2e\`) and re-freeze"
+
+# A user-facing surface is not proven by unit tests. v4 blocks review PASS on UI
+# projects via the ui-evidence check; here the intent must declare an e2e tier,
+# and that tier must go green like any other (three dogfood incidents shipped
+# unit-green features whose live path was never wired).
+if intent_touches ui && ! echo "$tiers" | grep -qx 'e2e'; then
+  gate_result block "intent touches ui — declare an \`e2e\` tier that drives the live path (unit green is not a reachable feature)"
+fi
+
 cur="$(ca_tree_sha)"
-evidence_match test "$cur" >/dev/null \
-  && gate_result pass "tests passed at current tree (${cur:0:8})" \
-  || gate_result block "no passing test bound to current tree (${cur:0:8})"
+missing=""
+while IFS= read -r t; do
+  [ -n "$t" ] || continue
+  evidence_match_tier test "$t" "$cur" >/dev/null || missing="$missing $t"
+done <<< "$tiers"
+
+[ -z "$missing" ] \
+  && gate_result pass "all declared tiers green at current tree (${cur:0:8}): $(echo "$tiers" | tr '\n' ' ')" \
+  || gate_result block "no passing test at current tree (${cur:0:8}) for tier(s):$missing"

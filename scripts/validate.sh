@@ -326,6 +326,35 @@ if [ -d "$PLUGIN_ROOT/v5" ]; then
            | sed -E 's/.*"kind":"([a-z]+)".*/\1/; s/evidence_match[[:space:]]+//' | sort -u)
   [ "$v5_kind_ok" -eq 1 ] && pass "v5 evidence kinds are all recordable by some agent"
 
+  # 9.5b Every `principles.md#<tier>` an agent points at must be a real heading.
+  #      A dangling anchor is a craft tier the worker silently runs without —
+  #      which is how `diagnose`, the hardest kind, ended up with no tier at all.
+  v5_tier_ok=1
+  while IFS= read -r anchor; do
+    [ -z "$anchor" ] && continue
+    grep -qE "^## $anchor([[:space:]]|$)" "$PLUGIN_ROOT/v5/principles.md" \
+      || { error "v5 agent references principles.md#$anchor but no such tier exists"; v5_tier_ok=0; }
+  done < <(grep -rhoE 'principles\.md#[a-z-]+' "$PLUGIN_ROOT/v5/agents" 2>/dev/null \
+           | sed 's/.*#//' | sort -u)
+  # And the reverse: every kind the conductor dispatches should have a tier.
+  for k in frame architect build prove diagnose review design ship; do
+    grep -qE "^## $k([[:space:]]|$)" "$PLUGIN_ROOT/v5/principles.md" \
+      || { error "v5 dispatch kind '$k' has no tier in principles.md"; v5_tier_ok=0; }
+  done
+  [ "$v5_tier_ok" -eq 1 ] && pass "v5 principle tiers exist for every kind + anchor"
+
+  # 9.5c Every skill a v5 agent preloads or routes to must actually exist.
+  #      v5 shipped with a documented `skills=[…]` dispatch field that nothing
+  #      populated; now that it is wired, a typo would silently load nothing.
+  v5_skill_ok=1
+  while IFS= read -r sk; do
+    [ -z "$sk" ] && continue
+    find "$PLUGIN_ROOT/skills" -type d -name "$sk" 2>/dev/null | grep -q . \
+      || { error "v5 agent preloads skill '$sk' which does not exist under skills/"; v5_skill_ok=0; }
+  done < <(awk '/^skills:/{f=1;next} /^[a-z_-]+:/{f=0} /^---/{f=0} f&&/^[[:space:]]*- /{print $2}' \
+           "$PLUGIN_ROOT"/v5/agents/*.md 2>/dev/null | sort -u)
+  [ "$v5_skill_ok" -eq 1 ] && pass "v5 preloaded skills all exist"
+
   # 9.6 Manifest paths resolve: the agents[]/hooks[] arrays REPLACE default
   #     discovery (per the plugin reference), so a bad path silently drops an
   #     agent/hook instead of erroring at load. Every listed file must exist.

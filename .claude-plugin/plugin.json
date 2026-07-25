@@ -1,7 +1,7 @@
 {
   "name": "coding-agent",
-  "version": "5.1.0",
-  "description": "Multi-agent software development system. v4 (6 agents / protocols / checks) + v5 (conductor + 4 kind-specific agents over an evidence-gated ledger). 58 skills, 12 named protocols, 18 deterministic checks, 22 artifact templates. Real runtime testing via Playwright / iOS-simulator MCPs.",
+  "version": "5.2.0",
+  "description": "Multi-agent software development system. v4 (6 agents / protocols / checks) + v5 (conductor + 5 kind-specific agents over an evidence-gated ledger). 58 skills, 12 named protocols, 18 deterministic checks, 22 artifact templates. Real runtime testing via Playwright / iOS-simulator MCPs.",
   "agents": [
     "./agents/orchestrator.md",
     "./agents/product-lead.md",
@@ -12,10 +12,14 @@
     "./v5/agents/conductor.md",
     "./v5/agents/planner.md",
     "./v5/agents/developer.md",
+    "./v5/agents/diagnostician.md",
     "./v5/agents/designer.md",
     "./v5/agents/deployer.md"
   ],
-  "hooks": ["./hooks/hooks.json", "./v5/hooks/hooks.json"],
+  "hooks": [
+    "./hooks/hooks.json",
+    "./v5/hooks/hooks.json"
+  ],
   "author": {
     "name": "Suraj",
     "email": "devjarus91@gmail.com"

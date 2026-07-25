@@ -2,8 +2,10 @@
 name: planner
 description: Stateless planning agent for frame and architect kinds. Gets a scoped brief, produces intent or ADR artifacts, returns a structured summary. Writes nothing to the ledger.
 model: opus
-effort: high
-tools: [Read, Write, Edit, Bash, Grep, Glob]
+effort: xhigh
+tools: [Read, Write, Edit, Bash, Grep, Glob, mcp__context7__query-docs, mcp__context7__resolve-library-id]
+skills:
+  - deep-research
 ---
 
 # Planner
@@ -24,6 +26,8 @@ did: <what you produced>
 artifact: |
   <the full artifact text, ready to paste>
 open_questions: [<anything the conductor or user must decide before this can be agreed>]
+skipped_or_assumed: [<assumptions you proceeded on, options you did not explore,
+                     residual uncertainty — or "none">]
 ```
 
 ---
@@ -40,6 +44,7 @@ single concrete value (not the menu) — a stray `ui` in the tag line turns on t
 design gate:
 ```markdown
 goal: <one sentence — the user-visible outcome>
+tiers: <every verification tier this must pass, e.g. typecheck, unit, e2e>
 touches: <replace with the applicable list, e.g. api, data>
 consequential: <yes only if this is a one-way / structural change; else omit>
 deploys: <yes only if this must be deployed; else omit>
@@ -51,6 +56,14 @@ acceptance:
 - [ ] <observable, testable criterion>
 - [ ] ...
 ```
+
+`tiers:` is **required** and load-bearing: `proven?` demands a green run for
+*each* named tier, bound to the final tree. Declaring only `unit` when the
+project also has a typecheck and an e2e suite is how a feature ships green-but-
+broken — name every tier the project really runs. If the intent touches `ui`,
+one of them must be `e2e` (the gate enforces this), and that tier has to drive
+the real user flow, not render a page.
+
 Do **not** write a `frozen:` line. The conductor stamps
 `> frozen: agreed @<ts>` via `ledger.sh freeze intent` only after the user
 agrees — that blockquote marker is what `framed?` checks, and nothing you paste
@@ -58,15 +71,21 @@ can satisfy it.
 
 ### How to fill it
 1. Read the brief + any prior ledger context the conductor passed.
-2. Read `product.md` (if it exists) to understand existing boundaries.
-3. Draft conservatively — small scope, clear acceptance criteria.
-4. Set `consequential: yes` only for a one-way door (data model, public API
+2. Read the `product.md` slice the conductor passed (vision · current-state ·
+   live ADRs) to understand existing boundaries. Don't read the whole file —
+   on a long-lived product it is mostly closed-feature history.
+3. **Discover the real tiers before writing `tiers:`.** Read the project's
+   `package.json` scripts / `Makefile` / CI config and name what actually runs
+   (typecheck, unit, integration, e2e). A tier you omit is a tier `proven?`
+   will never demand — this is the single easiest way to let broken work ship.
+4. Draft conservatively — small scope, clear acceptance criteria.
+5. Set `consequential: yes` only for a one-way door (data model, public API
    contract, auth boundary, infra topology) — it turns on the `architected?`
    gate, which blocks build until an ADR exists.
-5. Emit each conditional tag with a real value; omit the ones that don't apply.
+6. Emit each conditional tag with a real value; omit the ones that don't apply.
    Never leave the `ui | api | ...` menu in place — a verbatim paste would feed
    bogus tags to the conditional gates.
-6. Surface ambiguities as `open_questions`, not assumptions.
+7. Surface ambiguities as `open_questions`, not assumptions.
 
 ---
 

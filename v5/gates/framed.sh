@@ -13,7 +13,14 @@ sec="$(ledger_section "$l" intent | strip_comments)"
 # the frame template's placeholder text can't false-pass.
 last_marker="$(echo "$sec" | grep -E '^> (frozen: agreed|revision) @' | tail -1)"
 case "$last_marker" in
-  "> frozen: agreed @"*) gate_result pass "intent frozen + agreed" ;;
-  "> revision @"*)       gate_result block "intent revised after freeze — re-agree (ledger.sh freeze intent)" ;;
-  *)                     gate_result block "intent not yet agreed (ledger.sh freeze intent)" ;;
+  "> frozen: agreed @"*)
+    # The marker must carry the user's verbatim reply. Agreement is the one
+    # claim the conductor would otherwise make about itself — requiring the
+    # quote makes it evidence, and `ledger.sh freeze` refuses to write one
+    # without it.
+    echo "$last_marker" | grep -q 'user said: "..*"' \
+      && gate_result pass "intent frozen + user-agreed" \
+      || gate_result block "freeze marker carries no recorded user reply — re-freeze with ledger.sh freeze intent --answer \"<what they said>\"" ;;
+  "> revision @"*)       gate_result block "intent revised after freeze — re-agree (ledger.sh freeze intent --answer ...)" ;;
+  *)                     gate_result block "intent not yet agreed (ledger.sh freeze intent --answer ...)" ;;
 esac

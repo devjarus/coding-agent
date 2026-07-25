@@ -2,10 +2,14 @@
 
 ## intent
 <!-- conditional gate tags — keep the ones that apply, delete the rest:
-     touches: ui          (turns on designed?)
+     touches: ui          (turns on designed?; also forces an e2e tier)
      consequential: yes   (turns on architected?)
-     deploys: yes         (turns on shipped? + observed?) -->
+     deploys: yes         (turns on shipped? + observed?)
+     tiers:               REQUIRED — the verification tiers proven? demands,
+                          e.g. `tiers: typecheck, unit, e2e`. Every one of them
+                          needs its own green run bound to the final tree. -->
 goal:
+tiers:
 scope:
 non-goals:
 acceptance:

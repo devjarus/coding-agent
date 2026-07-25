@@ -16,7 +16,13 @@ ca_root() {
   git rev-parse --show-toplevel 2>/dev/null || pwd
 }
 ca_dir()     { echo "$(ca_root)/.coding-agent"; }
-ca_current() { local f="$(ca_dir)/CURRENT"; [ -f "$f" ] && tr -d '[:space:]' < "$f" || echo ""; }
+# CURRENT is a stack (one slug per line); the ACTIVE feature is the last line.
+# Earlier lines are features the active one interrupted, resumed on close.
+ca_current() {
+  local f="$(ca_dir)/CURRENT"
+  [ -f "$f" ] || { echo ""; return; }
+  grep -v '^[[:space:]]*$' "$f" 2>/dev/null | tail -1 | tr -d '[:space:]'
+}
 ca_feature_dir() { echo "$(ca_dir)/${1:-$(ca_current)}"; }
 ca_ledger()   { echo "$(ca_feature_dir "${1:-}")/ledger.md"; }
 ca_evidence() { echo "$(ca_feature_dir "${1:-}")/evidence.jsonl"; }
@@ -79,4 +85,31 @@ evidence_match() { # kind  [tree_sha]
   ev="$(ca_evidence)"; kind="$1"; tree="${2:-$(ca_tree_sha)}"
   [ -f "$ev" ] || return 1
   grep "\"kind\":\"$kind\"" "$ev" | grep '"exit":0' | grep "\"tree_sha\":\"$tree\"" | tail -1
+}
+
+# Same, but also pinned to a named tier. This is what makes `proven?` unable to
+# accept one self-chosen command as proof of a multi-tier suite: a green `unit`
+# entry cannot stand in for a missing `e2e` one (v4 CHANGELOG 4.5.0 — a green
+# unit run while browser/e2e tiers are stale is a false PASS).
+evidence_match_tier() { # kind tier [tree_sha]
+  local ev kind tier tree
+  ev="$(ca_evidence)"; kind="$1"; tier="$2"; tree="${3:-$(ca_tree_sha)}"
+  [ -f "$ev" ] || return 1
+  grep "\"kind\":\"$kind\"" "$ev" | grep "\"tier\":\"$tier\"" | grep '"exit":0' \
+    | grep "\"tree_sha\":\"$tree\"" | tail -1
+}
+
+# The verification tiers the intent declares, one per line.
+# Source of truth is the intent's `tiers:` line (e.g. `tiers: typecheck, unit, e2e`).
+declared_tiers() {
+  ledger_section "$(ca_ledger)" intent | strip_comments \
+    | grep -iE '^[[:space:]]*tiers:' | head -1 \
+    | sed 's/^[[:space:]]*[Tt]iers:[[:space:]]*//' \
+    | tr ',' '\n' | tr -d ' \t' | grep -v '^$'
+}
+
+# True when the intent's `touches:` list contains the given surface tag.
+intent_touches() { # tag
+  ledger_section "$(ca_ledger)" intent | strip_comments \
+    | grep -qiE "^[[:space:]]*touches:.*\b$1\b"
 }

@@ -1,69 +1,149 @@
 #!/usr/bin/env bash
 # 00-smoke — script-only (no model). Walks the full 8-gate arc with the real
-# plugin scripts and asserts every gate reaches its correct state. This is the
-# always-runnable CI baseline: if this fails, the plugin machinery itself broke.
+# plugin scripts and asserts every gate reaches its correct state, then exercises
+# the Phase A guarantees: staging safety, tiered proof, evidence-bound agreement,
+# the review schema, rollup completeness, the feature stack, rollback, incidents.
+#
+# This is the always-runnable CI baseline: if it fails, the machinery itself
+# broke. Nearly every assertion here corresponds to a defect that shipped once.
 set -uo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../" && pwd)/lib.sh"
 L="$EV_PLUGIN_ROOT/v5/lib/ledger.sh"
 R="$EV_PLUGIN_ROOT/v5/lib/record.sh"
+H="$EV_PLUGIN_ROOT/v5/hooks/session-start.sh"
 
-# ── simulate a conductor-driven arc, entirely with the shipped scripts ──────
-bash "$L" product-init smoke >/dev/null
-bash "$L" init smoke-feature >/dev/null
-python3 - <<'PY'
-p = ".coding-agent/smoke-feature/ledger.md"
+setintent() { # <slug> <body>
+  python3 - "$1" "$2" <<'PY'
+import sys, re
+p = ".coding-agent/%s/ledger.md" % sys.argv[1]
 s = open(p).read()
-s = s.replace("goal:", "goal: smoke the arc\ntouches: api", 1)
+s = re.sub(r'(?ms)^## intent\n.*?(?=^## )', '## intent\n' + sys.argv[2] + '\n', s)
 open(p, "w").write(s)
 PY
+}
 
-ev_assert "framed? blocks before freeze"      test "$(ev_gate framed)" = block
-bash "$L" freeze intent >/dev/null
-ev_assert "framed? passes after freeze"       test "$(ev_gate framed)" = pass
-ev_assert "architected? n/a (routine)"        test "$(ev_gate architected)" = n/a
-ev_assert "designed? n/a (no ui)"             test "$(ev_gate designed)" = n/a
+# ── TA1 — data safety: the ledger must never become trackable ───────────────
+bash "$H" >/dev/null 2>&1
+ev_assert "session-start gitignores .coding-agent" grep -qE '^\.coding-agent/?$' .gitignore
 
-# hollow proof must NOT satisfy proven?
-bash "$R" "echo ok" run >/dev/null
-ev_assert "proven? rejects kind=run"          test "$(ev_gate proven)" = block
+bash "$L" product-init smoke >/dev/null
+bash "$L" init smoke-feature >/dev/null
 
-# build + prove
+# ── TA4 — agreement is evidence, not a stamp the writer wrote itself ────────
+setintent smoke-feature 'goal: smoke the arc
+tiers: unit
+touches: api
+'
+ev_assert "framed? blocks before freeze"        test "$(ev_gate framed)" = block
+if bash "$L" freeze intent >/dev/null 2>&1; then forged=0; else forged=$?; fi
+ev_assert "freeze refuses without --answer"     test "$forged" -eq 64
+bash "$L" freeze intent --answer "yes, go ahead" >/dev/null
+ev_assert "framed? passes on a recorded reply"  test "$(ev_gate framed)" = pass
+ev_assert "the reply is in the ledger"          grep -q 'user said: "yes, go ahead"' .coding-agent/smoke-feature/ledger.md
+
+ev_assert "architected? n/a (routine)"          test "$(ev_gate architected)" = n/a
+ev_assert "designed? n/a (no ui)"               test "$(ev_gate designed)" = n/a
+
+# ── TA3 — proof is per-tier, and hollow proof stays inert ───────────────────
+bash "$R" "echo ok" run unit >/dev/null
+ev_assert "proven? rejects kind=run"            test "$(ev_gate proven)" = block
+
 cat > thing.sh <<'S'
 echo "thing"
 S
 cat > thing.test.sh <<'S'
 [ "$(bash thing.sh)" = "thing" ]
 S
-bash "$R" "bash thing.test.sh" test >/dev/null
-ev_assert "proven? passes on real test"       test "$(ev_gate proven)" = pass
+bash "$R" "bash thing.test.sh" test unit >/dev/null
+ev_assert "proven? passes on a real test"       test "$(ev_gate proven)" = pass
 
-# review
-mkdir -p .coding-agent/smoke-feature
-printf '# review\n- [advisory] fine\n' > .coding-agent/smoke-feature/review.md
+# add a second tier: the already-green unit run must NOT cover it
+setintent smoke-feature 'goal: smoke the arc
+tiers: unit, e2e
+touches: api
+'
+bash "$L" freeze intent --answer "yes" >/dev/null
+ev_assert "one green tier is not proof of two"  test "$(ev_gate proven)" = block
+ev_assert "the missing tier is named"           bash "$EV_PLUGIN_ROOT/v5/gates/proven.sh" 2>&1 | grep -q 'e2e'
+bash "$R" "true" test e2e >/dev/null
+ev_assert "proven? passes with every tier"      test "$(ev_gate proven)" = pass
+
+# ── TA5 — the review artifact has a schema the gate can actually read ───────
+printf '# review\n\n## findings\n\n* [blocking] wrong bullet — a.sh:1\n' > .coding-agent/smoke-feature/review.md
 bash "$R" "test \$(grep -c '^- \[blocking\]' .coding-agent/smoke-feature/review.md) -eq 0" review >/dev/null
-ev_assert "reviewed? passes on clean verdict" test "$(ev_gate reviewed)" = pass
+ev_assert "malformed findings are not clean"    test "$(ev_gate reviewed)" = block
+printf '# review\n\n## findings\n\n- [advisory] fine — a.sh:1\n' > .coding-agent/smoke-feature/review.md
+bash "$R" "test \$(grep -c '^- \[blocking\]' .coding-agent/smoke-feature/review.md) -eq 0" review >/dev/null
+ev_assert "reviewed? passes on a clean verdict" test "$(ev_gate reviewed)" = pass
 
-# commit — evidence must SURVIVE it (the T1.4 invariant)
-git add -A && git commit -qm "smoke feature"
-ev_assert "proven? survives the commit"       test "$(ev_gate proven)" = pass
-ev_assert "reviewed? survives the commit"     test "$(ev_gate reviewed)" = pass
-ev_assert "shipped? n/a (no deploy)"          test "$(ev_gate shipped)" = n/a
-ev_assert "observed? n/a (no deploy)"         test "$(ev_gate observed)" = n/a
+# ── TA2 — clean? scans the STAGED diff; only source is ever staged ──────────
+git add -- . ':(exclude).coding-agent'
+ev_assert "clean? passes on a clean stage"      test "$(ev_gate clean)" = pass
+ev_assert "no coordinator state is staged"      test -z "$(git diff --cached --name-only | grep coding-agent || true)"
+printf 'api_key = "sk-live-x"\n' > secret.py && git add secret.py
+ev_assert "clean? catches a staged secret"      test "$(ev_gate clean)" = block
+git rm -q --cached secret.py && rm -f secret.py
 
-# redirect mechanics
+git commit -qm "smoke feature"
+ev_assert "proven? survives the commit"         test "$(ev_gate proven)" = pass
+ev_assert "reviewed? survives the commit"       test "$(ev_gate reviewed)" = pass
+ev_assert "shipped? n/a (no deploy)"            test "$(ev_gate shipped)" = n/a
+ev_assert "observed? n/a (no deploy)"           test "$(ev_gate observed)" = n/a
+
+# ── TA14 — every block is durable, so strike 1 survives a resume ────────────
+bash "$L" log "block: proven — no passing test at current tree" >/dev/null
+ev_assert "prior blocks are recoverable"        test -n "$(bash "$L" blocks proven)"
+
+# ── redirect mechanics ──────────────────────────────────────────────────────
 bash "$L" revise intent "smoke revision" >/dev/null
-ev_assert "revise re-opens framed?"           test "$(ev_gate framed)" = block
-bash "$L" freeze intent >/dev/null
-ev_assert "re-freeze closes framed?"          test "$(ev_gate framed)" = pass
+ev_assert "revise re-opens framed?"             test "$(ev_gate framed)" = block
+bash "$L" freeze intent --answer "ok, re-agreed" >/dev/null
+ev_assert "re-freeze closes framed?"            test "$(ev_gate framed)" = pass
 
-# record.sh taxonomy guard
+# ── record.sh taxonomy + tier guards ────────────────────────────────────────
 if bash "$R" "true" prove >/dev/null 2>&1; then bad=0; else bad=$?; fi
-ev_assert "record.sh rejects dispatch kinds"  test "$bad" -eq 64
+ev_assert "record.sh rejects dispatch kinds"    test "$bad" -eq 64
+if bash "$R" "true" test "bad tier" >/dev/null 2>&1; then badt=0; else badt=$?; fi
+ev_assert "record.sh rejects a bad tier token"  test "$badt" -eq 64
 
-# close
-bash "$L" close >/dev/null
-ev_assert "close clears CURRENT"              test -z "$(ev_current)"
-ev_assert "close rolls into product.md"       grep -q "smoke-feature — shipped" "$(ev_product)"
-ev_assert "evidence is well-formed"           ev_evidence_wellformed
+# ── TA16 — rollback names the last HEALTHY release, not the last deploy ─────
+bash "$R" "true" deploy >/dev/null && bash "$R" "true" observe >/dev/null
+good_head="$(git rev-parse HEAD)"
+echo "regression" >> thing.sh
+git add -- . ':(exclude).coding-agent' && git commit -qm "bad release"
+bash "$R" "true" deploy >/dev/null; bash "$R" "false" observe >/dev/null 2>&1
+ev_assert "rollback targets the healthy head"   bash "$L" rollback | grep -q "$good_head"
+
+# ── TA15 + TA17 — an incident interrupts, then pops back ────────────────────
+red_id="$(python3 -c "
+import json
+rows=[json.loads(l) for l in open('.coding-agent/smoke-feature/evidence.jsonl') if l.strip()]
+print([r['id'] for r in rows if r['kind']=='observe' and r['exit']!=0][-1])")"
+green_id="$(python3 -c "
+import json
+rows=[json.loads(l) for l in open('.coding-agent/smoke-feature/evidence.jsonl') if l.strip()]
+print([r['id'] for r in rows if r['exit']==0][0])")"
+bash "$L" incident smoke-hotfix --from smoke-feature --evidence "$red_id" >/dev/null
+ev_assert "incident becomes the active feature"  test "$(ev_current)" = smoke-hotfix
+ev_assert "the interrupted feature stays stacked" grep -q '^smoke-feature$' .coding-agent/CURRENT
+ev_assert "interruption is logged where it happened" grep -q 'interrupted by smoke-hotfix' .coding-agent/smoke-feature/ledger.md
+ev_assert "the intent is built from the red run" grep -q '^incident: smoke-feature' .coding-agent/smoke-hotfix/ledger.md
+ev_assert "an incident still needs agreement"    test "$(ev_gate framed)" = block
+if bash "$L" incident nope --from smoke-feature --evidence "$green_id" >/dev/null 2>&1; then g=0; else g=$?; fi
+ev_assert "a GREEN run cannot frame an incident" test "$g" -ne 0
+
+bash "$L" freeze intent --answer "yes, fix it" >/dev/null
+ev_assert "framed? passes for the incident"     test "$(ev_gate framed)" = pass
+bash "$L" close --summary "hotfix" --learnings "cause was X" --deployment "prod" >/dev/null
+ev_assert "close pops back to the interrupted"  test "$(ev_current)" = smoke-feature
+
+# ── TA12 — the rollup is required, not stubbed ──────────────────────────────
+if bash "$L" close --summary "only a summary" >/dev/null 2>&1; then stub=0; else stub=$?; fi
+ev_assert "close refuses a partial rollup"      test "$stub" -eq 64
+bash "$L" close --summary "smoked the arc" --learnings "the gates hold" --deployment "n/a" >/dev/null
+ev_assert "close clears CURRENT"                test -z "$(ev_current)"
+ev_assert "close rolls into product.md"         grep -q "smoke-feature — shipped" "$(ev_product)"
+ev_assert "learnings land where workers read"   grep -q 'the gates hold' "$(ev_product)"
+ev_assert "evidence is well-formed"             ev_evidence_wellformed
 
 ev_summary

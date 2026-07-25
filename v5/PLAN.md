@@ -10,26 +10,43 @@
 
 **What v5 is:** a redesign of this plugin around one axiom — *no claim advances
 without evidence; evidence is recorded by execution, never written by the agent.*
-One conductor (single writer of the ledger) runs a 7-gate pipeline
-(`framed? → architected? → designed? → proven? → clean? → shipped? → observed?`)
+One conductor (single writer of the ledger) runs an 8-gate pipeline
+(`framed? → architected? → designed? → proven? → reviewed? → clean? → shipped? → observed?`)
 and dispatches four stateless kind-specific agents:
 
-| agent | kinds |
-|---|---|
-| `v5/agents/planner.md` | frame, architect |
-| `v5/agents/developer.md` | build, prove, diagnose |
-| `v5/agents/designer.md` | design |
-| `v5/agents/deployer.md` | ship |
+| agent | kinds | effort |
+|---|---|---|
+| `v5/agents/planner.md` | frame, architect | xhigh |
+| `v5/agents/developer.md` | build, prove, review | high |
+| `v5/agents/diagnostician.md` | diagnose | xhigh |
+| `v5/agents/designer.md` | design | high |
+| `v5/agents/deployer.md` | ship, rollback | high |
+
+Effort follows cognitive load, not tool surface: the two kinds whose failure
+mode is *a wrong mental model* (an unweighed one-way door, a confident fix for
+the wrong cause) get maximum reasoning depth.
 
 Key machinery: `v5/gates/*.sh` (predicates over the ledger),
 `v5/lib/record.sh` (the ONLY writer of `evidence.jsonl`),
-`v5/lib/ledger.sh` (init/tail/log/freeze), `v5/hooks/` (evidence wall +
-session resume — **not yet wired**), `v5/templates/` (product + ledger).
+`v5/lib/ledger.sh` (init/product-init/tail/log/blocks/freeze/revise/incident/rollback/close),
+`v5/hooks/` (evidence wall + session resume), `v5/templates/` (product +
+ledger), `evals/` (scenario prompts + deterministic asserts).
 Runtime state lives in the consumer project under `.coding-agent/`.
 
-**Current status:** design validated by a 25-agent adversarial review; the
-architecture held, but 3 critical wiring breaks + 10 majors block any real run,
-and 3 load-bearing v4 capabilities (review, escalation, redirect) are missing.
+**Current status (2026-07-25):** Phase A is complete — all 18 tasks landed and
+verified, `00-smoke` covers them with 38 green assertions, validator PASSED.
+Phase 4 (dogfooding) is now unblocked.
+
+**Prior status (2026-07-24):** Phases 0–3 are done — v5 is wired and
+dispatchable (v5.1.0), and the vet's criticals plus the three load-bearing v4
+muscles (review, escalation, redirect) have landed. A second audit pass —
+comparing v5's flow against mainline v4 beat by beat, then against the v4
+CHANGELOG's scar record and the dogfood projects' `learnings.md` — found 18
+further items, tracked below as **Phase A**. Several are v4 lessons that were
+paid for in production and did not survive the redesign. **Phase A blocks
+Phase 4** (dogfooding against a system with a known false-green path produces
+untrustworthy A/B numbers).
+
 v4 (repo root: `agents/`, `protocols/`, `checks/`) keeps working throughout —
 nothing here may change v4 behavior.
 
@@ -293,6 +310,275 @@ nothing here may change v4 behavior.
 
 ---
 
+## Phase A — audit repair (blocks Phase 4)
+
+> From the 2026-07-24 second-pass audit: a beat-by-beat v4↔v5 flow comparison,
+> a scale test (240-line ledger / 2000 evidence entries / 12-feature product
+> ledger), and a sweep of the v4 CHANGELOG + both dogfood projects'
+> `learnings.md`. Provenance markers: *(v4: <version>)* means v4 already paid
+> for this lesson in production — read that CHANGELOG entry before starting.
+>
+> Ordering is by damage, not by effort. TA1–TA6 are the ones that let wrong
+> work through; nothing downstream is trustworthy until they land.
+
+### A0 — safety and verification integrity
+
+- [x] **TA1 Stop staging `.coding-agent/`; add the gitignore preflight.** — done: conductor stages scoped; session-start writes the gitignore line. Verified: fresh repo gets `.coding-agent/`, idempotent, no `git add -A` left in v5.
+  *(v4: 2.2.0 — real data loss)*
+  Files: `v5/agents/conductor.md`, `v5/hooks/session-start.sh`.
+  Change: (1) conductor step 7 currently prescribes `git add -A` — the exact
+  command v4 banned after coordinator artifacts were swept into a commit and
+  then erased by a later `git reset --hard`. Replace with scoped staging:
+  `git add -- . ':(exclude).coding-agent'`, or stage only the paths the worker
+  reported in `did`. (2) v5 has no gitignore preflight anywhere; add one to
+  `session-start.sh` — if `.gitignore` lacks a `.coding-agent/` line, append it
+  before anything else writes to that directory. Non-skippable, same as v4.
+  Verify: scratch repo with no `.gitignore` → open a v5 session → `.gitignore`
+  contains `.coding-agent/`; `grep -rn 'git add -A' v5/` returns nothing.
+
+- [x] **TA2 Fix the `clean?` sequence — it currently scans an empty stage.** — done: stage → clean? → commit. Verified: unstaged secret = n/a, staged secret = block.
+  File: `v5/agents/conductor.md` (step 7).
+  Change: the prescribed order is `clean?` → `git add` → commit, but
+  `clean.sh` reads `git diff --cached` and returns `n/a "nothing staged"` when
+  nothing is staged — so the secret / debug-print scan never sees the diff it
+  exists to scan. Reorder to: stage (per TA1) → `clean?` → commit. Never commit
+  past a `clean?` block.
+  Verify: scratch repo — write a line containing `api_key = "x"`, stage it,
+  run `clean.sh` → BLOCKS. Unstaged → `n/a`. Confirm the prompt's order matches.
+
+- [x] **TA3 Restore the multi-tier proof gate.** — done: `tiers:` in the intent, tier label on evidence, `proven?` requires every declared tier. Verified: one green tier names the missing one; hollow kind=run inert; survives commit, dies on edit. *(v4: 4.5.0 — the headline fix)*
+  Files: `v5/lib/record.sh`, `v5/gates/proven.sh`, `v5/agents/developer.md`,
+  `v5/templates/ledger.template.md`.
+  Change: `proven?` passes on ONE `kind=test` entry at the current tree, so a
+  single narrow green run clears it — exactly the proxy-verification failure
+  v4.5.0 diagnosed (*"the implementor recorded one self-chosen command as
+  verified, while the binding rules lived only as prose"*). `developer.md:85`
+  now carries that same insufficient prose. Make it structural:
+  1. The frame declares its tiers — add a `tiers:` line to the intent block
+     (e.g. `tiers: typecheck, unit, e2e`), authored by the planner.
+  2. `record.sh` takes an optional tier label: `record.sh "<cmd>" test <tier>`,
+     written into the entry as `"tier":"<name>"`.
+  3. `proven.sh` passes only when **every** declared tier has a green entry at
+     the current tree; the block reason names the missing/red tiers.
+  Verify: scratch — declare `tiers: unit, e2e`; record only `unit` green →
+  `proven?` BLOCKS naming `e2e`; record `e2e` green → PASSES; edit a source
+  file → BLOCKS again (tree moved).
+
+- [x] **TA4 Make agreement evidence, not a self-written stamp.** — done: `freeze --answer` records the reply; `framed?` rejects a marker without one; one-way-door ADRs need `user agreed:`. Conductor gained AskUserQuestion. Verified block→pass→revise→block.
+  *(v4: 4.7.0 root cause — "the model took the cheaper path by preference")*
+  Files: `v5/agents/conductor.md`, `v5/lib/ledger.sh`, `v5/gates/framed.sh`,
+  `v5/gates/architected.sh`.
+  Change: `framed?` passes on a `> frozen: agreed @` blockquote that **the
+  conductor writes itself** — and the conductor's `tools:` has no
+  `AskUserQuestion`, so it cannot ask but can stamp. This is 4.7.0's failure
+  mode relocated to a different gate, and this time there is no missing
+  verdict file to detect it by. Minimum fix: add `AskUserQuestion` to the
+  conductor's tools and require the freeze to carry the answer it received
+  (`freeze intent --answer "<user's verbatim reply>"`, recorded in the marker).
+  Stronger fix, preferred if the design-review surface can take a text
+  artifact: route intent + ADR through the surface like `designed?` already is,
+  so agreement produces sha-bound evidence and the cheap path stops existing.
+  Pick one, record which in the task when it lands.
+  Verify: a conductor that never asked cannot produce a passing `framed?`;
+  eval `05-design-gate`'s self-approval-resistance assertion extended to cover
+  `framed?`.
+
+- [x] **TA5 Give `review.md` a schema the gate actually reads.** — done: `review.template.md` + `reviewed?` reads the artifact (findings section, malformed-bullet detection, placeholder rejection) as well as the evidence. Verified: `* [blocking]` no longer records clean.
+  Files: `v5/agents/developer.md`, new `v5/templates/review.template.md`,
+  `v5/gates/reviewed.sh`.
+  Change: `reviewed?` consumes an evidence entry whose recorded command is
+  `test $(grep -c '^- \[blocking\]' review.md) -eq 0`. The artifact's Markdown
+  convention is therefore load-bearing but is defined only in one agent's
+  prose — a worker writing `* [blocking]` or an indented bullet records a
+  clean verdict with findings on the page. Add a template with a required
+  header and a machine-readable findings block, and have the recorded command
+  count against that structure (or have `reviewed.sh` parse the artifact and
+  cross-check the evidence entry's count).
+  Verify: a `review.md` with a `* [blocking]` line (wrong marker) must NOT
+  produce a passing verdict.
+
+- [x] **TA6 Live-path evidence for user-facing changes.** — done: `proven?` blocks a `touches: ui` intent that declares no `e2e` tier; developer must drive and screenshot the real flow.
+  *(v4: 4.4.0 / 4.5.0 + three dogfood incidents: `useForecast`, `useSuggestions`,
+  `kbCounts` — green tests, dead feature)*
+  Files: `v5/agents/developer.md`, `v5/gates/proven.sh` (or a new gate).
+  Change: v4 blocks review PASS on UI projects with the `ui-evidence` check;
+  v5 has one prose bullet the vet already flagged as satisfiable by a
+  home-page screenshot. When the intent has `touches: … ui …`, require an
+  `e2e` tier entry (per TA3) that drove the feature flow — navigate, interact,
+  assert the user-visible result — plus a recorded screenshot path.
+  Verify: a UI-tagged feature with unit-only evidence must not clear `proven?`.
+
+### A1 — restore what regressed from structure to prose
+
+- [x] **TA7 Split agents by reasoning depth; restore the `xhigh` tier.** — done: `diagnostician` split out at `effort: xhigh` (carries v4 debugger method + `debugging`/`observability`); `planner` raised to xhigh. **Deviation:** the architect kind stays on `planner` rather than getting its own agent — `architect` is taken by the v4 agent while both coexist, and a renamed near-duplicate reads worse than one xhigh agent covering frame+architect. Revisit at Phase 5 when v4 retires.
+  Files: `v5/agents/*.md`, new `v5/agents/diagnostician.md`, new
+  `v5/agents/architect.md`, `v5/agents/conductor.md` (dispatch table),
+  `.claude-plugin/plugin.json`.
+  Change: every v5 agent is `effort: high`; v4 deliberately ran architect,
+  debugger and product-lead at `xhigh` because *"the irreversible-judgment
+  roles get maximum reasoning depth where a wrong call cascades"* (4.1.0).
+  Because `effort` is per-agent frontmatter and `developer` covers
+  build · prove · diagnose · review under one setting, running a test suite and
+  root-causing a wrong mental model get identical reasoning depth. v5 grouped
+  kinds by **tool surface**; regroup by **cognitive load**:
+
+  | kind | agent | effort |
+  |---|---|---|
+  | `diagnose` | `diagnostician` (new; port `agents/debugger.md`'s method + its `debugging`/`observability` skills) | xhigh |
+  | `architect` | `architect` (new; split out of planner) | xhigh |
+  | `frame` | `planner` | high |
+  | `build` · `prove` | `developer` | high |
+  | `review` | `reviewer` (or keep on developer) | high |
+  | `design` | `designer` | high |
+  | `ship` | `deployer` | high (sonnet) |
+
+  Verify: `grep -c 'effort: xhigh' v5/agents/*.md` ≥ 2; validator PASSED; every
+  new agent registered in the manifest and dispatchable.
+
+- [x] **TA8 Complete the craft plane.** — done: four missing tiers added (frame · diagnose · design · ship); thinking & context discipline ported into conductor.md. Validator now fails on a dangling anchor or a kind with no tier.
+  Files: `v5/principles.md`, `v5/agents/conductor.md`.
+  Change: (1) `conductor.md:79` says each agent reads `principles.md#<kind>`
+  for all eight kinds, but only `operating · build · prove · review ·
+  architect` exist — `frame`, `diagnose`, `design` and `ship` dangle, and
+  `diagnose` (the hardest mode) has no tier at all. Add the four, or state the
+  real mapping explicitly. (2) v5 has **no** thinking guidance anywhere
+  (`grep -riE "interleav|think hard|thinking" v5/` → nothing); port
+  `orchestrator.md`'s "Thinking & context discipline" into `conductor.md` —
+  think hard at irreversible decisions, don't spend it on mechanical state
+  edits, plus 2.1.0's interleaved-thinking expectation for diagnose/architect.
+  Verify: every `principles.md#<anchor>` referenced in any v5 agent resolves to
+  a real heading — add this to `validate.sh`'s v5 section.
+
+- [x] **TA9 Wire skills.** — done: skills preloaded per agent + a dispatch routing table in conductor.md. Validator fails on a skill that does not exist.
+  Files: `v5/agents/*.md` (frontmatter), `v5/agents/conductor.md`.
+  Change: the design doc's dispatch schema has a `skills=[…]` field; no v5
+  agent declares `skills:` and no prompt names one, so all 58 are unreachable
+  from the v5 path. Preload the always-on set per agent (developer: `tdd`,
+  `test-doubles-strategy`, `security-checklist`, `load-bearing-markers` —
+  mirroring `implementor.md`) and give the conductor a routing table for
+  domain skills at dispatch, the way `plan-writing.md` routes them today.
+  Note `principles.md` is not a substitute: principles are stack-agnostic
+  craft; skills carry project-shaped knowledge.
+  Verify: validator check — every skill named in a v5 agent's frontmatter or
+  routing table exists under `skills/`.
+
+- [x] **TA10 Add the disclosure field to the return contract.** — done: `skipped_or_assumed` on all five return contracts; conductor folds it into the log line.
+  *(design-vet finding, never actioned)*
+  Files: all `v5/agents/*.md`, `v5/agents/conductor.md`,
+  `docs/concepts/v5-design.md` §4.
+  Change: operating principle 5 ("Say what you didn't do") has no carrier —
+  the four-field return spine has no slot for a skipped tier or an assumption
+  proceeded on, and the conductor is told to distrust prose. Add
+  `skipped_or_assumed: [<…> | none]`; conductor loop step 5 folds it into the
+  `## log` line.
+  Verify: prompt inspection + the field appears in a ledger log line during a
+  Phase 4 run.
+
+- [x] **TA11 Close the learnings loop.** — done: workers read `product.md ## learnings` (what v5 actually writes); `close --learnings` files the entry there.
+  Files: `v5/agents/developer.md`, `v5/agents/conductor.md`,
+  `v5/lib/ledger.sh`.
+  Change: `developer.md:44` tells every build worker to read `learnings.md` —
+  **nothing in v5 writes that file**; `close` writes learnings into
+  `product.md ## learnings`, and no prompt points a worker there. Read side and
+  write side are aimed at different files, so the loop is open at both ends.
+  Point workers at `product.md ## learnings` (sliced, per TA13), and have the
+  conductor append a learnings entry at close from what the run surfaced.
+  Verify: scratch — close a feature with a learning, start the next, confirm
+  the dispatch brief carries it.
+
+- [x] **TA12 Reject placeholder rollups.** — done: `close` requires --summary/--learnings/--deployment and exits 64 on a partial rollup.
+  Files: `v5/lib/ledger.sh`, new `v5/gates/closed.sh` (or `close --check`).
+  Change: `close` writes literal `<one line — what this feature did>` /
+  `<what this taught us …>` and nothing checks they were filled. Measured: 12
+  of 12 rollups unfilled after a simulated 12-feature run — the product memory
+  degrades at exactly the rate you ship. Make `close` refuse (or a `closed?`
+  gate block) while any `<…>` placeholder remains in the new block.
+  Verify: `close` with unfilled stubs → non-zero exit naming the fields.
+
+- [x] **TA13 ADR supersession + a product-ledger slice for workers.** — done: `superseded-by:` honoured by `architected?`; planner reads a product slice, not the file.
+  Files: `v5/templates/product.template.md`, `v5/agents/planner.md` (and the
+  new `architect.md`), `v5/gates/architected.sh`, `v5/agents/conductor.md`.
+  Change: (1) ADRs append forever with no supersession — measured 0 markers
+  after 8 decisions, so ADR-7 can reverse ADR-2 and both read as current. Add
+  an optional `supersedes: ADR-<n>` line; `architected?` reads only
+  non-superseded ADRs. (2) `planner.md:61` tells the worker to read
+  `product.md` whole on every frame; at feature 50 that is every ADR and every
+  rollup in context. The conductor already sends *slices* of the feature
+  ledger — apply the same discipline: vision + current-state + live ADRs only.
+  Verify: mark an ADR superseded → `architected?` no longer counts it; the
+  frame dispatch brief contains a slice, not the file.
+
+- [x] **TA14 Make strike 1 durable.** — done: every block is logged; `ledger.sh blocks <gate>` derives the strike count from disk.
+  File: `v5/agents/conductor.md`.
+  Change: the two-strike rule logs only the **second** block, so after a
+  compaction the conductor sees a first block it has no record of and
+  dispatches again — measured: 24 escalation records in a 240-line log, 1
+  visible in `ledger.sh tail 30`, **0** in the SessionStart 24-line inject.
+  Log **every** gate block to the ledger, and derive the strike count by
+  reading back the log rather than from working memory.
+  Verify: eval `03-escalation` extended — kill and resume the session between
+  the two blocks; escalation must still fire.
+
+### A2 — steady state (long-lived products, ad-hoc incidents)
+
+> These close the gap the arc-shaped design never modelled: a product you
+> operate for years, where a hotfix interrupts a feature and a bad deploy
+> needs an ad-hoc entry.
+
+- [x] **TA15 `CURRENT` becomes a stack; mark the interrupted feature.** — done: `CURRENT` is a stack — `init` pushes with an `interrupted by` marker, `close` pops back.
+  Files: `v5/lib/ledger.sh`, `v5/hooks/session-start.sh`,
+  `v5/agents/conductor.md`.
+  Change: measured — starting a hotfix mid-feature silently repoints `CURRENT`,
+  nothing records that the feature was interrupted, and `close` leaves
+  `CURRENT` **empty** rather than restoring the previous slug. The interrupted
+  work survives on disk but the system loses its place. Make `init` push and
+  `close` pop; append a `> interrupted @<ts>: <why>` marker to the ledger being
+  pushed off; SessionStart surfaces the stack, not just the top.
+  Verify: init A → init B → close B → `CURRENT` is A, and A's ledger carries
+  the interrupted marker.
+
+- [x] **TA16 Give rollback an executor.** — done: `ledger.sh rollback` derives the last deploy confirmed healthy by a later observe (with its `head`); deployer gained a `rollback` kind that executes it.
+  Files: `v5/lib/ledger.sh`, `v5/agents/deployer.md`,
+  `v5/agents/conductor.md`.
+  Change: rollback is routed to nobody — `conductor.md:98` says *"rollback to
+  the last good tree, then diagnose"* but the conductor never deploys;
+  `deployer.md:69` says *"Rollback is the conductor's call… do not initiate
+  rollback yourself."* Each defers to the other, and there is no `rollback`
+  kind and no `ledger.sh rollback`. Add a `rollback` kind on the deployer whose
+  target is derived from `evidence.jsonl` (last `kind=deploy` with a green
+  `observe` after it), recorded as its own evidence entry.
+  Verify: scratch — record deploy+observe green, then deploy+observe red;
+  `ledger.sh rollback --dry-run` names the correct target tree sha.
+
+- [x] **TA17 Incident entry: a red observation can be the frame.** — done: `ledger.sh incident <slug> --from <f> --evidence <id>` builds the intent from a failing run; refuses a green one. Agreement is still required, the planner round-trip is not.
+  Files: `v5/gates/framed.sh`, `v5/agents/conductor.md`.
+  Change: the loop always starts at `framed?`, which is unconditional — so a
+  production incident cannot begin until an intent is drafted, agreed and
+  frozen. v4 has an explicit escape (*"Bug reports — diagnose first… dispatch
+  `debugger` BEFORE classifying size"*). Allow `framed?` to accept a failing
+  `kind=observe`/`kind=test` entry as the frame — the intent of a hotfix is
+  literally *make evidence #N green* — with the user's one-line confirm as the
+  freeze. Keeps the axiom (evidence, not prose) and deletes the round-trip.
+  `proven?` is then satisfied only when that exact recorded command flips green.
+  Verify: new eval scenario — record a red health check, confirm the arc can
+  reach `diagnose` without a planner dispatch, and that `proven?` keys off the
+  original failing command.
+
+### A3 — lock it in
+
+- [x] **TA18 Eval coverage for Phase A.** — done: 00-smoke rewritten: 38 assertions covering every task above, all green. Three new validator checks.
+  Files: `evals/scenarios/**`, `evals/lib.sh`, `scripts/validate.sh`.
+  Change: every task above that changes behavior gets an assertion, since the
+  point of the harness is that fixes stay fixed. At minimum: `08-tier-proof`
+  (TA3), `09-agreement` (TA4, extends 05), `10-incident` (TA17),
+  `11-interleave` (TA15), plus resume-mid-escalation added to `03` (TA14) and
+  a staging-safety assertion (TA1) in `00-smoke`. Add the two new validator
+  checks named in TA8 and TA9.
+  Verify: `evals/run.sh 00-smoke` green; each new scenario fails against
+  today's head and passes after its task lands (record both runs).
+
+---
+
 ## Phase 4 — prove (dogfood before promote)
 
 Test suite: `~/workspace/test-agents/` (W1 greenfield Todo API, W2 fullstack,
@@ -322,7 +608,7 @@ start `claude`, paste the PROMPT.md prompt, drive as the user.
 
 ## Phase 5 — promote (gated on Phase 4 data)
 
-Only if T4.1–T4.4 pass and the A/B numbers don't regress:
+Only if Phase A is complete and T4.1–T4.4 pass with no A/B regression:
 
 - [ ] **T5.1** Make the conductor the default entry (marketplace description,
   README, CLAUDE.md routing) with v4 available behind an explicit ask.
