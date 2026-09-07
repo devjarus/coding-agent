@@ -14,7 +14,7 @@ Utility-first styling, responsive design systems, modern layout, and accessibili
 - Configuring design tokens and CSS custom properties
 - Implementing dark mode theming
 - Adding animations and transitions with reduced-motion support
-- Extending `tailwind.config` with project-specific tokens
+- Extending a Tailwind v4 CSS-first theme or a v3 JavaScript configuration
 - Ensuring color contrast and focus indicator accessibility
 
 ## Core Expertise (rules/core-expertise.md)
@@ -22,7 +22,8 @@ Utility-first styling, responsive design systems, modern layout, and accessibili
 - Tailwind utilities over custom CSS; `@apply` only for highly repeated patterns
 - JIT requires complete class strings -- use `cn()`/`twMerge()` for conditionals
 - Flexbox for 1D, Grid for 2D, container queries for parent-adaptive components
-- Design tokens as CSS custom properties mapped into `tailwind.config`
+- Design tokens as CSS custom properties exposed through Tailwind v4 `@theme`,
+  or mapped in `tailwind.config` when the project is on v3
 - Mobile-first responsive: base -> `sm:` -> `md:` -> `lg:` -> `xl:`
 - Dark mode via `dark:` variant; derive values from tokens
 - Animations with `motion-safe:` / `motion-reduce:` variants always
@@ -42,9 +43,14 @@ Utility-first styling, responsive design systems, modern layout, and accessibili
 
 ## Tailwind v4 gotchas
 
-Tailwind v4 removed the config file entirely — there is NO `tailwind.config.js`, NO `content` array, NO `theme` export. Check which version the project is on before writing any config.
+Tailwind v4 is CSS-first and no longer auto-detects JavaScript configuration,
+but JavaScript config files were not removed. A legacy config can be loaded
+explicitly with `@config`. Check the installed major and existing setup before
+editing configuration.
 
-**Detection:** if `package.json` has `"tailwindcss": "^4"` or higher, you're on v4.
+**Detection:** resolve the installed `tailwindcss` major with the project's
+package manager or lockfile. Do not infer it from one dependency spelling:
+exact, range, tilde, workspace, and catalog specifications are all valid.
 
 **Setup (v4):** just `@import "tailwindcss";` at the top of your main CSS file:
 
@@ -58,7 +64,17 @@ Tailwind v4 removed the config file entirely — there is NO `tailwind.config.js
 }
 ```
 
-The `@theme` block IS the config. No JavaScript file. Trying to create `tailwind.config.js` on a v4 project wastes time and produces a file Tailwind ignores.
+Prefer `@theme` for new v4 customization. If the project must retain a JavaScript
+configuration, load it explicitly:
+
+```css
+@import "tailwindcss";
+@config "../../tailwind.config.js";
+```
+
+The v4 compatibility path does not support every legacy option (`corePlugins`,
+`safelist`, and `separator` are notable exclusions). Use `@source inline()` for
+v4 safelisting and automatic source detection for ordinary templates.
 
 **Plugins in v4** use the `@plugin` directive directly in CSS:
 
@@ -67,7 +83,10 @@ The `@theme` block IS the config. No JavaScript file. Trying to create `tailwind
 @plugin "@tailwindcss/typography";
 ```
 
-No config file. Classes like `prose`, `prose-slate`, `dark:prose-invert` work out of the box. Requires `@tailwindcss/typography` v0.5.19+ for v4 compatibility.
+No JavaScript plugin registration is required for this path. Classes like
+`prose`, `prose-slate`, and `dark:prose-invert` work after the CSS directive is
+loaded. Verify the installed typography-plugin version instead of copying the
+example's minimum into an unrelated lockfile.
 
 **`@theme inline`** is for when your CSS variables are defined elsewhere (e.g., shadcn's `:root { --background: ... }` variables) and you want Tailwind to expose them as utility classes without redeclaring. Modern shadcn generates this block automatically.
 
@@ -84,6 +103,16 @@ Current shadcn/ui (v2+) uses OKLCH color space for theme variables, not HSL. Any
 ```
 
 OKLCH is perceptually uniform — equal numeric changes produce equal perceptual changes. It handles dark mode variants more cleanly than HSL. Don't convert OKLCH to HSL when editing shadcn themes; keep the OKLCH values the CLI generates.
+
+## Version-sensitive guidance
+
+Verified 2026-09-06 against the official Tailwind CSS v4 upgrade/directive
+documentation and shadcn/ui's Tailwind v4 guide. Re-check by 2026-12-05 or
+before recommending a newer major.
+
+- https://tailwindcss.com/docs/upgrade-guide
+- https://tailwindcss.com/docs/functions-and-directives#config-directive
+- https://ui.shadcn.com/docs/tailwind-v4
 
 ## Skills
 

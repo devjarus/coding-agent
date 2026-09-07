@@ -100,11 +100,15 @@
 
   // ── persistence (debounced autosave) ──────────────────────────────
   var saveTimer = null;
+  function persistNow(){
+    clearTimeout(saveTimer);
+    return fetch('/comments', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({comments: COMMENTS})});
+  }
   function save(){
     clearTimeout(saveTimer);
     saveTimer = setTimeout(function(){
-      fetch('/comments', {method:'POST', headers:{'Content-Type':'application/json'},
-        body: JSON.stringify({comments: COMMENTS})});
+      persistNow();
     }, 400);
   }
 
@@ -208,8 +212,9 @@
       if (!confirm('Approve "' + META.feature + '" (round ' + META.round + ')?\n\nThis binds approval to:\n  '
         + shas + '\n\nThe approved artifacts become IMMUTABLE.')) return;
     }
-    fetch('/verdict', {method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({verdict: v, comments: COMMENTS})})
+    persistNow().then(function(){ return fetch('/verdict', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({verdict: v})}); })
       .then(function(r){ return r.json().then(function(j){ return {ok: r.ok, j: j}; }); })
       .then(function(res){
         if (!res.ok){ alert('Rejected: ' + (res.j.error || 'unknown')); return; }

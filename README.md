@@ -1,10 +1,10 @@
 # coding-agent
 
-**A Claude Code plugin for shipping real software, not just writing code that compiles.**
+**An evidence-gated multi-agent software-delivery plugin for Claude Code and Codex.**
 
 Drop-in multi-agent pipeline that turns `"build me a notifications system"` into shipped, tested, reviewed code — with human checkpoints at the decisions that matter and real runtime verification before anything ships.
 
-[![Version](https://img.shields.io/badge/version-4.2.0-blue)]() [![Agents](https://img.shields.io/badge/agents-6-green)]() [![Skills](https://img.shields.io/badge/skills-57-green)]() [![License](https://img.shields.io/badge/license-MIT-blue)]()
+[![Version](https://img.shields.io/badge/version-5.5.0-blue)]() [![Agents](https://img.shields.io/badge/agents-6-green)]() [![Skills](https://img.shields.io/badge/skills-59-green)]() [![License](https://img.shields.io/badge/license-MIT-blue)]()
 
 ---
 
@@ -14,11 +14,11 @@ Drop-in multi-agent pipeline that turns `"build me a notifications system"` into
 - **Human gates at the right spots.** You approve intent, design (spec+plan together for non-large; separate spec + plan gates for large), and push. No agent fakes your signature.
 - **Runtime testing, not just typechecks.** The reviewer launches your app in a real browser (Playwright) or iOS simulator, takes screenshots, runs your committed test suites. "Compiles" isn't evidence.
 - **Memory across sessions.** Decisions, gotchas, and patterns survive. Tomorrow's architect reads yesterday's learnings. No cold starts.
-- **Research from real docs, not stale training data.** Architect queries Context7 / Exa for current library APIs. No more `shadcn v2` flags in a v4 project.
+- **Research from real docs, not stale training data.** Architect queries Context7 / Exa for current library APIs, while version-sensitive skills carry sourced verification and recheck dates enforced by the plugin validator.
 - **Per-task skill manifest.** Architect picks the right specialist skills for each task. Implementor loads them on dispatch. No one-size-fits-all prompt.
 - **Visual design review.** For UI features the architect ships a look-contract (`design.html`) you review in a browser surface — inline comments + a sha-bound approve, not ASCII mockups in a terminal.
 - **Product direction when you need it (opt-in).** A product-lead agent turns *"I don't know what to build"* into a concrete problem, a clean core flow, and a world-class bar — and evolves a `product.md` north-star across features.
-- **Portable docs any agent can use.** Close-out generates a cross-referenced, no-duplication documentation set (README · AGENTS · PRODUCT · DESIGN · docs/architecture · docs/dataflow · deployment) — vendor-neutral, so it keeps working even if you drop this plugin.
+- **Portable docs at two architecture levels.** Close-out generates a cross-referenced, no-duplication documentation set: high-level topology/dataflow plus optional deep contracts for substantial components — vendor-neutral, so it keeps working even if you drop this plugin.
 - **Zero-ceremony touch-ups.** Fix a button color? One intent gate, smoke review, commit. Full pipeline only when the work warrants it.
 
 ## Why this exists
@@ -40,6 +40,26 @@ coding-agent is a reaction to those failures — an opinionated pipeline built f
 ---
 
 ## Install
+
+### Codex
+
+The repo now carries a Codex-local manifest at [`.codex-plugin/plugin.json`](.codex-plugin/plugin.json) and a repo marketplace at [`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json).
+
+```bash
+codex plugin marketplace add /path/to/coding-agent
+codex plugin add coding-agent@coding-agent-local
+```
+
+Start a new Codex task after install, then invoke the runtime explicitly:
+
+> Use `$coding-agent:delivery-pipeline` to implement this feature end to end.
+
+The skill keeps the main Codex task as the v5 conductor and dispatches bounded
+Codex subagents as planner, developer, diagnostician, designer, and deployer.
+The existing role prompts, ledger, evidence recorder, and gates remain the source
+of truth; Claude-specific tool names are mapped at runtime by the skill.
+
+### Claude Code
 
 ```bash
 git clone https://github.com/devjarus/coding-agent ~/.claude/plugins/coding-agent
@@ -216,7 +236,7 @@ Edit `~/.coding-agent/profile.md` to set your stack defaults — architect reads
 
 ## Status
 
-v4.2.0. Used daily on real projects (blog platforms, research agents, iOS apps). Each iteration shaped by actual failures — see [CHANGELOG.md](CHANGELOG.md) for the full trail and [docs/concepts/](docs/concepts/) for the design rationale.
+v5.5.0. Used daily on real projects (blog platforms, research agents, iOS apps). Each iteration shaped by actual failures — see [CHANGELOG.md](CHANGELOG.md) for the full trail and [docs/concepts/](docs/concepts/) for the design rationale.
 
 ## Contributing
 

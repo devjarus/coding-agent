@@ -2,7 +2,9 @@
 
 ## Functional Components & Hooks
 - Write all components as functional components with explicit TypeScript props interfaces
-- Master all built-in hooks: `useState`, `useEffect`, `useRef`, `useMemo`, `useCallback`, `useContext`, `useReducer`, `useId`, `useTransition`, `useDeferredValue`
+- Master the installed major's built-in hooks. React 19 adds `use`,
+  `useActionState`, and `useOptimistic`; React DOM supplies `useFormStatus` for
+  Action-backed forms. Do not emit these into a React 18 project.
 - Build custom hooks to encapsulate reusable stateful logic
 - Always specify correct `useEffect` dependency arrays -- never omit deps or use exhaustive-deps suppressions without justification
 - Always return cleanup functions from `useEffect` when subscribing to events, timers, or external resources
@@ -32,12 +34,16 @@
 - Use shadcn's theming via CSS variables -- extend the theme rather than overriding with custom Tailwind
 - When shadcn doesn't have a component, build custom components that match shadcn's design language
 
-## React 18+ Concurrent Features
+## React 19-first, React 18-compatible features
 - Use `<Suspense>` boundaries for async data fetching and lazy-loaded components
 - Use `useTransition` to mark non-urgent state updates and keep UI responsive
 - Use `useDeferredValue` to defer re-renders of expensive child components
 - Use `React.lazy` with `<Suspense>` for code splitting at the route and component level
 - Understand Server Components vs Client Components boundary -- know when to add `'use client'`
+- In React 19, use Actions for async mutations when the framework supports the
+  contract; pair them with `useActionState`, `useOptimistic`, and `useFormStatus`.
+- In React 19, function components may receive `ref` as a prop. Retain
+  `forwardRef` for React 18 compatibility rather than applying a blind rewrite.
 
 ## Performance
 - Apply `React.memo` only when profiling confirms unnecessary re-renders -- never prematurely

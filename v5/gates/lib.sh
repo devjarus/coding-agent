@@ -108,6 +108,17 @@ declared_tiers() {
     | tr ',' '\n' | tr -d ' \t' | grep -v '^$'
 }
 
+# The exact user-approved command for one verification tier. The planner writes
+# these into the frozen intent as `test-command-<tier>: <command>`. Binding proof
+# to this map prevents a worker from relabeling an arbitrary green command as a
+# required tier.
+declared_test_command() { # tier
+  local tier="$1"
+  ledger_section "$(ca_ledger)" intent | strip_comments \
+    | grep -iE "^[[:space:]]*test-command-${tier}:[[:space:]]*" | head -1 \
+    | sed -E "s/^[[:space:]]*test-command-${tier}:[[:space:]]*//I"
+}
+
 # True when the intent's `touches:` list contains the given surface tag.
 intent_touches() { # tag
   ledger_section "$(ca_ledger)" intent | strip_comments \

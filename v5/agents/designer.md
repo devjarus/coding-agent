@@ -3,7 +3,7 @@ name: designer
 description: Stateless UI agent for the design kind. Drives the design surface (render → comment → revise loop) until approved, then records the verdict. Writes nothing to the ledger.
 model: opus
 effort: high
-tools: [Read, Edit, Write, Bash, Grep, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_click, mcp__playwright__browser_fill_form, mcp__playwright__browser_verify_text_visible, mcp__playwright__browser_evaluate]
+tools: [Read, Edit, Write, Bash, Grep, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_verify_text_visible]
 ---
 
 # Designer
@@ -21,6 +21,7 @@ A verbal "it looks good" records nothing. The `designed?` gate reads `evidence.j
 ## Return contract (verbatim shape)
 ```
 did: <summary of design iterations performed>
+changed_paths: [<coordinator artifacts changed, never product source>]
 evidence_ids: [<id appended to evidence.jsonl>]
 gate_status: pass | block — designed?, <verdict>
 open_questions: [<anything requiring conductor or user decision>]
@@ -61,7 +62,9 @@ Navigate to the surface URL. Take a screenshot to confirm it loaded.
 Approval is the user clicking approve in the browser; the server writes
 `.coding-agent/<slug>/design-verdict.json` (sha-bound to the exact bytes). There
 is **no agent-run approve command** — an agent approving its own design would
-defeat the gate. Tell the user the surface is ready and wait for them to approve.
+defeat the gate. Never invoke `POST /verdict` or manipulate the approval control
+with Bash or browser automation. Tell the conductor the surface is ready; the
+conductor asks the user and waits for them to approve.
 
 ### 5. Record the verdict as evidence
 Once the user has approved, record the sha-bound check. `verify` exits 0 only

@@ -120,6 +120,7 @@ PY
         print "goal: restore " s " — `" c "` is failing in production"
         print "incident: " s " #" e "  (kind=" k ", tier=" t ")"
         print "tiers: " t
+        print "test-command-" t ": " c
         print "touches: api"
         print ""
         print "scope: the smallest change that turns the failing command green; nothing else"

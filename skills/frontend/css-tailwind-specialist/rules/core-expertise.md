@@ -2,10 +2,13 @@
 
 ## Tailwind CSS
 - Apply utility classes directly in markup -- prefer composing utilities over writing custom CSS
-- Extend `tailwind.config.ts` to add design tokens: custom colors, spacing, font sizes, breakpoints, shadows, and border radii
+- Tailwind v4: prefer CSS-first tokens in `@theme`; Tailwind v3: extend
+  `tailwind.config.ts`. In v4, load a retained JavaScript config explicitly with
+  `@config` rather than assuming it is auto-detected.
 - Write Tailwind plugins for complex, repeated patterns that cannot be expressed with simple utilities
 - Use `@apply` sparingly and only for utility groups genuinely repeated across many unrelated places
-- Understand Tailwind's JIT engine: all class names must appear as complete strings -- never construct dynamically
+- Keep utility names statically detectable: all class names must appear as
+  complete strings rather than being assembled dynamically.
 - Use the `cn()` / `clsx()` / `twMerge()` pattern to conditionally compose class strings
 
 ## Layout: Flexbox & Grid
@@ -16,7 +19,8 @@
 
 ## CSS Custom Properties & Design Tokens
 - Define design tokens as CSS custom properties on `:root`
-- Map tokens into `tailwind.config` using `var(--token-name)`
+- Map tokens through `@theme` in v4 or `tailwind.config` in v3 using
+  `var(--token-name)` where appropriate.
 - Use semantic token names (`--color-surface`, `--color-text-primary`, `--color-brand`)
 - Scope component-level overrides with local custom properties
 - Use custom properties for theming (light/dark) -- swap variable values, not utility classes
@@ -35,7 +39,8 @@
 
 ## Dark Mode
 - Use Tailwind's `dark:` variant
-- `darkMode: 'class'` for JS-toggled dark mode; `darkMode: 'media'` for OS preference
+- Configure the `dark:` variant using the installed major's mechanism; do not
+  paste v3 `darkMode` config into a v4 CSS-first project.
 - Derive dark mode values from design tokens, never hard-code
 
 ## Color & Contrast

@@ -1,6 +1,6 @@
 ---
 name: project-docs
-description: Generates and maintains the committed, vendor-neutral project documentation set — README, AGENTS, PRODUCT, DESIGN, docs/architecture, docs/dataflow, docs/index, deployment — cross-referenced with NO duplicated content (each fact in exactly one file). Reads the real codebase, not boilerplate. Any agent can use the result with no plugin.
+description: Generates and maintains portable project docs, including high-level architecture and optional component contracts, with each fact owned in one cross-linked file. Reads the real codebase rather than boilerplate.
 ---
 
 # Project Documentation Set
@@ -23,10 +23,14 @@ Generate from these templates (`${CLAUDE_PLUGIN_ROOT}/templates/<name>`). Two en
 | `DESIGN.md` (UI only) | `design-doc.template.md` | design tokens, component look-contracts, guardrails | component file wiring (→ architecture), build commands |
 | `docs/architecture.md` | `architecture.template.md` | topology, Data **Model** (schema), key components, stack rationale | data **flow** traces (→ dataflow), run commands, product why |
 | `docs/dataflow.md` | `dataflow.template.md` | flow traces, state transitions, external boundaries, persistence | schema columns, component inventory (→ architecture) |
+| `docs/components/<name>.md` (optional) | `component-doc.template.md` | one substantial component's interface, internal structure, invariants, failures, security, observability, and test seams | system topology/schema (→ architecture), end-to-end flows (→ dataflow), visual tokens (→ DESIGN) |
 | `docs/index.md` | `docs-index.template.md` | the `docs/` table-of-contents (links only) | any architecture/flow content itself |
 | `deployment.md` | `deployment-doc.template.md` | deploy/CI-CD **procedure**, rollback | secrets, env-var values, per-deploy history, runtime state |
 
-`docs/architecture.md` is the project's **only** architecture surface — it replaces a root `ARCHITECTURE.md`. (The plugin's own `ARCHITECTURE.md` is unrelated and untouched.)
+`docs/architecture.md` is the project's **only high-level system architecture
+surface** — it replaces a root `ARCHITECTURE.md`. Optional component contracts
+are subordinate deep dives linked from that map, not competing system
+architectures. (The plugin's own `ARCHITECTURE.md` is unrelated and untouched.)
 
 ## Cross-link wiring (no orphans)
 
@@ -35,10 +39,15 @@ Wire these in the same pass so both entry points reach everything:
 - **README.md** → AGENTS, PRODUCT, docs/architecture, DESIGN, deployment (the Documentation Map).
 - **AGENTS.md** → README, PRODUCT, docs/architecture, docs/dataflow, DESIGN, deployment (Where-to-look-next).
 - **docs/architecture.md** ↔ **docs/dataflow.md** (bidirectional), plus → docs/index, README.
-- **docs/index.md** → architecture, dataflow, README.
+- **docs/architecture.md** → each applicable component contract; every
+  **docs/components/*.md** links back to architecture, dataflow, and docs/index.
+- **docs/index.md** → architecture, dataflow, every applicable component
+  contract, and README.
 - **PRODUCT.md** → README, docs/architecture, DESIGN. **DESIGN.md** → README, PRODUCT, docs/architecture. **deployment.md** → README, AGENTS, docs/architecture.
 
-The `docs-links` close-out check verifies every relative link resolves and that no committed doc leaks plugin-runtime references.
+The `docs-links` close-out check verifies every relative link resolves, each
+component contract is discoverable from both architecture and the index, and no
+committed doc leaks plugin-runtime references.
 
 ## Vendor-neutral — the committed set must be portable
 
@@ -55,6 +64,7 @@ A user must be able to remove this plugin and have every doc keep working for wh
 | Doc | Distilled from |
 |-----|----------------|
 | README / AGENTS / architecture / dataflow / index | the **real codebase** (package.json/go.mod/…, routes, schema, entry points, tests) |
+| component contracts | the component's real public interfaces, dependencies, invariants, failure paths, telemetry, and tests |
 | DESIGN.md | the project's actual theme/tokens/components + the approved per-feature look-contract (the design-review surface's `design.html`) — distilled, not re-invented |
 | PRODUCT.md | the product north-star working notes if direction was shaped, else the spec's problem statement + scope — a **current-state snapshot**, stripped of any strategy log/bets |
 | deployment.md | existing CI config + chosen platform |
@@ -81,6 +91,7 @@ The check also fails a README **byte-identical to its first commit while ≥3 so
 - **README** — preserve a hand-written one (only fill missing sections + add the Documentation Map); replace a scaffold one wholesale.
 - **AGENTS.md** — always create if missing.
 - **docs/architecture.md + dataflow.md + index.md** — create from the code. If a legacy root `ARCHITECTURE.md` exists, move its content into `docs/architecture.md` and reduce the root file to a one-line pointer (`Architecture lives in [docs/architecture.md](docs/architecture.md)`) — never two architecture docs.
+- **docs/components/*.md** — create only for a substantial boundary: public API/event compatibility, independent data ownership, security isolation, complex recovery behavior, or non-obvious load-bearing invariants. Do not create one file per class or UI component.
 - **DESIGN.md** — scan existing tokens/components (UI projects).
 - **deployment.md** — from existing CI config.
 - **PRODUCT.md** — from the README/spec problem statement.
@@ -93,6 +104,8 @@ Incremental adoption is fine: land AGENTS + README first, add the `docs/` bundle
 - `package.json` / `go.mod` / `Package.swift` / `requirements.txt` → stack + pinned deps
 - `spec.md`, `plan.md`, product north-star (if present in `.coding-agent/`) → product + decisions (read-only sources; never referenced by name in the output)
 - Route/controller files → API surface; schema/migration files → data model
+- Component entry points + public types/events + failure paths + telemetry + tests
+  → decide whether a detailed component contract is warranted
 - Test files → test commands; entry points (`src/index.*`, `main.*`) → how it starts
 - theme/CSS/component files → design tokens; `.github/workflows/` → CI/deploy
 
@@ -127,11 +140,20 @@ User → Frontend → POST /api/posts → Validate → INSERT INTO posts → 201
 Write each file from its template, then wire the Documentation Map / Where-to-look-next / docs bundle links. Keep them skimmable:
 - README < 80 lines · AGENTS < 60 · docs/architecture < 120 · others proportionate.
 
+For component documentation, first keep the complete component inventory in
+`docs/architecture.md`. Add `docs/components/<name>.md` only when the threshold
+above is met, and replace the inventory's detail with a link. If a component's
+contract is obvious from its public types plus tests, those remain the canonical
+documentation.
+
 ## Rules
 
 - **Read the code, don't guess.** Every command, path, and diagram comes from the actual codebase.
 - **Pin versions in README only.** AGENTS names tech without versions and links to README.
 - **ASCII diagrams required** (architecture + dataflow). No Mermaid.
 - **One fact, one file.** Schema → architecture; flow → dataflow; versions → README; commands → AGENTS. When in doubt: name-and-link, don't restate.
+- **Two architecture altitudes.** `docs/architecture.md` owns system boundaries
+  and the component inventory; `docs/components/*.md` owns deep contracts only
+  for substantial components.
 - **Committed docs stay portable.** No `.coding-agent/`, no plugin/protocol/role names, no secrets. The `docs-links` check enforces this.
 - **Omit empty sections.** A section with nothing useful is worse than no section.

@@ -1,11 +1,13 @@
 ---
 name: react-specialist
-description: React specialist knowledge — component architecture, hooks patterns, state management, TanStack libraries, shadcn/ui, React 18+ concurrent features, testing with React Testing Library, and accessibility best practices.
+description: React 19-first specialist guidance with React 18 compatibility, covering component architecture, Actions, hooks, state, TanStack, testing, performance, and accessibility.
 ---
 
 # React Specialist
 
-Deep expertise in React 18+ patterns, component architecture, state management, and testing.
+React 19-first guidance for component architecture, state management, and
+testing. Inspect the project's installed major before applying version-specific
+APIs; preserve React 18 compatibility when the project has not upgraded.
 
 ## When to Apply
 
@@ -23,7 +25,8 @@ Deep expertise in React 18+ patterns, component architecture, state management, 
 - All built-in hooks plus custom hooks for reusable logic
 - TanStack Query for server state (never useState for fetched data)
 - shadcn/ui as default component library; check before building custom
-- React 18+ concurrent features: Suspense, useTransition, useDeferredValue
+- React 19: Actions, `useActionState`, `useOptimistic`, `use()`, and ref as a prop
+- React 18-compatible concurrency: Suspense, useTransition, useDeferredValue
 - Performance: memo/useCallback/useMemo only after profiling
 - RTL testing: query by role, userEvent, assert visible output
 - Semantic HTML + ARIA; keyboard navigation required
@@ -44,6 +47,27 @@ Deep expertise in React 18+ patterns, component architecture, state management, 
 4. **Accessibility is required** -- keyboard-accessible with visible focus and accessible names
 5. **No `any` in TypeScript** -- type props, state, and return values explicitly
 6. **Cleanup effects** -- every subscribing `useEffect` must return a cleanup function
+
+## React 19 compatibility boundary
+
+- Function components can receive `ref` as a normal prop in React 19. Keep
+  `forwardRef` when publishing for React 18 or when the repository still runs 18.
+- `use()` may read a Promise or context during render and may be called in a
+  conditional, but it is not a general replacement for event-driven fetching.
+- Prefer Actions with `useActionState`, `useOptimistic`, and `useFormStatus` for
+  mutation UX when the surrounding framework supports them. Preserve an
+  established query/mutation abstraction instead of mixing two ownership models.
+- Treat removed legacy APIs (`propTypes` enforcement for functions,
+  `defaultProps` on functions, legacy context, string refs, `createFactory`) as
+  migration findings rather than patterns for new work.
+
+## Version-sensitive guidance
+
+Verified 2026-09-06 against the official React 19 documentation and changelog.
+Re-check by 2026-12-05 or before recommending a newer major.
+
+- https://react.dev/reference/react
+- https://github.com/react/react/blob/main/CHANGELOG.md
 
 ## Skills
 

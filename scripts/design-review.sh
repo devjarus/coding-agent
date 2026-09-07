@@ -99,22 +99,24 @@ case "$CMD" in
     if [[ "$verdict" != "approved" ]]; then
       echo "{\"ok\":false,\"error\":\"verdict is '$verdict', not approved\"}"; exit 1
     fi
-    # sha-binding: if the shared helper + jq are available, confirm each artifact
-    # is byte-identical to what was approved (reject edits after sign-off).
+    # sha-binding: a present verdict is strict. Missing helper/parser/hash data
+    # fails closed; every reviewed artifact must match the approved bytes.
     # shellcheck disable=SC1091
-    source "$SCRIPT_DIR/../checks/lib.sh" 2>/dev/null || true
-    reason=""
-    if declare -f verify_design_verdict >/dev/null 2>&1; then
-      for pair in "design.html:design_sha" "spec.md:spec_sha" "plan.md:plan_sha"; do
-        art="${pair%:*}"; key="${pair##*:}"
-        [[ -f "$DIR/$art" ]] || continue
-        msg="$(verify_design_verdict "$DIR" "$art" "$key")"
-        [[ -n "$msg" ]] && reason="$msg"
-      done
-    fi
-    if [[ -n "$reason" ]]; then
-      echo "{\"ok\":false,\"error\":\"$reason\"}"; exit 1
-    fi
+    source "$SCRIPT_DIR/../checks/lib.sh" 2>/dev/null \
+      || { echo '{"ok":false,"error":"strict verdict verifier unavailable"}'; exit 1; }
+    declare -f verify_design_verdict >/dev/null 2>&1 \
+      || { echo '{"ok":false,"error":"strict verdict verifier missing"}'; exit 1; }
+    found=0
+    for pair in "design.html:design_sha" "spec.md:spec_sha" "plan.md:plan_sha"; do
+      art="${pair%:*}"; key="${pair##*:}"
+      [[ -f "$DIR/$art" ]] || continue
+      found=1
+      reason="$(verify_design_verdict "$DIR" "$art" "$key")"
+      if [[ -n "$reason" ]]; then
+        echo "{\"ok\":false,\"error\":\"$reason\"}"; exit 1
+      fi
+    done
+    [[ "$found" -eq 1 ]] || { echo '{"ok":false,"error":"no reviewed artifacts remain"}'; exit 1; }
     echo '{"ok":true,"approved":true}'
     ;;
   *)

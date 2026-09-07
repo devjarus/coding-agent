@@ -1,6 +1,6 @@
 ---
 name: composition-patterns
-description: React component composition patterns — compound components, variant APIs, state isolation, and React 19 patterns. Use when building or reviewing React component architectures.
+description: React 19-first component composition patterns with React 18 compatibility — compound components, variant APIs, state isolation, refs, and Server Component boundaries.
 ---
 
 # Composition Patterns
@@ -52,14 +52,26 @@ Accept named regions via compound sub-components or explicit slot props (`header
 
 ### LOW — React 19+
 
-**COMP-11: Drop `forwardRef`**
-React 19 passes `ref` as a regular prop. Remove `forwardRef` wrappers — they add indirection with no benefit on React 19+.
+**COMP-11: Match ref handling to the supported React major**
+React 19 function components can receive `ref` as a regular prop. Keep
+`forwardRef` when the project or published library still supports React 18;
+remove it only after that compatibility boundary has moved to React 19+.
 
 **COMP-12: Use `use()` over `useContext()`**
 `use()` works inside conditionals and loops; `useContext()` does not. Prefer `use(MyContext)` for reading context values in React 19+.
 
 **COMP-13: Server Components by default**
-Start every new component as a Server Component. Add `'use client'` only when the component requires interactivity, hooks, or browser APIs. This keeps the client bundle lean and enables streaming.
+In a framework that supports React Server Components, start new components on
+the server and add `'use client'` only for interactivity, client hooks, or
+browser APIs. In a client-only React application, do not invent an RSC boundary.
+
+## Version-sensitive guidance
+
+Verified 2026-09-06 against the official React 19 reference and upgrade guide.
+Re-check by 2026-12-05 or before recommending a newer major.
+
+- https://react.dev/reference/react/forwardRef
+- https://react.dev/blog/2024/04/25/react-19-upgrade-guide
 
 ## Examples
 

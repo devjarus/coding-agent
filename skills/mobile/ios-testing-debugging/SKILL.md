@@ -60,7 +60,9 @@ Simulator control and UI interaction:
 
 1. **Unit tests first** (TDD):
    - XCTest: `XCTAssertEqual`, `XCTAssertTrue`, `XCTAssertThrowsError`
-   - Swift Testing (iOS 16+): `@Test`, `#expect`, `#require`, `@Suite`
+   - Swift Testing (Xcode 16+/Swift 6 toolchain): `@Test`, `#expect`, `#require`,
+     `@Suite`; check the project's toolchain and deployment targets rather than
+     assuming the test framework is tied to one iOS minimum
    - Test ViewModels and business logic — not view hierarchy
    - Mock dependencies via protocol conformance
 
@@ -111,3 +113,11 @@ xcrun simctl shutdown all
 5. **Mock network in unit tests** — use URLProtocol stubbing, not real API calls
 6. **Screenshot on failure** — capture simulator state for debugging
 7. **Never hardcode simulator UDIDs** — query by name/type
+
+## Version-sensitive guidance
+
+Verified 2026-09-06 against Apple's Swift Testing and Xcode requirements
+documentation. Re-check by 2026-12-05 or before adopting a newer toolchain.
+
+- https://developer.apple.com/xcode/swift-testing/
+- https://developer.apple.com/xcode/system-requirements/

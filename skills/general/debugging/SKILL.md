@@ -1,6 +1,6 @@
 ---
 name: debugging
-description: A structured 4-step debugging process: reproduce, understand, hypothesize, verify. Use when encountering any bug, test failure, or unexpected behavior before proposing fixes.
+description: "A structured 4-step debugging process: reproduce, understand, hypothesize, verify. Use when encountering any bug, test failure, or unexpected behavior before proposing fixes."
 ---
 # Debugging
 

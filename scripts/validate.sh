@@ -35,7 +35,7 @@ for dir in .claude-plugin agents skills; do
   fi
 done
 
-for file in .claude-plugin/plugin.json settings.json .mcp.json hooks/hooks.json; do
+for file in .claude-plugin/plugin.json .codex-plugin/plugin.json .agents/plugins/marketplace.json settings.json .mcp.json hooks/hooks.json; do
   if [ -f "$PLUGIN_ROOT/$file" ]; then
     pass "$file exists"
   else
@@ -48,7 +48,7 @@ echo ""
 # ─── 2. JSON validation ─────────────────────────────────────────────
 echo "▸ JSON validity"
 
-for file in .claude-plugin/plugin.json settings.json .mcp.json hooks/hooks.json; do
+for file in .claude-plugin/plugin.json .codex-plugin/plugin.json .agents/plugins/marketplace.json settings.json .mcp.json hooks/hooks.json; do
   filepath="$PLUGIN_ROOT/$file"
   if [ -f "$filepath" ]; then
     if python3 -m json.tool "$filepath" > /dev/null 2>&1; then
@@ -58,6 +58,46 @@ for file in .claude-plugin/plugin.json settings.json .mcp.json hooks/hooks.json;
     fi
   fi
 done
+
+echo ""
+
+# ─── 2.5 Codex packaging ───────────────────────────────────────────
+echo "▸ Codex packaging"
+
+codex_manifest="$PLUGIN_ROOT/.codex-plugin/plugin.json"
+codex_entry="$PLUGIN_ROOT/skills/general/delivery-pipeline/SKILL.md"
+codex_ui="$PLUGIN_ROOT/skills/general/delivery-pipeline/agents/openai.yaml"
+codex_ok=1
+
+if [ -f "$codex_manifest" ]; then
+  python3 - "$codex_manifest" <<'PY' || codex_ok=0
+import json, sys
+d = json.load(open(sys.argv[1]))
+assert d.get("name") == "coding-agent"
+assert d.get("skills") == "./skills/"
+assert d.get("mcpServers") == "./.mcp.json"
+assert "agents" not in d and "hooks" not in d
+prompts = d.get("interface", {}).get("defaultPrompt", [])
+assert any("$coding-agent:delivery-pipeline" in p for p in prompts)
+PY
+else
+  codex_ok=0
+fi
+
+[ -f "$codex_entry" ] || codex_ok=0
+[ -f "$codex_ui" ] || codex_ok=0
+if [ -f "$codex_entry" ]; then
+  for role in planner developer diagnostician designer deployer; do
+    grep -q "v5/agents/$role.md" "$codex_entry" || codex_ok=0
+  done
+  grep -q 'explicitly requires subagent delegation' "$codex_entry" || codex_ok=0
+fi
+
+if [ "$codex_ok" -eq 1 ]; then
+  pass "Codex manifest and delivery-pipeline entry are wired"
+else
+  error "Codex manifest or delivery-pipeline wiring is incomplete"
+fi
 
 echo ""
 
@@ -252,9 +292,21 @@ pass "content quality checked"
 
 echo ""
 
+# ─── 8.5 Skill freshness ───────────────────────────────────────────
+echo "▸ Skill freshness"
+freshness_output="$(bash "$PLUGIN_ROOT/scripts/validate-skill-freshness.sh" "$PLUGIN_ROOT" 2>&1)"
+if [ $? -eq 0 ]; then
+  registered="$(printf '%s' "$freshness_output" | jq -r '.registered // 0' 2>/dev/null || echo 0)"
+  pass "$registered version-sensitive skills have current sourced guidance"
+else
+  error "skill freshness failed: $freshness_output"
+fi
+
+echo ""
+
 # ─── 9. v5 ──────────────────────────────────────────────────────────
-# v5 lives beside v4 and is not registered in the plugin manifest yet. These
-# checks lint it on its own terms so a break is caught before it ships.
+# v5 backs both the registered Claude agents and the Codex delivery-pipeline
+# skill. These checks lint the shared runtime on its own terms.
 if [ -d "$PLUGIN_ROOT/v5" ]; then
   echo "▸ v5"
 
@@ -364,6 +416,26 @@ if [ -d "$PLUGIN_ROOT/v5" ]; then
     [ -e "$PLUGIN_ROOT/${rel#./}" ] || { error "plugin.json lists a missing path: $rel"; man_ok=0; }
   done < <(python3 -c "import json;d=json.load(open('$PLUGIN_ROOT/.claude-plugin/plugin.json'));[print(x) for x in d.get('agents',[])+d.get('hooks',[])]" 2>/dev/null)
   [ "$man_ok" -eq 1 ] && pass "plugin.json agents[]/hooks[] paths all resolve"
+
+  # 9.7 Shared-workspace safety contracts used by the Codex conductor.
+  v5_shared_ok=1
+  grep -q 'declared_test_command' "$PLUGIN_ROOT/v5/lib/record.sh" \
+    || { error "record.sh does not bind test evidence to frozen test commands"; v5_shared_ok=0; }
+  grep -q 'lockdir="${ev}.lock"' "$PLUGIN_ROOT/v5/lib/record.sh" \
+    || { error "record.sh has no shared evidence append lock"; v5_shared_ok=0; }
+  grep -q 'git add -- <explicit changed_paths' "$PLUGIN_ROOT/v5/agents/conductor.md" \
+    || { error "v5 conductor does not stage explicit attributable paths"; v5_shared_ok=0; }
+  if grep -qF "git add -- . ':(exclude).coding-agent'" "$PLUGIN_ROOT/v5/agents/conductor.md"; then
+    error "v5 conductor still prescribes repo-wide staging"; v5_shared_ok=0
+  fi
+  grep -q 'aggregate: false' "$PLUGIN_ROOT/v5/agents/conductor.md" \
+    || { error "v5 conductor does not keep parallel reviews read-only"; v5_shared_ok=0; }
+  if grep -qE 'browser_(click|evaluate|fill_form)' "$PLUGIN_ROOT/v5/agents/designer.md"; then
+    error "v5 designer exposes approval-capable browser tools"; v5_shared_ok=0
+  fi
+  grep -q 'comments_open' "$PLUGIN_ROOT/checks/lib.sh" \
+    || { error "design verdict verification does not fail closed on open comments"; v5_shared_ok=0; }
+  [ "$v5_shared_ok" -eq 1 ] && pass "v5 Codex shared-workspace safety contracts present"
 
   echo ""
 fi

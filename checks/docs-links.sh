@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
 # docs-links — close-out gate for the committed project documentation set
 # (README / AGENTS / PRODUCT / DESIGN / docs/architecture / docs/dataflow /
-# docs/index / deployment). Verifies three things the no-duplication doc
+# optional docs/components/* / docs/index / deployment). Verifies four things the no-duplication doc
 # standard depends on:
 #   1. PRESENCE   — the applicable committed docs exist (DESIGN only for UI
 #                   projects; deployment only when CI config exists).
 #   2. CROSS-LINK — every relative Markdown link resolves to a real file, so
 #                   the link-not-copy mechanic never points at nothing.
-#   3. PORTABILITY — no committed doc leaks plugin-runtime state
+#   3. DISCOVERY   — every component contract is linked from both the system
+#                   architecture and the documentation index.
+#   4. PORTABILITY — no committed doc leaks plugin-runtime state
 #                   (.coding-agent/, CLAUDE_PLUGIN_ROOT, coding-agent:) or a
 #                   committed secret in deployment.md. This is what lets a
 #                   different agent (no plugin) use the set unchanged.
@@ -46,8 +48,19 @@ present=()
 for d in "${candidates[@]}"; do
   [[ -f "$REPO/$d" ]] && present+=("$d")
 done
+if [[ -d "$REPO/docs/components" ]]; then
+  while IFS= read -r -d '' d; do
+    present+=("${d#$REPO/}")
+    component_path="${d#$REPO/docs/components/}"
+    for owner in docs/architecture.md docs/index.md; do
+      if [[ -f "$REPO/$owner" ]] && ! grep -Fq "](components/$component_path" "$REPO/$owner"; then
+        fails+=("$owner: does not link to component contract components/$component_path")
+      fi
+    done
+  done < <(find "$REPO/docs/components" -type f -name '*.md' -print0 | sort -z)
+fi
 
-# ---- 2. Cross-link integrity ----------------------------------------------
+# ---- 2. Cross-link integrity + component discovery ------------------------
 # Every relative Markdown link target must resolve to a real file.
 for doc in ${present[@]+"${present[@]}"}; do
   docdir="$(dirname "$REPO/$doc")"

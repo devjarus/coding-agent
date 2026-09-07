@@ -1,11 +1,13 @@
 ---
 name: nextjs-specialist
-description: Next.js specialist knowledge — App Router architecture, Server Components, Server Actions, rendering strategies, caching, routing, API route handlers, and optimization patterns for Next.js 14+.
+description: Next.js 16-first App Router guidance with older-version detection, covering Server Components, Actions, async request APIs, caching, routing, proxy, testing, and optimization.
 ---
 
 # Next.js Specialist
 
-Deep expertise in Next.js 14+ App Router, Server Components, Server Actions, rendering strategies, and full-stack data patterns.
+Next.js 16-first App Router guidance. Inspect the installed version before using
+version-specific conventions or codemods; do not force a major-version migration
+as part of unrelated feature work.
 
 ## When to Apply
 
@@ -15,7 +17,7 @@ Deep expertise in Next.js 14+ App Router, Server Components, Server Actions, ren
 - Setting up API route handlers
 - Optimizing Next.js performance and SEO
 - Managing caching and revalidation strategies
-- Configuring middleware for auth, redirects, or header rewriting
+- Configuring `proxy.ts` on Next.js 16, or `middleware.ts` on older supported versions
 
 ## Core Expertise (rules/core-expertise.md)
 
@@ -23,8 +25,9 @@ Deep expertise in Next.js 14+ App Router, Server Components, Server Actions, ren
 - Server Components by default; `'use client'` only for browser APIs/state/effects
 - Server Actions for mutations with `revalidatePath()`/`revalidateTag()`
 - Rendering strategies: SSR, SSG, ISR, Streaming, PPR
-- Caching: fetch options, `unstable_cache`, React `cache()`, tag-based invalidation
-- Routing: `<Link>`, `useRouter()`, middleware, dynamic segments
+- Caching: make cache behavior explicit; verify the installed version before
+  choosing `fetch` options, Cache Components, or legacy cache helpers
+- Routing: `<Link>`, `useRouter()`, proxy/middleware, dynamic segments
 - API route handlers: named exports per HTTP method
 - Optimization: `next/image`, `next/font`, `<Script>`, metadata export
 - Environment variables: `NEXT_PUBLIC_` for client, plain for server-only
@@ -37,13 +40,17 @@ Deep expertise in Next.js 14+ App Router, Server Components, Server Actions, ren
 - Add `loading.tsx` at segments whose data takes perceptibly long
 - Every `page.tsx` must export `metadata` or `generateMetadata`
 
-## Next.js 15+ Gotchas
+## Next.js 16 gotchas
 
 These bite real projects and produce **runtime errors, not typecheck errors** — easy to miss in smoke tests. Always navigate actual routes in the evaluator's runtime verification, not just curl `/`.
 
 ### Async params and searchParams
 
-In Next.js 15+, dynamic segment `params` and `searchParams` are `Promise`s. **Must `await` them** before use in both `page.tsx` and `route.ts`:
+Next.js 15 introduced asynchronous request APIs with temporary synchronous
+compatibility. Next.js 16 removes that compatibility: `cookies()`, `headers()`,
+`draftMode()`, dynamic `params`, and page `searchParams` must be awaited (or
+consumed with React `use()` in an appropriate component). **Must `await` them**
+before use in both `page.tsx` and `route.ts`:
 
 ```ts
 // app/notes/[...slug]/page.tsx
@@ -64,6 +71,13 @@ export async function GET(
 ```
 
 Forgetting the `await` produces cryptic runtime errors like `Cannot read properties of undefined (reading 'join')`, NOT typecheck errors.
+
+### Proxy replaces middleware in Next.js 16
+
+For Next.js 16, use the `proxy.ts` convention and `proxy` export. The old
+`middleware.ts` convention is deprecated, and related configuration such as
+`skipMiddlewareUrlNormalize` became `skipProxyUrlNormalize`. Preserve
+`middleware.ts` only for projects intentionally remaining on an older major.
 
 ### `dynamic(() => ..., { ssr: false })` cannot be called from server components
 
@@ -126,6 +140,14 @@ If you verify a specific compiled chunk (e.g., a code-split file `807.<hash>.js`
 5. **next/image for all images** -- never use raw `<img>` tags
 6. **Metadata on every page** -- export metadata or generateMetadata
 7. **No direct DB calls from Client Components**
+
+## Version-sensitive guidance
+
+Verified 2026-09-06 against the official Next.js 16.2 documentation.
+Re-check by 2026-12-05 or before recommending a newer major.
+
+- https://nextjs.org/docs/app/guides/upgrading/version-16
+- https://nextjs.org/docs/app/api-reference/file-conventions/proxy
 
 ## Skills
 

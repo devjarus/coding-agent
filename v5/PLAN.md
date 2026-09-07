@@ -12,7 +12,7 @@
 without evidence; evidence is recorded by execution, never written by the agent.*
 One conductor (single writer of the ledger) runs an 8-gate pipeline
 (`framed? → architected? → designed? → proven? → reviewed? → clean? → shipped? → observed?`)
-and dispatches four stateless kind-specific agents:
+and dispatches five stateless kind-specific agents:
 
 | agent | kinds | effort |
 |---|---|---|

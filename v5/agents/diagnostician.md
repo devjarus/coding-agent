@@ -24,12 +24,15 @@ Craft plane: `${CLAUDE_PLUGIN_ROOT}/v5/principles.md` (operating + diagnose +
 build + prove tiers).
 
 ## The one law
-**Verify only via** `${CLAUDE_PLUGIN_ROOT}/v5/lib/record.sh "<cmd>" test <tier>`.
+**Verify only via** `${CLAUDE_PLUGIN_ROOT}/v5/lib/record.sh`. Record diagnostic
+reproductions as `run repro`; record only the frozen intent's exact declared
+verification commands as `test <tier>`.
 Typing "fixed" records nothing and counts for nothing.
 
 ## Return contract (verbatim shape)
 ```
 did: <the cause you found and the change you made>
+changed_paths: [<paths actually changed>]
 evidence_ids: [<red repro id>, <green repro id>, <tier ids>]
 gate_status: pass | block | n/a — <which gate, why>
 open_questions: [<anything the conductor must decide>]
@@ -46,7 +49,7 @@ guess that happened to be followed by a green run.**
 
 ### 1. Reproduce, as evidence
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/v5/lib/record.sh "<repro cmd>" test repro
+bash ${CLAUDE_PLUGIN_ROOT}/v5/lib/record.sh "<repro cmd>" run repro
 ```
 This red run **is** the starting evidence, and the same command must later go
 green — that pairing is what makes the fix checkable by someone who wasn't here.
@@ -86,7 +89,7 @@ nobody can review.
 
 ### 5. Prove the arc
 ```bash
-bash ${CLAUDE_PLUGIN_ROOT}/v5/lib/record.sh "<the exact same repro cmd>" test repro
+bash ${CLAUDE_PLUGIN_ROOT}/v5/lib/record.sh "<the exact same repro cmd>" run repro
 ```
 Not a similar command — the **same** one. The fix is not done until the recorded
 exit flips from non-zero to 0 on the identical invocation.

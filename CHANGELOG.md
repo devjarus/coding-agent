@@ -5,6 +5,53 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [5.5.0] — 2026-09-06 — Architecture dialogue and durable technical docs
+
+### Added
+
+- **Structured architecture dialogue** — the v5 planner can return `needs-input` with one to three system- or component-level decisions. The conductor asks those questions in the main conversation, records the answers, and redispatches the planner before an ADR is written.
+- **Component contract documentation** — substantial boundaries can now receive focused `docs/components/*.md` contracts alongside the high-level `docs/architecture.md`; the docs index, close-out protocol, and link checker understand the optional layer.
+- **Skill freshness registry and validator** — version-sensitive skills declare their verified scope, official sources, and recheck date in `skills/freshness.json`; plugin validation fails when registered guidance expires or drifts from the registry.
+
+### Changed
+
+- **Framework guidance is current and version-aware** — refreshed React 19, component composition, Next.js 16.2, Tailwind CSS v4/shadcn, and iOS/Swift Testing availability while preserving explicit compatibility paths for older supported projects.
+- **Technical docs now operate at two altitudes** — architecture owns system topology and cross-component decisions; optional component contracts own public interfaces, invariants, failure behavior, and local test strategy without duplicating source code.
+- **Artifact inventory is now 23 templates** — adds `component-doc.template.md` and synchronizes plugin manifests and canonical documentation at version 5.5.0.
+
+## [5.4.0] — 2026-08-03 — Codex multi-agent conductor
+
+### Added
+
+- **`delivery-pipeline` Codex skill** — makes the main Codex task the v5 conductor and explicitly dispatches Codex subagents into the existing planner, developer, diagnostician, designer, and deployer roles. It adapts Claude-specific tool names and plugin-root paths while preserving the ledger, evidence recorder, gate order, user-approval ownership, and two-strike escalation rule.
+- **Codex skill UI metadata** — exposes a focused `Run Coding Agent` entry with an explicit invocation prompt, keeping the expensive multi-agent workflow opt-in.
+
+### Changed
+
+- **Codex manifest and docs now expose a real multi-agent runtime** rather than only the shared skill/MCP library. Starter prompts invoke `$coding-agent:delivery-pipeline`, and inventory is synchronized to `59 skills / 12 protocols / 18 checks / 22 templates / 5 MCP servers`.
+- **Plugin self-validation covers Codex packaging** — the validator checks the Codex manifest and the delivery entry skill alongside the existing Claude runtime.
+
+### Fixed
+
+- **`debugging` skill frontmatter is valid strict YAML** — quotes the colon-bearing description so Codex plugin validation no longer depends on a permissive parser.
+- **Codex shared-workspace dispatch is attribution-safe** — worker returns include `changed_paths`, the conductor compares scoped paths with a pre-dispatch snapshot, stages only explicit attributable paths, and parallel review dimensions stay read-only until one aggregate reviewer writes `review.md`.
+- **Evidence recording is concurrency-safe and intent-bound** — `record.sh` locks id allocation/appends across parallel workers and accepts `kind=test` only when the command exactly matches the frozen `test-command-<tier>:` contract.
+- **Design approval verification fails closed** — verdict checks require parseable zero-open-comment metadata and current artifact hashes; the review server uses persisted comments as authoritative state, and the designer role no longer exposes approval-capable browser tools.
+
+## [5.3.0] — 2026-08-03 — Codex packaging + canonical workflow fixes
+
+### Added
+
+- **Codex-local packaging for the repo itself** — added [`.codex-plugin/plugin.json`](.codex-plugin/plugin.json) plus repo-local marketplace metadata at [`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json), so Codex can install this workspace directly via `codex plugin marketplace add <repo>` and `codex plugin add coding-agent@coding-agent-local`.
+
+### Changed
+
+- **Plugin metadata and contributor docs now describe the dual-runtime shape** — the repo remains the full Claude Code multi-agent plugin, while the Codex package exposes the shared skills + MCP configuration that Codex local plugin manifests accept. Updated [`README.md`](README.md), [`AGENTS.md`](AGENTS.md), [`CLAUDE.md`](CLAUDE.md), and legacy marketplace metadata to reflect the current `58 skills / 12 protocols / 18 checks / 22 templates / 5 MCP servers` inventory.
+
+### Fixed
+
+- **Canonical workflow docs are internally consistent again** — failing reviews stay active work, smoke/touch-up paths keep a durable review artifact, approved plans clarify when revisions supersede prior approval, session checkpoints are scoped as explicit exceptions, implementor questions route back through `work.md`, and evaluator commands are stack-agnostic rather than hard-coded to `npm`.
+
 ## [5.2.0] — 2026-07-25 — v5 Phase A: audit repair (18 fixes)
 
 A second audit pass — v5's flow compared against mainline v4 beat by beat, a scale test (240-line ledger / 2000 evidence entries / 12-feature product ledger), and a sweep of this CHANGELOG's own scar record plus both dogfood projects' `learnings.md` — found 18 items. Several were lessons v4 paid for in production that did not survive the redesign. All 18 land here; `00-smoke` now covers them with 38 assertions. v4 untouched.

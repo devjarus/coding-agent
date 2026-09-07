@@ -7,9 +7,13 @@
      deploys: yes         (turns on shipped? + observed?)
      tiers:               REQUIRED — the verification tiers proven? demands,
                           e.g. `tiers: typecheck, unit, e2e`. Every one of them
-                          needs its own green run bound to the final tree. -->
+                          needs its own green run bound to the final tree.
+     test-command-<tier>: REQUIRED — the exact command approved for each tier,
+                          e.g. `test-command-unit: npm test -- --runInBand`.
+                          record.sh rejects substitutes. -->
 goal:
 tiers:
+test-command-<tier>:
 scope:
 non-goals:
 acceptance:

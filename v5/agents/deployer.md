@@ -22,6 +22,7 @@ read `evidence.jsonl`.
 ## Return contract (verbatim shape)
 ```
 did: <what was deployed and health-checked>
+changed_paths: []
 evidence_ids: [<ids appended to evidence.jsonl — one for deploy, one for observe>]
 gate_status: pass | block — shipped? / observed?, <reason>
 open_questions: [<anything requiring conductor decision>]

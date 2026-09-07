@@ -36,7 +36,7 @@ The Orchestrator owns all coordinator state. Agent Actors own only their own out
 
 | Artifact | Writer | Mutability | Notes |
 |---|---|---|---|
-| `intent.md` | Orchestrator | immutable (after approval) | Orchestrator drafts, User approves via footer, then frozen |
+| `intent.md` | Orchestrator | immutable (after approval) | Orchestrator drafts, User approves via frontmatter signature, then frozen |
 | `spec.md` | Architect | immutable (after approval) | Single direct writer. Post-approval changes go to work.md |
 | `plan.md` | Architect | immutable (after approval) | Same rule |
 | `work.md` | **Orchestrator only** | single-writer-mutable | Subagents return structured updates; Orchestrator applies |
@@ -107,6 +107,8 @@ state: active
 ## Checkpoint (mutable — overwritten on update)
 active_feature: none
 phase: idle                              # idle | intake | spec | plan | implement | review | fix-round | close-out
+                                         #   | micro-inline | micro-smoke | micro-commit-gate
+                                         #   | touch-up-implement | touch-up-verify | touch-up-fix-round-1 | touch-up-commit-gate
                                          #   (non-large runs spec+plan in one dispatch under a single Design gate; the phase still steps spec→plan for resume/recovery signals)
 last_completed: notifications-v1 @ 2026-04-20T16:42:00Z
 pending_pushes: 1 (commit 7b5f5e0)
@@ -143,7 +145,7 @@ Runs automatically on Evaluator PASS, before the Commit gate. Eight steps, all d
 
 ### Step 2 — Distill decisions
 
-Extract stack choices, tradeoffs, and rejected options from `spec.md` `## Tech Stack` and `plan.md` `## Test Infrastructure`. Append to `.coding-agent/learnings.md` as a dated section:
+Extract stack choices, tradeoffs, and rejected options from `spec.md` `## Tech Stack` and `spec.md` `## Test Infrastructure`. Append to `.coding-agent/learnings.md` as a dated section:
 
 ```markdown
 ## 2026-04-20 — notifications-v1
@@ -274,7 +276,7 @@ When the User sends a new message while a pipeline is active (not after close-ou
 |------|---------|--------|
 | **Feedback on current work** | References in-flight tasks, fixes, corrections | Fold into current fix-round or active wave as additional findings in `work.md`. No new artifact. |
 | **Scope change** | Adds a requirement, removes one, changes a tradeoff | Append a `revision` entry to `work.md § Plan Revisions` with `Supersedes:` pointing to the affected `plan.md` or `spec.md` section. **`plan.md` and `spec.md` are never edited.** Orchestrator classifies the revision (approve inline / dispatch Architect to think it through / escalate to User). If Architect is dispatched, Architect proposes amendments by appending to the same `work.md § Plan Revisions` block (Architect does NOT touch `plan.md`). User approves the revision through `AskUserQuestion`; Orchestrator marks `status: approved` in `work.md`. |
-| **Pivot** | Entirely new feature, previous feature abandoned | Write `session.md` checkpoint, append action-log entry `pivot-requested`, AskUserQuestion: "abandon current feature (mark `state: abandoned` in work.md, archive feature dir as `<slug>/abandoned`) or close out first (run review + close-out protocol)?" |
+| **Pivot** | Entirely new feature, previous feature abandoned | Write `session.md` checkpoint, append action-log entry `pivot-requested`, AskUserQuestion: "abandon current feature (append an `## Abandonment` note to `work.md`, flip all live artifacts to `state: archived`, archive the feature dir as `<slug>.abandoned/`) or close out first (run review + close-out protocol)?" |
 
 ### Implementation
 

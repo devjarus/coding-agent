@@ -24,18 +24,24 @@
 - Invoke from Client Components via `action` prop on `<form>` or direct function call
 - Use `revalidatePath()` or `revalidateTag()` to invalidate cached data after mutations
 - Handle validation errors and return structured error responses
-- Use `useFormState` and `useFormStatus` (from `react-dom`) to manage Server Action state
+- On React 19, use `useActionState` plus `useFormStatus` to manage Server Action
+  state. Retain `useFormState` only where an older installed React/Next version requires it.
 
 ## Rendering Strategies
 - **SSR:** dynamic rendering per request -- `export const dynamic = 'force-dynamic'`
 - **SSG:** pages with no dynamic data render at build time by default
 - **ISR:** `export const revalidate = <seconds>` in a page or layout
 - **Streaming:** `<Suspense>` boundaries in Server Components enable streaming
-- **PPR:** in Next.js 15+, static shell + streaming dynamic holes -- opt in per route
+- **Cache Components / PPR:** on Next.js 16, enable `cacheComponents: true` at
+  the application level and use `use cache` to mark cached boundaries. The old
+  experimental PPR flag and per-route `experimental_ppr` export were removed.
 
 ## Caching Strategies
-- `fetch()` in Server Components: `cache: 'force-cache'` (default), `cache: 'no-store'`, or `next: { revalidate: seconds }` / `next: { tags: ['tag'] }`
-- Use `unstable_cache` for caching non-fetch async operations (DB queries, SDK calls)
+- Do not assume a cross-version caching default. State intent explicitly with
+  the APIs supported by the installed Next.js version and verify behavior with
+  the current official documentation.
+- Treat `unstable_cache` as a legacy/version-specific helper; on Next.js 16,
+  evaluate Cache Components and `use cache` before introducing it.
 - Tag cache entries with `next: { tags: ['entity-type'] }` for precise `revalidateTag()` invalidation
 - Use React's `cache()` to deduplicate identical requests within a single render pass
 
@@ -44,7 +50,8 @@
 - Use `useRouter()` from `next/navigation` for programmatic navigation
 - Use `usePathname()` and `useSearchParams()` for reading current URL
 - Use `redirect()` from `next/navigation` for server-side redirects
-- Define route-level middleware in `middleware.ts` at the project root
+- On Next.js 16, define request interception in `proxy.ts`; use
+  `middleware.ts` only for older supported versions.
 
 ## API Route Handlers
 - Create `route.ts` files in `app/` for API endpoints
@@ -83,5 +90,5 @@ app/
   api/
     users/
       route.ts        # API route handler
-middleware.ts         # Edge middleware
+proxy.ts              # Next.js 16 request interception (middleware.ts on older majors)
 ```

@@ -44,7 +44,7 @@ A durable output on disk. Typed, owned by exactly one Actor, with declared reade
 | **Work** | Current state: task ledger, decisions, deviations, revisions, nits — one place | `work.md` |
 | **Findings** | What the Critic saw | `review.md`, `diagnosis.md` |
 | **Research** | Verified, cited research backing a decision | `research.md` |
-| **Memory** | Durable across features or sessions | *Runtime (gitignored):* `product.md` (north-star direction, evolves), `profile.md`, `learnings.md`, `session.md`, `open-threads.md`. *Committed doc set (vendor-neutral, distilled from runtime at close-out):* `README.md`, `AGENTS.md`, `PRODUCT.md`, `DESIGN.md`, `docs/architecture.md`, `docs/dataflow.md`, `docs/index.md`, `deployment.md` |
+| **Memory** | Durable across features or sessions | *Runtime (gitignored):* `product.md` (north-star direction, evolves), `profile.md`, `learnings.md`, `session.md`, `open-threads.md`. *Committed doc set (vendor-neutral, distilled from runtime at close-out):* `README.md`, `AGENTS.md`, `PRODUCT.md`, `DESIGN.md`, `docs/architecture.md`, `docs/dataflow.md`, optional `docs/components/*.md`, `docs/index.md`, `deployment.md` |
 | **Operations** | Deploy history + declared per-env deploy/verify state | `deployments.md`, `environments.md` |
 
 Seven categories, five-to-seven files per active feature at most. (`research.md` is optional — written only when a decision needs breadth-heavy investigation; otherwise research folds inline into `spec.md`.) **Memory and Operations artifacts are global**, not per-feature — they persist across the whole project and are read on session start.
@@ -58,7 +58,7 @@ draft ──(author signs)──> approved ──(work begins)──> active ─
 | State | Who may read | Who may write | Typical transition |
 |-------|--------------|---------------|--------------------|
 | `draft` | Author only | Author | Agent is building it |
-| `approved` | Everyone | Nobody (immutable) | User signed footer |
+| `approved` | Everyone | Nobody (immutable) | User-signed approval recorded in frontmatter |
 | `active` | Everyone | Writer declared in frontmatter | Implementation in flight |
 | `archived` | Everyone | Nobody (immutable) | Close-out complete |
 
@@ -119,7 +119,7 @@ Every Artifact carries a frontmatter block. Checks read this block; they never p
 
 ```yaml
 ---
-artifact: plan                      # category (intent | plan | work | findings | memory)
+artifact: plan                      # category (intent | plan | work | findings | research | memory | operations)
 feature: notifications-v1           # feature slug (or "global" for profile)
 writer: architect                   # declared owner — only this Actor may write
 mutability: immutable               # immutable | append-only | single-writer-mutable | composite
@@ -134,7 +134,7 @@ supersedes: null                    # set when this artifact amends another (e.g
 
 - **Every Artifact has exactly one `writer`.** Declared in frontmatter. No multi-writer state.
 - **Every Artifact has at least one Check.** Existence + required frontmatter fields minimum.
-- **Memory is read at session start, written at feature close-out** — never mid-session, except the `session.md` action log which appends continuously.
+- **Memory is read at session start and generally distilled at feature close-out.** The explicit runtime exception is orchestrator-owned operational memory: `session.md` (Checkpoint overwritten mid-session, Action Log appended continuously) and other orchestrator-owned runtime pointers such as `CURRENT` / `cache.json`.
 - **`approved` artifacts are `immutable` forever.** Amendments go into a `single-writer-mutable` artifact via the supersession rule.
 - **`work.md` is the amendment surface.** Plan revisions, deviations, nits, decisions — all live here, not in the spec/plan themselves.
 

@@ -22,6 +22,12 @@ open(p, "w").write(s)
 PY
 }
 
+# ── architecture discovery is a dialogue, not a planner-side decision ──────
+ev_assert "planner can pause architecture for input" grep -q 'status: complete | needs-input' "$EV_PLUGIN_ROOT/v5/agents/planner.md"
+ev_assert "architecture questions explain consequences" grep -q 'consequence: <what this changes or trades away>' "$EV_PLUGIN_ROOT/v5/agents/planner.md"
+ev_assert "conductor owns architecture questions" grep -q 'Ask them in the main conversation' "$EV_PLUGIN_ROOT/v5/agents/conductor.md"
+ev_assert "architecture discovery is not a gate strike" grep -q 'failed gate or a strike' "$EV_PLUGIN_ROOT/v5/agents/conductor.md"
+
 # ── TA1 — data safety: the ledger must never become trackable ───────────────
 bash "$H" >/dev/null 2>&1
 ev_assert "session-start gitignores .coding-agent" grep -qE '^\.coding-agent/?$' .gitignore
@@ -32,6 +38,7 @@ bash "$L" init smoke-feature >/dev/null
 # ── TA4 — agreement is evidence, not a stamp the writer wrote itself ────────
 setintent smoke-feature 'goal: smoke the arc
 tiers: unit
+test-command-unit: bash thing.test.sh
 touches: api
 '
 ev_assert "framed? blocks before freeze"        test "$(ev_gate framed)" = block
@@ -54,18 +61,31 @@ S
 cat > thing.test.sh <<'S'
 [ "$(bash thing.sh)" = "thing" ]
 S
+cat > thing.e2e.sh <<'S'
+[ "$(bash thing.sh)" = "thing" ]
+S
 bash "$R" "bash thing.test.sh" test unit >/dev/null
 ev_assert "proven? passes on a real test"       test "$(ev_gate proven)" = pass
+if bash "$R" "true" test unit >/dev/null 2>&1; then hollow=0; else hollow=$?; fi
+ev_assert "record.sh rejects substituted test"  test "$hollow" -eq 64
+
+# prove workers may finish together; ids and JSON lines must remain unique.
+bash "$R" "bash thing.test.sh" test unit >/dev/null & p1=$!
+bash "$R" "bash thing.test.sh" test unit >/dev/null & p2=$!
+wait "$p1"; wait "$p2"
+ev_assert "concurrent evidence ids are unique" python3 -c 'import json; rows=[json.loads(x) for x in open(".coding-agent/smoke-feature/evidence.jsonl") if x.strip()]; ids=[r["id"] for r in rows]; raise SystemExit(0 if len(ids)==len(set(ids)) else 1)'
 
 # add a second tier: the already-green unit run must NOT cover it
 setintent smoke-feature 'goal: smoke the arc
 tiers: unit, e2e
+test-command-unit: bash thing.test.sh
+test-command-e2e: bash thing.e2e.sh
 touches: api
 '
 bash "$L" freeze intent --answer "yes" >/dev/null
 ev_assert "one green tier is not proof of two"  test "$(ev_gate proven)" = block
 ev_assert "the missing tier is named"           bash "$EV_PLUGIN_ROOT/v5/gates/proven.sh" 2>&1 | grep -q 'e2e'
-bash "$R" "true" test e2e >/dev/null
+bash "$R" "bash thing.e2e.sh" test e2e >/dev/null
 ev_assert "proven? passes with every tier"      test "$(ev_gate proven)" = pass
 
 # ── TA5 — the review artifact has a schema the gate can actually read ───────
@@ -75,6 +95,19 @@ ev_assert "malformed findings are not clean"    test "$(ev_gate reviewed)" = blo
 printf '# review\n\n## findings\n\n- [advisory] fine — a.sh:1\n' > .coding-agent/smoke-feature/review.md
 bash "$R" "test \$(grep -c '^- \[blocking\]' .coding-agent/smoke-feature/review.md) -eq 0" review >/dev/null
 ev_assert "reviewed? passes on a clean verdict" test "$(ev_gate reviewed)" = pass
+
+# ── design verdicts fail closed on missing/stale SHA metadata ───────────────
+mkdir -p .coding-agent/smoke-design
+printf '<main>approved bytes</main>\n' > .coding-agent/smoke-design/design.html
+printf '{"verdict":"approved"}\n' > .coding-agent/smoke-design/design-verdict.json
+if bash "$EV_PLUGIN_ROOT/scripts/design-review.sh" verify .coding-agent/smoke-design >/dev/null 2>&1; then weak=0; else weak=$?; fi
+ev_assert "minimal design verdict is rejected"  test "$weak" -ne 0
+design_sha="$(shasum -a 256 .coding-agent/smoke-design/design.html | cut -d' ' -f1)"
+printf '{"verdict":"approved","comments_open":0,"design_sha":"%s"}\n' "$design_sha" > .coding-agent/smoke-design/design-verdict.json
+ev_assert "sha-bound design verdict passes" bash "$EV_PLUGIN_ROOT/scripts/design-review.sh" verify .coding-agent/smoke-design
+printf '<main>changed after approval</main>\n' > .coding-agent/smoke-design/design.html
+if bash "$EV_PLUGIN_ROOT/scripts/design-review.sh" verify .coding-agent/smoke-design >/dev/null 2>&1; then stale=0; else stale=$?; fi
+ev_assert "post-approval design edit is rejected" test "$stale" -ne 0
 
 # ── TA2 — clean? scans the STAGED diff; only source is ever staged ──────────
 git add -- . ':(exclude).coding-agent'

@@ -37,15 +37,22 @@ on `PATH`:
    Run it: `${CLAUDE_PLUGIN_ROOT}/v5/gates/<name>.sh`. A gate returning `n/a`
    does not apply — skip it.
 3. If clearing the gate needs work, **dispatch a worker** (see Dispatch).
-4. The worker returns `{did, evidence_ids, gate_status, open_questions,
+4. The worker returns `{did, changed_paths, evidence_ids, gate_status, open_questions,
    skipped_or_assumed}`. Fold `skipped_or_assumed` into the `## log` line — it
    is the only channel carrying what the worker *didn't* do, and neither the
    evidence file nor the gates can see it.
-   For a `build`/`diagnose` return, **verify its claim against ground truth**
-   before you log it: `git status --porcelain` must show the files it names in
-   `did`. An empty diff behind a completion claim is a failed dispatch — re-brief
-   the same kind once with the discrepancy, don't record it (see Branch). A
-   re-dispatch that still produces no change is a second strike (see Escalation).
+   A planner may instead return `status: needs-input` with 1–3 structured
+   architecture questions. Ask them in the main conversation, log the answers,
+   and re-dispatch the same planner with those answers. This is discovery, not a
+   failed gate or a strike. Never choose an answer on the user's behalf.
+   For a `build`/`diagnose` return, **verify its claim against the pre-dispatch
+   snapshot**, not global `git status`. Before dispatch, capture status plus
+   content hashes for every scoped path. After return, require `changed_paths`
+   to stay within that scope and differ from its own baseline. Pre-existing or
+   sibling-worker changes do not count. An unbacked completion claim is a failed
+   dispatch — re-brief the same kind once with the discrepancy, don't record it
+   (see Branch). A re-dispatch that still produces no attributable change is a
+   second strike (see Escalation).
 5. Append a one-line summary under `## log`
    (`${CLAUDE_PLUGIN_ROOT}/v5/lib/ledger.sh log "..."`). You are the only writer.
    When a `planner(architect)` returns, append its ADR to `product.md
@@ -64,13 +71,16 @@ on `PATH`:
    has no owner unless you stage here, and it returns a vacuous `n/a` if you run
    it before staging. Sequence, in this order:
    ```bash
-   git add -- . ':(exclude).coding-agent'    # NEVER `git add -A` / `git add .`
+   git add -- <explicit changed_paths...>
    bash ${CLAUDE_PLUGIN_ROOT}/v5/gates/clean.sh
    git commit -m "..."
    ```
    If `clean?` blocks, strip the offending lines (or dispatch a `build` scoped to
    them) and re-stage; never commit past a `clean?` block.
-   **Never stage `.coding-agent/`.** Tracking coordinator state means a later
+   Never use `git add .`, `git add -A`, or a repo-wide pathspec. Stage only the
+   attributable `changed_paths` verified in step 4; leave pre-existing and
+   unrelated shared-workspace changes untouched. **Never stage `.coding-agent/`.**
+   Tracking coordinator state means a later
    `git reset --hard` / `git clean` deletes the ledger and `evidence.jsonl`
    together — the whole audit trail, in one command. Stage source explicitly.
 8. At the end, roll the feature up into `product.md` (summary, learnings,
@@ -81,8 +91,8 @@ on `PATH`:
 ## Dispatch (kind → agent)
 
 Each kind maps to a dedicated agent. Send: `kind` · `gate` it serves · scoped
-`brief` · a **slice** of the ledger (not the whole thing) · file `scope` ·
-`isolate` (worktree when parallel).
+`brief` · a **slice** of the ledger (not the whole thing) · file `scope` · the
+pre-dispatch path snapshot · `isolate` (worktree when parallel).
 
 | kind | agent | subagent_type |
 |------|-------|---------------|
@@ -130,6 +140,12 @@ the skills even though the principles are already loaded.
 
 Workers cannot reach the user. They inherit no usable `AskUserQuestion`, so every
 approval flows through **you**, in **your** conversation.
+
+Architecture discovery also flows through you, but it is distinct from approval:
+when the planner returns `needs-input`, present the option consequences and ask
+before an ADR is drafted. Re-dispatch with the user's verbatim answers. Later,
+if the resulting ADR contains a one-way door, ask separately for agreement to
+that completed decision.
 
 Two gates turn on a human answer — `framed?` (the intent) and `architected?` (a
 one-way door). For those, agreement is not something you may assert; it is
@@ -184,7 +200,7 @@ Every gate has a fail edge — a gate never silently advances.
 | Gate blocks | Route |
 |---|---|
 | `framed?` | intent not yet agreed — ask the user (`AskUserQuestion`), or re-dispatch `frame` if the draft is thin. Freeze only with their verbatim reply: `${CLAUDE_PLUGIN_ROOT}/v5/lib/ledger.sh freeze intent --answer "<what they said>"`. |
-| `architected?` | dispatch `architect`; append the returned ADR to `product.md ## decisions` (step 5). On a one-way door, ask the user and add `user agreed: "<their reply>"` to the ADR — the gate blocks without it. |
+| `architected?` | dispatch `architect`; if it returns `needs-input`, ask its bundled architecture questions and re-dispatch with the answers (no strike). Append the completed ADR to `product.md ## decisions` (step 5). On a one-way door, ask the user and add `user agreed: "<their reply>"` to the ADR — the gate blocks without it. |
 | `designed?` | re-dispatch `design` with the surface comment thread. |
 | `proven?` | dispatch `diagnose` (the red run is already the repro). |
 | `reviewed?` | dispatch a `build` scoped to the `- [blocking]` findings in `review.md`, then re-dispatch `review`. The two-strike rule bounds the loop. |
@@ -232,14 +248,17 @@ one at a time:
 - `architect`: one worker per option → pick the winner; ADR records the beaten ones.
 - `build`: one worker per independent plan step, `isolate=worktree` or disjoint
   `scope`; you merge, then run `proven?` against the merged tree.
-- `prove`: correctness · security · perf in parallel, each returns its own evidence.
+- `prove`: correctness · security · perf in parallel. `record.sh` serializes the
+  append so each worker receives a unique evidence id.
 - `review`: fan out review dimensions (correctness · security · simplicity) as
-  concurrent `review` workers; each appends to `review.md`. Merge their findings,
-  then record **one** verdict over the combined file (zero blocking → pass).
+  read-only `aggregate: false` workers. Fold their returned findings, then send
+  one final `aggregate: true` review dispatch to write `review.md` and record
+  exactly one verdict. Concurrent workers never write the same artifact.
 Gates stay sequential — widen each station, re-serialize at the fold.
 
 ## Hard rules
 - Only you write the ledger and `product.md`.
+- Never answer a planner's `needs-input` architecture question yourself.
 - Judge gates by `evidence.jsonl`, not by what a worker claims.
 - On a one-way door (`architected?`), get explicit user agreement before `build`.
 - Never write to `evidence.jsonl` by hand — it is wall-protected; use `record.sh`.

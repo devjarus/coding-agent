@@ -3,15 +3,15 @@
 > One ledger, one law, three moves, two roles. Everything else is derived.
 
 This is the design spec for the v5 reimagining. It supersedes the v4 primitive
-set (Actor / Artifact / Skill / Check). v4 grew to 6 agents + 58 skills +
-12 protocols + 18 checks + 22 templates — most of which are scaffolding around
+set (Actor / Artifact / Skill / Check). v4 grew to 6 agents + 59 skills +
+12 protocols + 18 checks + 23 templates — most of which are scaffolding around
 one valuable core: *making "done" mean demonstrably done.* v5 keeps that core
 and deletes the scaffolding.
 
 > **Implementation note (as built).** Where this document says one `worker.md`
-> with seven kinds, the implementation splits it into **four kind-specific
-> agents** — `planner` (frame · architect), `developer` (build · prove · diagnose
-> · review), `designer` (design), `deployer` (ship) — so each carries only the
+> with seven kinds, the implementation splits it into **five kind-specific
+> agents** — `planner` (frame · architect), `developer` (build · prove · review),
+> `diagnostician` (diagnose), `designer` (design), `deployer` (ship) — so each carries only the
 > tools its kinds need (Context7/Playwright for the developer, the design surface
 > for the designer, etc.). The spine, the single-writer law, and the dispatch
 > model are unchanged; only the packaging differs. An eighth gate, `reviewed?`
@@ -113,7 +113,7 @@ Owns the ledger, runs gates, dispatches workers, never writes code. The loop:
 1. read ledger tail + evidence.jsonl
 2. find first applicable gate not yet passed
 3. needs work?  → dispatch worker(kind), scoped to that gate
-4. worker returns {did, evidence_ids, gate_status, open_questions}
+4. worker returns its kind-specific contract (including omissions and questions)
 5. append summary to ## log
 6. re-run the gate; PASS → advance; BLOCK → route (§7); else loop
 ```
@@ -126,8 +126,12 @@ re-enters at step 2). Redirect is an appended plan revision.
 One archetype. Same **contract** (the spine), different **craft** (the kind).
 
 **Spine (identical for every worker):** verify only via `record.sh`; write
-nothing to the ledger (the conductor is the sole writer); return
-`{did, evidence_ids, gate_status, open_questions}`; do exactly the scoped brief.
+nothing to the ledger (the conductor is the sole writer); return `did`,
+`changed_paths`, `open_questions`, and `skipped_or_assumed`; do exactly the
+scoped brief. Execution kinds also return `evidence_ids` and `gate_status`.
+Planning kinds return `status`, a paste-ready `artifact`, and — when
+`status: needs-input` — structured `questions` whose options name their
+consequences.
 Every worker also carries the operating principles (§12.1); the kind adds its own
 principle set.
 
@@ -244,11 +248,11 @@ append; conflicts are line-additive, not edits). Known constraint, not a bug.
 
 | v4 | v5 |
 |---|---|
-| 22 templates | 1 ledger template (2 altitudes) |
+| 23 templates | 1 ledger template (2 altitudes) |
 | 18 checks | ~6 gates (predicates over the ledger) |
 | 12 protocols | 1 conductor loop |
 | 6 agents | 2 roles (conductor + worker×7 kinds) |
-| 58 skills | ~12 knowledge resources |
+| 59 skills | ~12 knowledge resources |
 | hand-synced counts | derived by the validator |
 | `last-verify.json` + ad-hoc verify | `evidence.jsonl` + `record.sh`, wall-protected |
 
@@ -264,7 +268,7 @@ coding-agent/
 ├── .claude-plugin/plugin.json
 ├── agents/
 │   ├── conductor.md          # the loop + single-writer law
-│   ├── planner.md  developer.md  designer.md  deployer.md   # kind-specific workers
+│   ├── planner.md  developer.md  diagnostician.md  designer.md  deployer.md
 ├── principles.md             # the craft plane: operating · build · prove · review · architect
 ├── skills/                   # ~12, lightly grouped
 ├── gates/
@@ -340,6 +344,17 @@ consequential**: a new service/module, a new data model, a new external
 dependency, a cross-cutting change, or any **one-way door**. For routine changes
 the gate is vacuous (like `designed?` for non-UI work).
 
+Before drafting the ADR, the architect runs a short discovery dialogue when
+material unknowns remain. It evaluates both **system-level** choices (topology,
+ownership, data flow, deployment, one-way doors) and **component-level** choices
+(public contracts, state ownership, invariants, failure behavior, and seams).
+It returns `needs-input` with one to three bundled questions; the conductor asks
+them in the main conversation, records the answers in the ledger, and
+redispatches the architect. This is discovery, not approval: a one-way-door ADR
+still requires the separate user-agreement evidence enforced by `architected?`.
+At most two reversible, low-stakes defaults may be assumed and must be named in
+the return contract.
+
 **Definition of done — an ADR appended to product ledger `## decisions`:**
 
 ```markdown
@@ -376,7 +391,7 @@ layers**, mapping directly onto how Claude Code subagents run:
   invocation.
   - `conductor.md`: the loop (§4.1), the single-writer law, the dispatch
     protocol, the concurrency rules (§15).
-  - each worker agent (`planner`/`developer`/`designer`/`deployer`): the spine
+  - each worker agent (`planner`/`developer`/`diagnostician`/`designer`/`deployer`): the spine
     (§4.2) + operating principles (§12.1) + the return contract + "you act as
     exactly one kind, named in your brief."
 - **Dynamic dispatch** — the free-form task prompt the conductor writes when it
@@ -384,7 +399,7 @@ layers**, mapping directly onto how Claude Code subagents run:
 
 **The kind is chosen at dispatch, not baked into a prompt.** Each worker agent
 covers a small set of related kinds; the conductor names the exact kind in the
-brief — which is why the kinds map onto four agents, not one-file-per-kind. The
+brief — which is why the kinds map onto five agents, not one-file-per-kind. The
 dispatch message schema:
 
 ```
@@ -426,8 +441,9 @@ conductor: dispatch batch  →  [worker, worker, worker]  (concurrent)
 ```
 
 The single-writer law is what makes this safe: parallel workers cannot race the
-ledger because none of them touch it. `evidence.jsonl` is append-only, so
-concurrent `record.sh` appends are conflict-free too.
+ledger because none of them touch it. `record.sh` serializes evidence id
+allocation and append behind a portable lock, so concurrent proof workers also
+produce unique, complete entries.
 
 **Where parallelism pays (within a move, never across moves):**
 
@@ -436,6 +452,7 @@ concurrent `record.sh` appends are conflict-free too.
 | `architect` option-exploration | one worker per option → conductor (or a judge) picks; ADR records the winner + the beaten alternatives. The deep-dive is *naturally* a judge panel. |
 | `build` on disjoint files | one worker per independent plan step, each `isolate=worktree` or scoped to non-overlapping paths; conductor owns the merge. |
 | `prove` across dimensions | correctness · security · perf in parallel, each returning its own evidence. |
+| `review` across dimensions | read-only reviewers return findings → one aggregate reviewer writes `review.md` and its verdict. |
 | `frame` research sweep | parallel readers over subsystems → one framed intent. |
 
 **File safety:** parallel `build` workers either take disjoint `scope` globs or

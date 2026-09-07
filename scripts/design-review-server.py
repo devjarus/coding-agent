@@ -156,6 +156,18 @@ class ReviewHandler(BaseHTTPRequestHandler):
         # strict allowlist — no path traversal surface
         return os.path.join(self.feature_dir, name) if name in ARTIFACTS else None
 
+    def _load_comments(self):
+        p = os.path.join(self.feature_dir, "design-comments.json")
+        if not os.path.isfile(p):
+            return []
+        try:
+            with open(p, "r", encoding="utf-8") as f:
+                payload = json.load(f)
+            comments = payload.get("comments", [])
+            return comments if isinstance(comments, list) else []
+        except (OSError, ValueError):
+            return []
+
     def log_message(self, fmt, *args):  # quiet — orchestrator reads files, not logs
         pass
 
@@ -211,10 +223,14 @@ class ReviewHandler(BaseHTTPRequestHandler):
             return
 
         if self.path == "/comments":
+            comments = body.get("comments", [])
+            if not isinstance(comments, list) or not all(isinstance(c, dict) for c in comments):
+                self._send(400, {"error": "comments must be a list of objects"})
+                return
             payload = {
                 "round": self.round_no,
                 "saved_at": now_iso(),
-                "comments": body.get("comments", []),
+                "comments": comments,
             }
             self._write_json("design-comments.json", payload)
             self._send(200, {"ok": True, "count": len(payload["comments"])})
@@ -224,7 +240,10 @@ class ReviewHandler(BaseHTTPRequestHandler):
             if verdict not in ("approved", "changes-requested"):
                 self._send(400, {"error": "verdict must be approved|changes-requested"})
                 return
-            comments = body.get("comments", [])
+            # The comments file is authoritative. The browser persists its
+            # current state before posting a verdict; a crafted verdict request
+            # cannot smuggle an empty array past already-saved open comments.
+            comments = self._load_comments()
             open_comments = [c for c in comments if not c.get("resolved")]
             if verdict == "approved" and open_comments:
                 # server-side enforcement — the UI disables the button, but the

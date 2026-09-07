@@ -40,3 +40,12 @@ description: Modern React patterns and conventions for React 18+. Priority-ranke
 - `useMemo`/`useCallback` without profiling evidence
 - Array index as list key for reorderable lists
 - Asserting on internal state instead of user-visible output
+
+## Version-sensitive guidance
+
+Verified 2026-09-06 against the official React 19.2 reference while retaining
+the skill's declared React 18 compatibility floor. Re-check by 2026-12-05 or
+before recommending a newer major.
+
+- https://react.dev/versions
+- https://react.dev/reference/react

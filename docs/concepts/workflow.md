@@ -100,7 +100,7 @@ Waves: ~3 (schema, API, UI+realtime)
 
 ### Check
 
-- `intent-approved` — `intent.md` has `approved_by: user` footer before Architect is dispatched
+- `intent-approved` — `intent.md` frontmatter has `approved_by: user` before Architect is dispatched
 
 ### Touch-up mode
 
@@ -121,6 +121,15 @@ Architect reads the profile. For **design-changing** forks the profile can't ans
 > *(2) Read state — **per-user with last-read timestamps** / thread-level?*
 > *(3) Backfill old users — **dual-write 1 week** / hard cutover?*
 > *Confirm or change in one reply.*
+
+Architecture discovery happens at two altitudes. **System-level** questions
+cover topology, ownership, data flow, deployment, and one-way doors.
+**Component-level** questions cover public interfaces, local state and data
+ownership, invariants, failure behavior, and seams between components. The
+architect asks only questions whose answers materially change the design; up to
+two reversible low-stakes defaults may be recorded instead. Answers are written
+into the durable artifact before the architect is redispatched, so the decision
+does not live only in chat history.
 
 ### Step B — Test infrastructure research
 
@@ -159,6 +168,13 @@ supersedes: null
 | Push | FCM | APNS-only, OneSignal | Free tier, Android priority |
 | Persist | Postgres (existing users table + new notifications, notification_reads) | Redis-only | Source of truth stays where user schema lives |
 
+## Test Infrastructure
+| Dep | Tool | Why (tradeoff) | Source |
+|-----|------|----------------|--------|
+| Postgres | testcontainers | Catches migration bugs; ~3s CI overhead | Context7 (drizzle), Exa 2026 |
+| WebSocket realtime | in-process ws + test client | No sandbox needed; avoids fake drift | Context7 (ws) |
+| Push provider (FCM) | recorded fixtures via msw | FCM has no dev sandbox | Exa 2026 |
+
 ## Requirements
 FR-1: System emits a notification when user is mentioned in a comment.
 FR-2: Notifications are delivered via push (if device token) and in-app (always).
@@ -182,7 +198,7 @@ Architect prints the spec in chat, calls `AskUserQuestion`. User approves or req
 
 - `stack-justified` — `spec.md` has `## Tech Stack` with ≥1 alternative per row
 - `test-infra-declared` — `spec.md` has `## Test Infrastructure` with ≥1 row per external dep
-- `spec-approved` — footer present
+- `spec-approved` — frontmatter has `approved_by: user`
 
 ---
 
@@ -258,7 +274,7 @@ evaluation:
 ### Checks
 
 - Test-tier coverage (prose-enforced, not a script) — each wave's tasks have unit + integration rows; e2e if UI touched (or explicit `e2e: N/A` with reason)
-- `plan-approved` — footer present
+- `plan-approved` — frontmatter has `approved_by: user`
 - `skills-match-domain` — every task's `skills:` row references real skills for its `domain_tags`
 
 ---
@@ -297,6 +313,9 @@ supersedes: null
 | When | Who | Decision | Why |
 |------|-----|----------|-----|
 
+## Findings (open failures / smoke output)
+_None_
+
 ## Deviations (trivial)
 _None_
 
@@ -314,9 +333,12 @@ Downstream: T-7 evaluation criterion "survives restart" → "degrades gracefully
 
 ## Nits (deferred fixes)
 _None_
+
+## Handoff (Round 2+ only)
+_None_
 ```
 
-One file, five sections. Replaces today's `progress.md` + `handoff.md` + `session-state.md` + `in-flight.md` + `nits.md`.
+One file, seven sections. `Tasks / Decisions / Findings / Deviations / Plan Revisions / Nits` are the standing sections. `Handoff` is empty until Round 2+ of a fix-round. This replaces today's `progress.md` + `handoff.md` + `session-state.md` + `in-flight.md` + `nits.md`.
 
 ### Parallel failure handling
 
@@ -327,7 +349,7 @@ If one of three parallel Implementors fails:
 
 ### Implementor snag protocol
 
-If mid-task the Implementor hits a design question the plan doesn't answer, it stops and asks the User directly via `AskUserQuestion`. Not plan-revision, not self-decide. One question, 2–3 options, continue on answer.
+If mid-task the Implementor hits a design question the plan doesn't answer, it does **not** ask the User directly. It returns `status: needs-input` with an `ask_user` payload in the structured-return contract. The Orchestrator appends the open question to `work.md` (Decision or Revision context as appropriate), surfaces it via `AskUserQuestion`, records the answer back into `work.md`, then re-dispatches or resumes. No requirement-changing answer lives only in chat history.
 
 ### Checks
 
@@ -345,10 +367,16 @@ If mid-task the Implementor hits a design question the plan doesn't answer, it s
 
 ### Default mode: Lightweight
 
-Evaluator runs:
-1. `npm test` (or project's test command from AGENTS.md)
-2. `npm run test:integration`
-3. `npm run test:e2e` if UI was touched
+Evaluator runs the project's **committed verification commands**, resolved in this order:
+1. Exact commands declared in `AGENTS.md`, `deployment.md`, or the plan's evaluation blocks
+2. Stack-native defaults inferred from project manifests if docs are absent
+   - Node: `npm test`, `npm run test:integration`, `npm run test:e2e`
+   - Python: `pytest`, the committed integration target, and the committed browser/e2e target if present
+   - Go: `go test ./...` plus any committed integration/e2e targets
+   - Swift/iOS: `xcodebuild test` plus simulator flows
+3. If a required tier truly has no committed command, record `N/A` and file a finding when the plan required it
+
+Then it performs:
 4. `no-raw-print` grep on changed files
 5. Spec-compliance check for FRs in scope
 6. Runtime check **only if UI changed** — Playwright MCP launches, takes named screenshots, writes to `features/<slug>/screenshots/`
@@ -391,8 +419,10 @@ On PASS, Orchestrator runs Close-out (see `lifecycle.md` for details):
 1. Freeze feature dir (archived state)
 2. Distill to `learnings.md` (project memory)
 3. Update `AGENTS.md` / `ARCHITECTURE.md` if conventions/architecture changed
-4. Clear `CURRENT`
-5. Update `session.md`
+4. Refresh `docs/architecture.md` for system-level changes and the affected
+   `docs/components/*.md` contracts for substantial boundary changes
+5. Clear `CURRENT`
+6. Update `session.md`
 
 ### Commit
 
@@ -415,7 +445,7 @@ Commit is always local-first. Push only after approval (your T=7c answer).
 
 ### Checks
 
-- `close-out-complete` — all 5 close-out steps ran
+- `close-out-complete` — the lifecycle close-out aggregate passed (`artifacts frozen`, `learnings appended`, `CURRENT cleared`, `session updated`, `no draft artifacts`)
 - `commit-has-learnings` — commit message body contains a `Learnings:` block for Medium/Large features
 
 ---
@@ -495,7 +525,7 @@ Orchestrator: commits, pushes, appends action-log entry | micro | commit <sha> |
 - Commit message body references the micro action description (orchestrator self-check, not a script)
 
 **Checks that are skipped:**
-- `intent-approved` footer check — no intent.md file
+- `intent-approved` frontmatter check — no intent.md file
 - `spec-approved`, `plan-approved` — no spec/plan
 - `close-out-complete` — no feature dir to close out
 
@@ -540,7 +570,7 @@ If User abandons:
 
 ## Touch-up flow — explicit state machine
 
-Touch-up is for small targeted changes (2–5 files, clear scope, no design decisions). Distinct from Micro (orchestrator inlines) and Small (Implementor + lightweight Evaluator with full plan). Touch-up has its own minimal feature dir with `intent.md` only.
+Touch-up is for small targeted changes (2–5 files, clear scope, no design decisions). Distinct from Micro (orchestrator inlines) and Small (Implementor + lightweight Evaluator with full plan). Touch-up owns a minimal feature dir with `intent.md` plus an orchestrator-owned `work.md`.
 
 ### States
 
@@ -556,23 +586,24 @@ INTAKE → IMPLEMENT → VERIFY ──pass──> COMMIT-GATE → DONE
 
 | From | Event | To | Side effect |
 |------|-------|-----|-------------|
-| `INTAKE` | User approves restate | `IMPLEMENT` | Write `intent.md` (immutable, approved); create `features/<slug>/`; set `CURRENT`; append action-log `touch-up-start` |
+| `INTAKE` | User approves restate | `IMPLEMENT` | Write `intent.md` (immutable, approved); create `features/<slug>/`; initialize `work.md`; set `CURRENT`; append action-log `touch-up-start` |
 | `IMPLEMENT` | Implementor returns `status: complete` | `VERIFY` | Append action-log `touch-up-implemented` |
 | `IMPLEMENT` | Implementor returns `status: needs-input` | (paused) | Orchestrator surfaces question via `AskUserQuestion`; resume on answer |
 | `IMPLEMENT` | Implementor returns `status: blocked` | `ESCALATE-TO-SMALL` or `USER` | If blocker is design-level → escalate. If technical (missing dep) → AskUserQuestion. |
 | `VERIFY` | Smoke Evaluator PASS | `COMMIT-GATE` | Append action-log `touch-up-verified` |
 | `VERIFY` | Smoke Evaluator FAIL | `FIX-ROUND-1` | Update `work.md § Findings` with smoke output; append action-log `touch-up-fix-round-1` |
 | `FIX-ROUND-1` | Implementor returns + Smoke PASS | `COMMIT-GATE` | (one fix round only for touch-up; second failure is escalation) |
-| `FIX-ROUND-1` | Implementor returns + Smoke FAIL | `ESCALATE-TO-SMALL` | Touch-up was under-specified. Operational meaning: **`intent.md` stays immutable** at its original `mode: touch-up` — the signed user approval remains truthful. Orchestrator dispatches Architect for `plan-writing` only (no `spec.md` — the touch-up intent is the contract). A new `plan.md` appears in the feature dir and the pipeline enters the Small flow from there. Effective mode is `small` by virtue of the plan existing; we do NOT rewrite intent.md. Append action-log `touch-up-escalated | added plan.md to feature <slug>`. |
+| `FIX-ROUND-1` | Implementor returns + Smoke FAIL | `ESCALATE-TO-SMALL` | Touch-up was under-specified. Operational meaning: **`intent.md` stays immutable** at its original `mode: touch-up` — the signed user approval remains truthful. Orchestrator dispatches Architect for `plan-writing` only (no `spec.md` — the touch-up intent is the contract). A new `plan.md` appears in the feature dir and the standard Small flow takes over from there. Touch-up-specific checks stop applying once the `touch-up-escalated` event is logged. Append action-log `touch-up-escalated | added plan.md to feature <slug>`. |
 | `COMMIT-GATE` | User approves push | `DONE` | Commit + push; run minimal close-out (clear `CURRENT`, append to `learnings.md` only if a real lesson was learned, archive feature dir, append action-log `touch-up-done`) |
 | `COMMIT-GATE` | User declines push | `DONE` (local only) | Commit local; mark `pending_pushes` in session.md checkpoint |
 | any | User pivots / new request | (suspended) | Append action-log `touch-up-suspended`; route through Redirect Protocol |
 
 ### Required artifacts
 
-- `features/<slug>/intent.md` (immutable, approved) — only artifact required
+- `features/<slug>/intent.md` (immutable, approved)
 - `features/<slug>/work.md` (single-writer-mutable) — created on entry to IMPLEMENT; holds findings if VERIFY fails
-- No `spec.md`, no `plan.md` — touch-up is exempt
+- No `spec.md`
+- No `plan.md` during native touch-up execution; if touch-up escalates after the single fix round, a `plan.md` is added and the standard Small flow takes over
 - `screenshots/` only if `IMPLEMENT` touched UI files
 
 ### Resume after restart
@@ -588,7 +619,8 @@ If session restarts and last session ended mid-touch-up:
 
 If User chooses to abandon a touch-up:
 - Append action-log `touch-up-abandoned`
-- Mark `intent.md` `state: abandoned` in frontmatter (extends the state vocab for this case)
+- Append an `## Abandonment` section to `work.md` with timestamp + reason
+- Flip live artifact frontmatter to `state: archived`
 - Move `features/<slug>/` to `features/<slug>.abandoned/`
 - Clear `CURRENT`
 - No close-out distillation; the feature dir is retained for forensics but never read again
@@ -598,9 +630,9 @@ If User chooses to abandon a touch-up:
 | Check | Verifies |
 |-------|---------|
 | `touch-up-has-intent` | `features/<slug>/intent.md` exists with `state: approved` before IMPLEMENT |
-| `touch-up-no-spec` | No `spec.md` or `plan.md` in the touch-up feature dir (architectural guard) |
+| `touch-up-no-spec` | No `spec.md` in the touch-up feature dir. `plan.md` may appear only after a logged `touch-up-escalated` event, at which point the standard Small flow owns the feature. |
 | `touch-up-fix-rounds` | At most one `touch-up-fix-round-1` event between `touch-up-start` and `touch-up-done` (escalation otherwise) |
-| `touch-up-resumable` | If `session.md § Checkpoint.phase` is a touch-up state, `CURRENT` and `intent.md` exist |
+| `touch-up-resumable` | If `session.md § Checkpoint.phase` is a touch-up state, `CURRENT`, `intent.md`, and `work.md` exist |
 
 ---
 

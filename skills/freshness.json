@@ -1,0 +1,77 @@
+{
+  "schema_version": 1,
+  "skills": [
+    {
+      "path": "frontend/composition-patterns",
+      "verified_on": "2026-09-06",
+      "recheck_by": "2026-12-05",
+      "version_scope": "React 19 composition with a React 18 compatibility boundary",
+      "sources": [
+        "https://react.dev/reference/react/forwardRef",
+        "https://react.dev/blog/2024/04/25/react-19-upgrade-guide"
+      ]
+    },
+    {
+      "path": "frontend/react-specialist",
+      "verified_on": "2026-09-06",
+      "recheck_by": "2026-12-05",
+      "version_scope": "React 19-first with React 18 compatibility",
+      "sources": [
+        "https://react.dev/reference/react",
+        "https://github.com/react/react/blob/main/CHANGELOG.md"
+      ]
+    },
+    {
+      "path": "frontend/react-patterns",
+      "verified_on": "2026-09-06",
+      "recheck_by": "2026-12-05",
+      "version_scope": "React 18+ baseline checked against the React 19.2 reference",
+      "sources": [
+        "https://react.dev/versions",
+        "https://react.dev/reference/react"
+      ]
+    },
+    {
+      "path": "frontend/nextjs-specialist",
+      "verified_on": "2026-09-06",
+      "recheck_by": "2026-12-05",
+      "version_scope": "Next.js 16.2 App Router with older-major detection",
+      "sources": [
+        "https://nextjs.org/docs/app/guides/upgrading/version-16",
+        "https://nextjs.org/docs/app/api-reference/file-conventions/proxy"
+      ]
+    },
+    {
+      "path": "frontend/css-tailwind-specialist",
+      "verified_on": "2026-09-06",
+      "recheck_by": "2026-12-05",
+      "version_scope": "Tailwind CSS v4 with v3 and legacy-JS-config compatibility",
+      "sources": [
+        "https://tailwindcss.com/docs/upgrade-guide",
+        "https://tailwindcss.com/docs/functions-and-directives#config-directive",
+        "https://ui.shadcn.com/docs/tailwind-v4"
+      ]
+    },
+    {
+      "path": "mobile/ios-swiftui-specialist",
+      "verified_on": "2026-09-06",
+      "recheck_by": "2026-12-05",
+      "version_scope": "SwiftUI navigation and Observation availability with current Xcode requirements",
+      "sources": [
+        "https://developer.apple.com/documentation/swiftui/migrating-to-new-navigation-types",
+        "https://developer.apple.com/documentation/swiftui/migrating-from-the-observable-object-protocol-to-the-observable-macro",
+        "https://developer.apple.com/xcode/system-requirements/"
+      ]
+    },
+    {
+      "path": "mobile/ios-testing-debugging",
+      "verified_on": "2026-09-06",
+      "recheck_by": "2026-12-05",
+      "version_scope": "Swift Testing with Xcode 16 and later toolchains",
+      "sources": [
+        "https://developer.apple.com/xcode/swift-testing/",
+        "https://developer.apple.com/xcode/system-requirements/"
+      ]
+    }
+  ]
+}

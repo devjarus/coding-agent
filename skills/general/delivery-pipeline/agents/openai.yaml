@@ -1,0 +1,4 @@
+interface:
+  display_name: "Run Coding Agent"
+  short_description: "Run the evidence-gated multi-agent pipeline"
+  default_prompt: "Use $coding-agent:delivery-pipeline to implement this feature through the coding-agent workflow."

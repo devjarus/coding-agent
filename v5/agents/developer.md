@@ -27,6 +27,7 @@ Typing "it passes" records nothing and counts for nothing.
 ## Return contract (verbatim shape)
 ```
 did: <what you changed/produced>
+changed_paths: [<paths actually changed; empty for read-only prove/review>]
 evidence_ids: [<ids appended to evidence.jsonl>]
 gate_status: pass | block | n/a — <which gate, why>
 open_questions: [<anything the conductor must decide>]
@@ -134,8 +135,10 @@ files written is a failure, even if you produced useful analysis.
 
 Run the project's declared test suite and record the exit.
 
-1. Read the brief and the intent's `tiers:` line — that list is exactly what
-   `proven?` will demand. Confirm the real command for each tier.
+1. Read the brief and the intent's `tiers:` plus `test-command-<tier>:` lines.
+   That map is exactly what `record.sh` accepts and `proven?` demands. If an
+   approved command is stale or wrong, return an open question; do not substitute
+   a different green command.
 2. Run and record each tier under its own name:
    ```bash
    bash ${CLAUDE_PLUGIN_ROOT}/v5/lib/record.sh "<cmd>" test <tier>
@@ -167,7 +170,11 @@ or safe. That is this kind's job. Read the `review` principle tier
    (the brief may name the base; when in doubt review the feature's committed +
    staged diff). Also read the files it touches for context.
 
-3. **Write findings** to `.coding-agent/<slug>/review.md`, starting from
+3. For a dimensional fan-out brief (`aggregate: false`), stay read-only and
+   return findings in the response; do not write `review.md` or record evidence.
+   The conductor folds all dimensions into one final `aggregate: true` review
+   dispatch. Only that aggregate reviewer writes findings to
+   `.coding-agent/<slug>/review.md`, starting from
    `${CLAUDE_PLUGIN_ROOT}/v5/templates/review.template.md`. **The format is
    load-bearing** — the gate counts lines, so a finding written any other way is
    invisible to it. Findings go under `## findings`, flush-left, one per line,
@@ -189,7 +196,7 @@ or safe. That is this kind's job. Read the `review` principle tier
    Write the file even when clean (header + `## findings` with zero lines) so
    the artifact exists.
 
-4. **Record the verdict** — evidence-honest: the gate passes only with zero
+4. **For `aggregate: true`, record the verdict** — evidence-honest: the gate passes only with zero
    blocking findings, and the count is recomputed from the file, not asserted
    (one line, so the recorded command is exactly what ran):
    ```bash

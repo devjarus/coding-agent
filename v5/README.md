@@ -3,7 +3,7 @@
 A from-scratch reimagining grounded in primitives. Built alongside the live v4
 plugin so both can run. As of v5.0.0 the five v5 agents are **registered in the
 plugin manifest** (dispatchable as `subagent_type: conductor|planner|developer|
-designer|deployer`) and the v5 hooks are wired — but the conductor is **not the
+diagnostician|designer|deployer`) and the v5 hooks are wired — but the conductor is **not the
 default entry** yet. Promotion to default is gated on dogfooding (see
 [`PLAN.md`](PLAN.md) Phase 4).
 
@@ -11,13 +11,16 @@ default entry** yet. Promotion to default is gated on dogfooding (see
 **Craft plane:** [`principles.md`](principles.md)
 
 ## The shape
-One ledger, one law, one conductor + four kind-specific agents.
+One ledger, one law, one conductor + five kind-specific agents.
 
 - **Law:** no claim advances without evidence; evidence is recorded only by `record.sh`.
 - **Primitives:** ledger · evidence · gate.
-- **Roles:** conductor (single writer) dispatches four stateless agents —
-  planner (frame · architect) · developer (build · prove · diagnose · review) ·
-  designer (design) · deployer (ship).
+- **Roles:** conductor (single writer) dispatches five stateless agents —
+  planner (frame · architect) · developer (build · prove · review) ·
+  diagnostician (diagnose) · designer (design) · deployer (ship).
+- **Architecture dialogue:** before a consequential ADR, the planner can return
+  one to three system- or component-level questions. The conductor asks them in
+  the main conversation, records the answers, and redispatches the planner.
 - **Gates:** framed? → architected? → designed? → proven? → reviewed? → clean? →
   shipped? → observed? (conditional gates go `n/a` when they don't apply).
 - **Lifecycle:** Frame → [Architect] → [Design] → Build → Prove → Review →
@@ -26,7 +29,7 @@ One ledger, one law, one conductor + four kind-specific agents.
 ## Layout
 ```
 v5/
-├── agents/      conductor.md + planner · developer · designer · deployer
+├── agents/      conductor.md + planner · developer · diagnostician · designer · deployer
 ├── principles.md                              # operating · build · prove · review · architect
 ├── lib/         record.sh · ledger.sh         # record.sh = the only evidence writer
 ├── gates/       lib.sh + 8 gate predicates
@@ -43,14 +46,14 @@ v5=/Users/suraj-devloper/workspace/codingAgent/v5
 
 bash $v5/lib/ledger.sh product-init
 bash $v5/lib/ledger.sh init my-feature
-# write intent into .coding-agent/my-feature/ledger.md, then:
-bash $v5/lib/ledger.sh freeze intent
+# write intent, including `test-command-<tier>:` entries, then record the reply:
+bash $v5/lib/ledger.sh freeze intent --answer "yes, proceed"
 
 bash $v5/gates/framed.sh          # → pass
 bash $v5/gates/proven.sh          # → block (no test evidence yet)
 bash $v5/lib/record.sh "echo ok" run    # records, but kind=run
 bash $v5/gates/proven.sh          # → still block (hollow proof rejected)
-bash $v5/lib/record.sh "<real test cmd>" test
+bash $v5/lib/record.sh "<frozen test-command-unit>" test unit
 bash $v5/gates/proven.sh          # → pass (bound to current tree)
 ```
 

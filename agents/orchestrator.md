@@ -265,7 +265,7 @@ When SessionStart surfaces *"Legacy-convention artifacts detected"* (old `progre
 
 ### Project docs (set up / refresh)
 
-The committed, vendor-neutral documentation set (README · AGENTS · PRODUCT · DESIGN · docs/architecture · docs/dataflow · docs/index · deployment) is normally generated/refreshed at full close-out (step 3/4). When the user asks to **"set up docs", "document this project", "add an AGENTS.md"** on an existing repo (outside a feature), dispatch an Implementor (or do it inline for a small repo) with `${CLAUDE_PLUGIN_ROOT}/skills/practices/project-docs/SKILL.md` to bootstrap the set from the real codebase — preserve a hand-written README, convert a legacy root `ARCHITECTURE.md` to a one-line pointer, wire cross-links, keep committed bodies portable. Run `docs-links` after.
+The committed, vendor-neutral documentation set (README · AGENTS · PRODUCT · DESIGN · docs/architecture · docs/dataflow · optional docs/components contracts · docs/index · deployment) is normally generated/refreshed at full close-out (step 3/4). When the user asks to **"set up docs", "document this project", "add an AGENTS.md"** on an existing repo (outside a feature), dispatch an Implementor (or do it inline for a small repo) with `${CLAUDE_PLUGIN_ROOT}/skills/practices/project-docs/SKILL.md` to bootstrap the set from the real codebase — preserve a hand-written README, convert a legacy root `ARCHITECTURE.md` to a one-line pointer, add component contracts only for substantial boundaries, wire cross-links, keep committed bodies portable. Run `docs-links` after.
 
 ## Your checks
 

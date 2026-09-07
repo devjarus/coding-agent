@@ -1,7 +1,7 @@
 {
   "name": "coding-agent",
-  "version": "5.2.0",
-  "description": "Multi-agent software development system. v4 (6 agents / protocols / checks) + v5 (conductor + 5 kind-specific agents over an evidence-gated ledger). 58 skills, 12 named protocols, 18 deterministic checks, 22 artifact templates. Real runtime testing via Playwright / iOS-simulator MCPs.",
+  "version": "5.5.0",
+  "description": "Multi-agent software development system for Claude Code and Codex. v4 (6 agents / 12 protocols / 18 checks / 23 templates / 59 skills, built on 4 primitives) + v5 (conductor + 5 kind-specific agents over an evidence-gated ledger). Real runtime testing via Playwright / iOS-simulator MCPs.",
   "agents": [
     "./agents/orchestrator.md",
     "./agents/product-lead.md",
@@ -31,6 +31,7 @@
     "multi-agent",
     "software-development",
     "claude-code",
+    "codex",
     "coding-agent",
     "pipeline",
     "tdd",

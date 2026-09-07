@@ -60,28 +60,47 @@ sha256_file() {
 # Usage: verify_design_verdict <feature_dir> <artifact_file> <verdict_key>
 #   e.g. verify_design_verdict "$DIR" spec.md spec_sha
 # Echoes "" when valid (or when no verdict file exists — legacy chat-approval
-# path), else a human-readable failure reason. Requires jq for parsing; if jq
-# is absent the verdict is treated as legacy (degrade open, like commit-msg).
+# path), else a human-readable failure reason. A present surface verdict is
+# strict: missing parser support, hashes, files, or open-comment metadata fail
+# closed rather than silently downgrading approval.
 verify_design_verdict() {
   local dir="$1" artifact="$2" key="$3"
   local vfile="$dir/design-verdict.json"
   [[ -f "$vfile" ]] || { echo ""; return 0; }
-  command -v jq >/dev/null 2>&1 || { echo ""; return 0; }
-  local verdict recorded actual
-  verdict=$(jq -r '.verdict // empty' "$vfile" 2>/dev/null)
-  if [[ "$verdict" != "approved" ]]; then
-    echo "design-verdict.json says '$verdict' — changes were requested in the review surface, not approved"
+  command -v python3 >/dev/null 2>&1 || {
+    echo "cannot verify design-verdict.json: python3 is required for strict SHA verification"
     return 0
-  fi
-  recorded=$(jq -r ".$key // empty" "$vfile" 2>/dev/null)
-  [[ -z "$recorded" ]] && { echo ""; return 0; }   # artifact didn't exist at verdict time
-  actual=$(sha256_file "$dir/$artifact")
-  [[ -z "$actual" ]] && { echo ""; return 0; }     # no hasher available — degrade open
-  if [[ "$recorded" != "$actual" ]]; then
-    echo "$artifact changed AFTER the sha-bound approval (verdict ${recorded:0:8}, current ${actual:0:8}) — re-run the design review"
-  else
-    echo ""
-  fi
+  }
+  python3 - "$vfile" "$dir/$artifact" "$artifact" "$key" <<'PY'
+import hashlib, json, os, sys
+vfile, path, artifact, key = sys.argv[1:]
+try:
+    with open(vfile, encoding="utf-8") as f:
+        verdict = json.load(f)
+except (OSError, ValueError) as exc:
+    print("cannot parse design-verdict.json: %s" % exc)
+    raise SystemExit(0)
+if verdict.get("verdict") != "approved":
+    print("design-verdict.json says '%s' — changes were requested in the review surface, not approved" % verdict.get("verdict", ""))
+    raise SystemExit(0)
+if verdict.get("comments_open") != 0:
+    print("design-verdict.json is missing a zero-open-comments proof")
+    raise SystemExit(0)
+recorded = verdict.get(key)
+if not isinstance(recorded, str) or len(recorded) != 64:
+    print("design-verdict.json is missing a valid %s for %s" % (key, artifact))
+    raise SystemExit(0)
+if not os.path.isfile(path):
+    print("approved artifact is missing: %s" % artifact)
+    raise SystemExit(0)
+h = hashlib.sha256()
+with open(path, "rb") as f:
+    for chunk in iter(lambda: f.read(65536), b""):
+        h.update(chunk)
+actual = h.hexdigest()
+if recorded != actual:
+    print("%s changed AFTER the sha-bound approval (verdict %s, current %s) — re-run the design review" % (artifact, recorded[:8], actual[:8]))
+PY
 }
 
 # Detect if the project has a UI (web or iOS).

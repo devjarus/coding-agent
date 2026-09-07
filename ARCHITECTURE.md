@@ -1,8 +1,8 @@
 # Architecture
 
-The coding-agent plugin is a multi-agent software-development pipeline (6 agents) built from four primitives. This document maps the primitive relationships, dispatch topology, artifact flow, and gate/check placement. For formal primitive definitions see `docs/concepts/primitives.md`; for the canonical happy-path flow see `docs/concepts/workflow.md`.
+The coding-agent plugin is a dual-runtime multi-agent software-development pipeline built from four primitives. Claude registers the v4 and v5 role definitions directly; Codex enters v5 through `delivery-pipeline` and native subagents. This document maps the primitive relationships, dispatch topology, artifact flow, and gate/check placement. For formal primitive definitions see `docs/concepts/primitives.md`; for the canonical happy-path flow see `docs/concepts/workflow.md`.
 
-> **v5 (as of v5.0.0).** A second architecture ships alongside this one under `v5/`: a single **conductor** (sole writer of an append-only ledger) runs an 8-gate evidence pipeline (`framed? → architected? → designed? → proven? → reviewed? → clean? → shipped? → observed?`) and dispatches four stateless kind-specific agents (planner · developer · designer · deployer). Verification is structural — `record.sh` is the only writer of `evidence.jsonl`, gates read evidence bound to the working-tree sha, and one PreToolUse wall enforces it. Both agent sets are registered in the manifest and coexist; the v4 pipeline below remains the default entry. Canonical design: [`docs/concepts/v5-design.md`](docs/concepts/v5-design.md); promotion status: [`v5/PLAN.md`](v5/PLAN.md).
+> **v5 (current).** A second architecture ships alongside this one under `v5/`: a single **conductor** (sole writer of an append-only ledger) runs an 8-gate evidence pipeline (`framed? → architected? → designed? → proven? → reviewed? → clean? → shipped? → observed?`) and dispatches five stateless role agents (planner · developer · diagnostician · designer · deployer). Architecture includes a discovery dialogue before consequential ADRs. Verification is structural — `record.sh` is the only writer of `evidence.jsonl`, gates read evidence bound to the working-tree sha, and one PreToolUse wall enforces it. Both Claude agent sets coexist; Codex adapts the same v5 roles through the delivery skill. Canonical design: [`docs/concepts/v5-design.md`](docs/concepts/v5-design.md); promotion status: [`v5/PLAN.md`](v5/PLAN.md).
 
 ## High-level topology
 
@@ -269,7 +269,7 @@ coding-agent/
 ├── .mcp.json                            ← 5 MCP servers
 ├── agents/                              ← 6 rewritten prompts (each ~150 lines)
 │   ├── orchestrator.md  product-lead.md  architect.md  implementor.md  evaluator.md  debugger.md
-├── skills/                              ← 58 scoped-knowledge modules
+├── skills/                              ← 59 scoped-knowledge modules (including the Codex delivery entry)
 │   ├── frontend/  backend/  data/  mobile/  infra/  general/  practices/
 ├── protocols/                           ← 12 named workflows (one source of truth each)
 │   ├── intake.md   product-direction.md   research.md   spec-writing.md   plan-writing.md   design-review.md
@@ -283,8 +283,8 @@ coding-agent/
 │   ├── env-vars-present.sh   no-secrets-staged.sh   review-passed.sh
 │   ├── stack-justified.sh   test-infra-declared.sh   tests-actually-committed.sh
 │   ├── docs-current.sh   docs-links.sh   commit-gate.sh
-├── templates/                           ← 22 artifact templates (21 .md stubs + design.template.html)
-│   ├── intent.template.md   product.template.md   spec.template.md   plan.template.md
+├── templates/                           ← 23 artifact templates (22 .md stubs + design.template.html)
+│   ├── intent.template.md   product.template.md   spec.template.md   plan.template.md   component-doc.template.md
 │   ├── work.template.md   review.template.md   diagnosis.template.md
 │   ├── research.template.md   session.template.md   learnings.template.md
 │   ├── deployments.template.md   environments.template.md   open-threads.template.md
@@ -293,10 +293,11 @@ coding-agent/
 ├── scripts/
 │   ├── setup.sh                         ← one-command per-project installer
 │   ├── validate.sh                      ← plugin self-validator
+│   ├── validate-skill-freshness.sh      ← sourced version-guidance expiry gate
 │   └── post-edit-validate.sh
 ├── docs/
-│   └── redesign/                        ← v2 formal design docs
-│       ├── primitives.md  workflow-spec.md  lifecycle.md
+│   └── concepts/                        ← canonical design docs
+│       ├── primitives.md  workflow.md  lifecycle.md  v5-design.md
 ├── CHANGELOG.md
 ├── CLAUDE.md
 ├── README.md

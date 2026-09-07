@@ -94,7 +94,8 @@ Deep expertise in native iOS development with SwiftUI, following Apple Human Int
 
 ## Testing
 
-- XCTest for unit tests; Swift Testing (`@Test`, `#expect`) for iOS 16+
+- XCTest for unit tests; Swift Testing (`@Test`, `#expect`) when the project uses
+  an Xcode 16+/Swift 6-capable toolchain
 - ViewInspector or snapshot testing for SwiftUI views
 - Test state changes, not view hierarchy
 - Mock dependencies via protocol conformance
@@ -117,3 +118,13 @@ Deep expertise in native iOS development with SwiftUI, following Apple Human Int
 4. **Test behavior** — state changes and user interactions, not view structure
 5. **Gate newer APIs** — `#available` with fallbacks for deployment target
 6. **Prefer SwiftUI native** — use UIKit bridging only when SwiftUI can't do it
+
+## Version-sensitive guidance
+
+Verified 2026-09-06 against Apple's SwiftUI navigation, Observation, and Xcode
+requirements documentation. Re-check by 2026-12-05 or before adopting a newer
+SDK/toolchain.
+
+- https://developer.apple.com/documentation/swiftui/migrating-to-new-navigation-types
+- https://developer.apple.com/documentation/swiftui/migrating-from-the-observable-object-protocol-to-the-observable-macro
+- https://developer.apple.com/xcode/system-requirements/

@@ -4,8 +4,8 @@
 # tree sha.
 #
 # Three things give this gate teeth:
-#   1. kind=test — a hollow `record.sh "echo ok"` records as kind=run and
-#      satisfies nothing.
+#   1. kind=test + exact intent command — record.sh rejects a test command that
+#      does not match the frozen `test-command-<tier>:` contract.
 #   2. tree binding — a pass against stale code is rejected, so any later edit
 #      necessarily re-opens the gate.
 #   3. every declared tier — one self-chosen green command cannot stand in for
@@ -33,10 +33,15 @@ fi
 
 cur="$(ca_tree_sha)"
 missing=""
+missing_commands=""
 while IFS= read -r t; do
   [ -n "$t" ] || continue
+  [ -n "$(declared_test_command "$t")" ] || missing_commands="$missing_commands $t"
   evidence_match_tier test "$t" "$cur" >/dev/null || missing="$missing $t"
 done <<< "$tiers"
+
+[ -z "$missing_commands" ] \
+  || gate_result block "intent has no test-command-<tier> contract for tier(s):$missing_commands — revise and re-freeze"
 
 [ -z "$missing" ] \
   && gate_result pass "all declared tiers green at current tree (${cur:0:8}): $(echo "$tiers" | tr '\n' ' ')" \

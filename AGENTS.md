@@ -4,25 +4,28 @@ This file tells agents (and humans) how to work on the coding-agent plugin itsel
 
 ## What This Is
 
-A Claude Code plugin: 6 agents + 58 skills + 12 named protocols + 18 deterministic checks + 22 artifact templates + 5 MCP servers. All Markdown + Bash (plus a stdlib-Python localhost server for the design-review surface). No build step.
+A Claude Code and Codex plugin: 6 agents + 59 skills + 12 named protocols + 18 deterministic checks + 23 artifact templates + 5 MCP servers. Codex enters the v5 multi-agent runtime through the `delivery-pipeline` skill. All Markdown + Bash (plus a stdlib-Python localhost server for the design-review surface). No build step.
 
 ## Project Structure (v2)
 
 ```
 coding-agent/
+├── .agents/plugins/marketplace.json # repo-local Codex marketplace entry
 ├── .claude-plugin/plugin.json    # plugin manifest
+├── .codex-plugin/plugin.json     # Codex local-plugin manifest
 ├── .mcp.json                     # MCP server config
 ├── agents/                       # 6 agent prompts (each ≤300 lines, references protocols)
 │   ├── orchestrator.md   product-lead.md   architect.md   implementor.md   evaluator.md   debugger.md
-├── skills/                       # 58 skill folders, each with SKILL.md
+├── skills/                       # 59 skill folders, each with SKILL.md
 │   ├── frontend/   backend/   data/   mobile/   infra/
 │   ├── general/   practices/    # practices includes prototype-first (disposable mock-app mode)
+│   └── freshness.json            # verification dates + upstream sources for version-sensitive skills
 ├── protocols/                    # 12 named multi-actor workflows
 │   ├── intake.md   product-direction.md   research.md   spec-writing.md   plan-writing.md
 │   ├── design-review.md          # browser review surface: comment batches + sha-bound verdict gate
 │   ├── implementation.md   review.md   fix-round.md
 │   ├── close-out.md   redirect.md   recovery.md
-├── checks/                       # 17 deterministic verification scripts
+├── checks/                       # 18 deterministic verification scripts
 │   ├── lib.sh                    # shared helpers (sourced)
 │   ├── intent-approved.sh    spec-approved.sh    plan-approved.sh
 │   ├── ui-evidence.sh   no-raw-print.sh   close-out-complete.sh
@@ -32,10 +35,10 @@ coding-agent/
 │   ├── docs-current.sh          # close-out: README is real, not framework scaffold
 │   ├── docs-links.sh            # close-out: committed doc set present, cross-links resolve, no plugin-runtime/secret leakage
 │   ├── commit-gate.sh            # composite: review-passed→tests-committed→no-secrets→last-verify
-├── templates/                    # 22 artifact templates (21 .md + 1 .html)
+├── templates/                    # 23 artifact templates (22 .md + 1 .html)
 │   ├── intent.template.md   product.template.md   spec.template.md   plan.template.md
 │   ├── # committed vendor-neutral doc set (any agent): readme/agents/product-doc/design-doc/
-│   ├── #   architecture/dataflow/docs-index/deployment-doc .template.md
+│   ├── #   architecture/component-doc/dataflow/docs-index/deployment-doc .template.md
 │   ├── work.template.md   review.template.md   diagnosis.template.md
 │   ├── research.template.md   session.template.md   learnings.template.md
 │   ├── deployments.template.md   environments.template.md   open-threads.template.md
@@ -43,6 +46,7 @@ coding-agent/
 ├── hooks/hooks.json              # SessionStart context-inject + PreCompact breadcrumb + SubagentStart logging + PostToolUse validation
 ├── scripts/
 │   ├── validate.sh               # plugin self-validator
+│   ├── validate-skill-freshness.sh # expiry/source checks for version-sensitive skills
 │   ├── post-edit-validate.sh     # called by PostToolUse hook
 │   ├── session-start-context.sh  # SessionStart hook — injects resume state (CURRENT, open-threads, action-log)
 │   ├── pre-compact-checkpoint.sh # PreCompact hook — durable compaction breadcrumb to agent-log.txt
@@ -66,7 +70,7 @@ coding-agent/
 Run every time you edit an agent, skill, protocol, check, or doc:
 
 1. **Run the validator** — `./scripts/validate.sh`. Must report PASSED before you commit (it lints protocol/check existence, frontmatter schema, and inventory counts).
-   - **On inventory drift, the directory count wins.** Copy the validator's counts into the AGENTS.md "Project Structure" inventory line, then mirror them into `.claude-plugin/plugin.json` `description`, `.claude-plugin/marketplace.json`, and `ARCHITECTURE.md` / `docs/README.md` if they cite counts. Re-run until PASSED.
+   - **On inventory drift, the directory count wins.** Copy the validator's counts into the AGENTS.md "Project Structure" inventory line, then mirror them into `.claude-plugin/plugin.json` `description`, `.codex-plugin/plugin.json`, the marketplace manifests, and `ARCHITECTURE.md` / `docs/README.md` if they cite counts. Re-run until PASSED.
 
 2. **If you added a skill**: add to the implementor's domain routing (if domain-specific) and to the agent frontmatter `skills:` list (if preloaded). The skill *count* is derived by the validator — don't hand-maintain it anywhere.
 
@@ -82,7 +86,7 @@ Run every time you edit an agent, skill, protocol, check, or doc:
 6. **Update CHANGELOG.md + bump the version** (skip only for typos/pure-doc tweaks). This is not optional and not user-prompted — do it as part of the change, before committing:
    - **Semver** (see [Versioning](#versioning-semver)): patch = doc/typo; minor = new skill / protocol / check / agent instruction; major = primitive change or agent added/removed.
    - Prepend a dated entry to `CHANGELOG.md` (Added / Changed / Fixed) covering the change.
-   - Set the new version in `.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`, then re-run the validator.
+   - Set the new version in `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, and any manifest text that surfaces the released version, then re-run the validator.
 
 7. **Commit**:
    - One logical change per commit; subject mentions the affected agent/skill/protocol/check (`type(scope): subject`), or `release: vX.Y.Z — summary` when the version bumped.
@@ -133,6 +137,9 @@ Then update CLAUDE.md routing tables and run validate.sh.
 - `SKILL.md` at root, optional `scripts/`, `rules/`
 - ≤500 lines in `SKILL.md` (push detail to `rules/`)
 - `description` ≤250 chars
+- Version-sensitive guidance: add a `## Version-sensitive guidance` section and
+  a sourced entry in `skills/freshness.json`; verify with Context7/Exa and set a
+  concrete `recheck_by` date. The validator fails after that date.
 
 ### Commits
 - One feature/fix per commit
