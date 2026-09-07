@@ -3,7 +3,7 @@
 #
 #   evals/compare.sh <results-dir-A> <results-dir-B>
 #
-# Use it to compare before/after a prompt change, or v4 vs v5 runs of the same
+# Use it to compare before/after a prompt or runtime change on the same
 # scenarios. A "results dir" is one evals/results/<timestamp>/ directory.
 set -uo pipefail
 A="${1:?usage: compare.sh <results-dir-A> <results-dir-B>}"

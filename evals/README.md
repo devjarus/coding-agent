@@ -1,20 +1,20 @@
 # evals — the plugin's test-and-iterate harness
 
-Scenario prompts + deterministic assertion scripts for evaluating the plugin
-(v5-first). The loop this exists for:
+Scenario prompts + deterministic assertion scripts for evaluating the canonical
+runtime. The loop this exists for:
 
 ```
 run evals → read the report → fix a prompt / gate / script → run again → compare
 ```
 
-Same philosophy as the v5 gates: **assertions judge artifacts** (ledger,
+Same philosophy as the runtime gates: **assertions judge artifacts** (ledger,
 `evidence.jsonl`, git state, working code), never the model's prose. A scenario
 passes when the on-disk reality is right.
 
 ## Quick start
 
 ```bash
-# zero-cost machinery check (no model, ~2s) — run this after ANY v5 script edit
+# zero-cost machinery check (no model, ~2s) — run after any runtime script edit
 evals/run.sh 00-smoke
 
 # one full scenario, headless (needs the `claude` CLI; runs in a scratch repo)
@@ -26,7 +26,7 @@ evals/run.sh all
 # you drive an interactive session instead of headless -p
 evals/run.sh 05-design-gate --manual
 
-# compare two runs (before/after a prompt change, or v4 vs v5)
+# compare two runs before and after a prompt or runtime change
 evals/compare.sh evals/results/<A> evals/results/<B>
 ```
 
@@ -34,6 +34,10 @@ Headless sessions run `claude -p` with `--permission-mode bypassPermissions`
 **inside a scratch repo under `evals/results/`** — never point the harness at a
 real project. Scratch projects are deleted on pass, kept on fail (`--keep` to
 always keep).
+
+Authentication, quota, or API failures are reported as `verdict: ERROR` before
+artifact assertions run. They are runner-infrastructure failures, not plugin
+regressions.
 
 ## The scenarios
 
@@ -65,7 +69,7 @@ scenarios/<name>/
 ```
 
 `assert.sh` sources `evals/lib.sh` for helpers: `ev_assert` / `ev_assert_not`,
-`ev_gate <name>` (runs a real v5 gate), `ev_evidence_has <kind> <exit> [tree]`,
+`ev_gate <name>` (runs a real gate), `ev_evidence_has <kind> <exit> [tree]`,
 `ev_tree_sha`, `ev_ledger_order <before> <after>`, `ev_evidence_wellformed`,
 `ev_summary`.
 
@@ -83,7 +87,7 @@ scenarios/<name>/
 
 ## Interpreting failures
 
-- **00 fails** → the machinery broke; fix `v5/gates|lib` before anything else.
+- **00 fails** → the machinery broke; fix `gates/` or `lib/` before anything else.
 - **01/02/04/06 fail** → the conductor loop or an agent contract drifted; read
   `report.json` `checks[]`, find the artifact that's wrong, fix the prompt or
   gate, re-run.
@@ -92,4 +96,4 @@ scenarios/<name>/
   failures the whole design exists to prevent.
 
 Results are gitignored; keep interesting failures around with `--keep` and
-reference them in `v5/design-vet.md` or the CHANGELOG when they drive a fix.
+reference the relevant assertion in the changelog when it drives a fix.

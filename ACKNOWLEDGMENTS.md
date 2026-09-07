@@ -34,10 +34,14 @@ Specific skills studied: `docx`, `xlsx`, `skill-creator`, `pdf`.
 
 The pipeline architecture is directly inspired by Anthropic's research on building effective agents:
 
-- **Generator-evaluator separation** — the evaluator is a different agent from the implementor to prevent self-evaluation bias
-- **Sprint contracts** — evaluation criteria written before implementation (architect writes "what PASS looks like" before coding starts)
-- **File-based handoffs** — structured artifacts between agents (`spec.md`, `plan.md`, `review.md`, `diagnosis.md`)
-- **Prompt expansion** — the architect expands "build me a chat app" into 100+ line specs
+- **Generator-reviewer separation** — implementation and review use separate,
+  scoped worker dispatches so a builder does not approve its own change
+- **Executable delivery contracts** — verification tiers and exact commands are
+  frozen before implementation, then checked against recorded evidence
+- **File-based handoffs** — durable ledger, evidence, review, and design artifacts
+  let a fresh session reconstruct delivery state
+- **Prompt expansion** — the planner turns a short request into explicit intent,
+  architecture choices, acceptance criteria, and a bounded plan
 - **Tool use and MCP integration patterns**
 
 Reference: [Building Effective Agents](https://www.anthropic.com/research/building-effective-agents)

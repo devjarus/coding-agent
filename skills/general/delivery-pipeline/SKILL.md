@@ -1,15 +1,15 @@
 ---
 name: delivery-pipeline
-description: Run coding-agent's evidence-gated v5 workflow in Codex, with the main task as conductor and Codex subagents as planner, developer, diagnostician, designer, or deployer. Use when the user asks to use coding-agent or its multi-agent pipeline.
+description: Run coding-agent's canonical evidence-gated workflow in Codex, with the main task as conductor and bounded planner, developer, diagnostician, designer, and deployer subagents.
 metadata:
-  scope: orchestrator
+  scope: conductor
   trigger: on-invoke
   category: protocol-helper
 ---
 
 # Delivery Pipeline
 
-Run the existing v5 runtime through Codex subagents. Keep the main task focused
+Run the runtime through Codex subagents. Keep the main task focused
 on state, user decisions, and gate transitions; delegate bounded worker moves.
 
 ## Resolve the plugin root
@@ -22,8 +22,8 @@ path before executing it; do not rely on a Codex environment variable.
 
 Before a change workflow, read these files completely:
 
-- `${CLAUDE_PLUGIN_ROOT}/v5/agents/conductor.md`
-- `${CLAUDE_PLUGIN_ROOT}/v5/principles.md`
+- `${CLAUDE_PLUGIN_ROOT}/agents/conductor.md`
+- `${CLAUDE_PLUGIN_ROOT}/principles.md`
 
 ## Adapt the runtime to Codex
 
@@ -46,13 +46,13 @@ pipeline.
 1. Read the consumer project's `AGENTS.md` and inspect git state. Preserve all
    pre-existing work.
 2. Ensure `.coding-agent/` is ignored before creating coordinator state.
-3. If `.coding-agent/CURRENT` identifies an active v5 ledger, resume it. Read the
+3. If `.coding-agent/CURRENT` identifies an active feature ledger, resume it. Read the
    ledger tail and evidence file; do not initialize competing state.
 4. Otherwise initialize product and feature state with the absolute scripts:
 
    ```bash
-   bash "${CLAUDE_PLUGIN_ROOT}/v5/lib/ledger.sh" product-init
-   bash "${CLAUDE_PLUGIN_ROOT}/v5/lib/ledger.sh" init <feature-slug>
+   bash "${CLAUDE_PLUGIN_ROOT}/lib/ledger.sh" product-init
+   bash "${CLAUDE_PLUGIN_ROOT}/lib/ledger.sh" init <feature-slug>
    ```
 
 5. The main task becomes the conductor and sole writer of the ledger and
@@ -66,18 +66,18 @@ Run the first applicable gate that has not passed, in this order:
 framed -> architected -> designed -> proven -> reviewed -> clean -> shipped -> observed
 ```
 
-Use `${CLAUDE_PLUGIN_ROOT}/v5/gates/<gate>.sh`. Treat `n/a` as conditional.
+Use `${CLAUDE_PLUGIN_ROOT}/gates/<gate>.sh`. Treat `n/a` as conditional.
 Judge transitions from gate output and `evidence.jsonl`, never from worker prose.
 
 When a gate needs work, dispatch the matching role:
 
 | Kind | Worker reads |
 |---|---|
-| `frame`, `architect` | `${CLAUDE_PLUGIN_ROOT}/v5/agents/planner.md` |
-| `build`, `prove`, `review` | `${CLAUDE_PLUGIN_ROOT}/v5/agents/developer.md` |
-| `diagnose` | `${CLAUDE_PLUGIN_ROOT}/v5/agents/diagnostician.md` |
-| `design` | `${CLAUDE_PLUGIN_ROOT}/v5/agents/designer.md` |
-| `ship`, `rollback` | `${CLAUDE_PLUGIN_ROOT}/v5/agents/deployer.md` |
+| `frame`, `architect` | `${CLAUDE_PLUGIN_ROOT}/agents/planner.md` |
+| `build`, `prove`, `review` | `${CLAUDE_PLUGIN_ROOT}/agents/developer.md` |
+| `diagnose` | `${CLAUDE_PLUGIN_ROOT}/agents/diagnostician.md` |
+| `design` | `${CLAUDE_PLUGIN_ROOT}/agents/designer.md` |
+| `ship`, `rollback` | `${CLAUDE_PLUGIN_ROOT}/agents/deployer.md` |
 
 Each dispatch brief must include the resolved plugin root, kind, gate, feature
 slug, exact file scope, its pre-dispatch path snapshot, the smallest relevant
@@ -87,7 +87,7 @@ ledger/product slice, and relevant packaged skill names. Tell the worker to:
 - treat `${CLAUDE_PLUGIN_ROOT}` as the resolved absolute root;
 - avoid nested delegation;
 - never write the ledger or `product.md`;
-- record verification only through `v5/lib/record.sh`;
+- record verification only through `lib/record.sh`;
 - return the role file's structured contract, including `changed_paths`, skips,
   and assumptions.
 
@@ -108,7 +108,7 @@ alone writes `review.md`; sibling agents never append to the same file.
 - Record every verification command through:
 
   ```bash
-  bash "${CLAUDE_PLUGIN_ROOT}/v5/lib/record.sh" "<command>" <kind> [tier]
+  bash "${CLAUDE_PLUGIN_ROOT}/lib/record.sh" "<command>" <kind> [tier]
   ```
 
 - For `kind=test`, use the exact `test-command-<tier>:` value in the frozen

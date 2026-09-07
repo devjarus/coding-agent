@@ -166,9 +166,12 @@ transition: all 150ms ease-out;
 - **Every section has an icon.** Use icons sparingly for clarity, not decoration.
 - **Default shadows on everything.** Shadow = elevation. Only elevated things get shadows.
 
-## Shadcn verification via data-attrs (for HTML-inspection evaluators)
+## Shadcn verification via data-attrs
 
-When the evaluator has to fall back to HTML inspection (no Playwright), shadcn components provide stable data-attributes that make presence-verification reliable without a browser. Useful when you need to prove "the Sidebar primitive is actually rendered" from `curl` output alone.
+When a verification dispatch has to fall back to HTML inspection (no
+Playwright), shadcn components provide stable data attributes for checking that
+a primitive is actually rendered. Record the limitation explicitly: HTML
+presence is weaker than live interaction evidence.
 
 Common data-attributes to grep for:
 

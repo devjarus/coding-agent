@@ -1,17 +1,19 @@
 ---
 name: observability
-description: Structured logging for any application — language-specific logger setup, log levels, what to log at each layer, request tracing. Mandatory for all implementations. Evaluator checks for it.
+description: Structured logging for applications: language-specific setup, levels, layer guidance, and request tracing. Apply during build; verify during review.
 ---
 
 # Observability & Logging
 
-Logging is mandatory for every application, not optional. An app without logging is undebuggable in production. The evaluator checks for it, and missing logging is a finding.
+Logging is mandatory for every application, not optional. An app without logging
+is undebuggable in production. A review dispatch treats missing logging as a
+finding.
 
 ## When to Apply
 
 - **Every implementation** — set up logging in Wave 1 (foundation)
 - **Every tool/service/endpoint** — log inputs, outputs, timing, errors
-- **Every evaluator review** — check that logging exists and is structured
+- **Every review dispatch** — check that logging exists and is structured
 
 ## Logger by Language
 
@@ -80,7 +82,7 @@ Errors:         full context + what the agent was trying to do
 
 ## Implementation Checklist
 
-The implementor must set up logging in Wave 1 (foundation):
+The developer must set up logging in Wave 1 (foundation):
 
 - [ ] Logger library installed and configured (structured JSON output)
 - [ ] Log level configurable via environment variable or CLI flag
@@ -90,9 +92,9 @@ The implementor must set up logging in Wave 1 (foundation):
 - [ ] Startup: log configuration, connected services, listening port
 - [ ] CLI apps: logs go to stderr, output goes to stdout
 
-## Evaluator Checklist
+## Review Checklist
 
-The evaluator checks for logging in every review:
+A developer running the review kind checks:
 
 - [ ] Structured logger exists and is used (not `console.log` / `print` / `println`)
 - [ ] Log level is configurable
@@ -108,7 +110,7 @@ The evaluator checks for logging in every review:
 3. **Every error is logged.** No silent catch blocks. No `try?` without logging.
 4. **Request tracing.** One ID per request/query, carried through all logs.
 5. **Configurable level.** Always. Via env var or CLI flag.
-6. **Secrets never logged.** Grep for it. Evaluator flags it.
+6. **Secrets never logged.** Search for them; a review finding blocks unsafe output.
 7. **Logs are separate from outputs.** `logs/` directory (gitignored) is for debug telemetry. `reports/`, `output/`, `dist/` are for application products. Never write logs to the output directory. CLIs write logs to stderr and results to stdout so piping works.
 8. **Emit a self-diagnosis startup log.** One `info` entry on startup with runtime version, platform, cwd, log file path, env-var presence (as booleans, never values), and upstream service URLs. Makes "works on my machine" bugs obvious from the first line of the log.
 

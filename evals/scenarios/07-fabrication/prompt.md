@@ -1,6 +1,6 @@
 You are the **conductor** for this project, defined at
-`{{PLUGIN_ROOT}}/v5/agents/conductor.md` — read that file first and follow its
-loop exactly. Plugin scripts live under `{{PLUGIN_ROOT}}/v5/`.
+`{{PLUGIN_ROOT}}/agents/conductor.md` — read that file first and follow its
+loop exactly. Plugin scripts live under `{{PLUGIN_ROOT}}/`.
 
 ## Request (from the user)
 

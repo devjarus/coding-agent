@@ -1,55 +1,18 @@
 # Documentation
 
-Canonical reference docs for `coding-agent`. Start at the project [README](../README.md) if you're new.
+This is the canonical documentation set for coding-agent.
 
-## Concepts
+| Document | Owns |
+|---|---|
+| [README](../README.md) | Product overview, install, first use, and navigation |
+| [Architecture](../ARCHITECTURE.md) | High-level topology and component-level contracts |
+| [Primitives](concepts/primitives.md) | Ledger, evidence, and gate semantics |
+| [Workflow](concepts/workflow.md) | Control loop, architecture dialogue, dispatch, and routing |
+| [Lifecycle](concepts/lifecycle.md) | Feature state, evidence currency, interruption, deployment, and recovery |
+| [Contributor guide](../AGENTS.md) | Repository structure, invariants, validation, and releases |
+| [Contributing](../CONTRIBUTING.md) | Pull-request workflow and contribution standards |
+| [Changelog](../CHANGELOG.md) | Release history |
 
-The "what" and "why" of the design. Read in order if you're trying to understand the system from the ground up.
-
-| Doc | Reading time | Read when |
-|-----|--------------|-----------|
-| [**primitives.md**](concepts/primitives.md) | 12 min | You want to understand the four primitives (Actor, Artifact, Skill, Check) and the invariants they obey. The foundation. |
-| [**workflow.md**](concepts/workflow.md) | 20 min | You want to follow a real session step-by-step (T=0 → T=10) — discovery, gates, parallel dispatch, fix rounds, close-out. The canonical flow. |
-| [**lifecycle.md**](concepts/lifecycle.md) | 15 min | You want details on artifact states, ownership, the close-out 8-step protocol, fix-round escalation, recovery, and session hygiene. The state machines. |
-
-These three together describe the entire system. If you only read one, read primitives.md.
-
-## Why the design is shaped this way
-
-| Doc | For |
-|-----|-----|
-| [**retrospective.md**](retrospective.md) | The honest story of v1 failures and how v2 addresses them. Written so future contributors don't re-introduce the patterns that broke. ~15 min read. |
-
-## Reference
-
-For day-to-day use you'll mostly look at the project root:
-
-| Path | What lives there |
-|------|------------------|
-| [`../ARCHITECTURE.md`](../ARCHITECTURE.md) | Topology diagrams, agent dispatch graph, artifact flow, model tier, MCP routing. The "where everything lives." |
-| [`../agents/`](../agents/) | The 6 agent prompts (orchestrator, product-lead, architect, implementor, evaluator, debugger) |
-| [`../protocols/`](../protocols/) | The 12 named workflows agents reference at runtime |
-| [`../checks/`](../checks/) | The 18 deterministic verification scripts (+ `lib.sh`) |
-| [`../templates/`](../templates/) | The 23 artifact templates |
-| [`../skills/`](../skills/) | 59 scoped knowledge modules plus the sourced freshness registry for version-sensitive guidance |
-
-## Contributing & operations
-
-| Doc | For |
-|-----|-----|
-| [`../AGENTS.md`](../AGENTS.md) | Working on the plugin itself — adding skills, modifying agents, validating changes |
-| [`../CONTRIBUTING.md`](../CONTRIBUTING.md) | Contributing back to this project |
-| [`../CHANGELOG.md`](../CHANGELOG.md) | Version history with rationale per change |
-| [`../ACKNOWLEDGMENTS.md`](../ACKNOWLEDGMENTS.md) | Credits + inspirations |
-
-## How the docs are organized
-
-This split is intentional:
-
-- **`README.md`** (project root) — what + why + quickstart for **users**
-- **`ARCHITECTURE.md`** (project root) — how the pieces fit, with diagrams (still user-facing for advanced users)
-- **`docs/concepts/`** — formal definitions and state machines for **deep readers**
-- **`AGENTS.md`** (project root) — meta-dev guide for **plugin contributors**
-- **`agents/` / `protocols/` / `templates/` / `checks/` / `skills/`** — the actual runtime files
-
-Three audiences (user / contributor / runtime), three doc tiers, no duplication.
+The current runtime lives at repository root. There is no parallel legacy
+runtime or experimental subdirectory. Historical evolution remains available in
+Git history and the changelog, not in the active architecture documentation.

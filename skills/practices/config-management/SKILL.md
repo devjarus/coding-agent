@@ -113,7 +113,7 @@ Wave 1 (foundation) should set up:
 - [ ] Services accept dependencies via constructor, not import
 - [ ] Config subset injection — services get only the config they need
 
-## Evaluator Checklist
+## Review Checklist
 
 - [ ] No direct env var access outside config module
 - [ ] Config validated at startup (fails loudly on missing required values)

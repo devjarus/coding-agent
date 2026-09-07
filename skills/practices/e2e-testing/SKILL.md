@@ -95,5 +95,5 @@ Catch unhandled exceptions and React warnings during a flow.
 |-------|---------------|
 | Frontend Lead | Testing flows, assertions, screenshots |
 | Frontend Specialists | Verify their component works in browser |
-| Reviewer | Verify spec compliance visually, network contract validation, console-error checks |
+| Developer (`review` kind) | Verify intent compliance visually, network contracts, and console errors |
 | Debugger utility | Console errors, network inspection |

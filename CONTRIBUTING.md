@@ -1,123 +1,100 @@
 # Contributing to coding-agent
 
-Thanks for your interest in improving the plugin. This project has been shaped by real-world use — every fix comes from a bug we actually hit. Your contributions should follow the same principle: **if you can't point to a real failure, don't add it.**
+Thanks for improving the plugin. Changes should address an observed failure,
+make an invariant executable, or add scoped knowledge that materially improves a
+worker decision.
 
-## Ways to Contribute
+## Before you start
 
-- **Bug reports** — open an issue describing what you ran, what happened, what you expected
-- **New skills** — specialist knowledge for a domain/framework not yet covered
-- **Agent prompt improvements** — if you see an agent skipping instructions, propose a shorter/clearer prompt
-- **New MCP integrations** — additional tools for research, testing, or deployment
-- **Retrospectives** — real-world usage reports in `docs/` help shape the next iteration
+1. Read [README.md](README.md), [ARCHITECTURE.md](ARCHITECTURE.md), and
+   [AGENTS.md](AGENTS.md).
+2. Inspect the relevant role, gate, library, hook, or skill rather than assuming
+   its contract from a release note.
+3. Open an issue before a major primitive, agent-set, or artifact-format change.
 
-## Before You Start
-
-1. **Read the architecture** — `README.md` + `AGENTS.md` + the actual agent prompts in `agents/*.md`
-2. **Check existing issues** — someone may have proposed the same thing
-3. **For large changes** — open an issue first to discuss the approach
-
-## Development Setup
-
-No build step. Clone, edit, test.
+## Development setup
 
 ```bash
 git clone https://github.com/devjarus/coding-agent
 cd coding-agent
-
-# Point Claude Code at your local copy
-claude --plugin-dir $(pwd)
+claude --plugin-dir "$(pwd)"
 ```
 
-## Testing Your Changes
+No build step is required.
 
-The real test is running the plugin on a project. There's a test suite at `~/workspace/test-agents/` with canonical scenarios:
+## What to contribute
 
-- **W1** — greenfield backend (Todo API)
-- **W2** — fullstack with parallel dispatch (Blog dashboard)
-- **W3** — brownfield (add features to W2)
-- **W4** — session recovery
+- Reproducible agent or gate defects
+- Clearer, shorter role instructions
+- Deterministic assertions for previously prose-only claims
+- Engineering skills with a defined trigger and bounded scope
+- MCP integrations that support research, testing, design review, or deployment
+- Scenario evals derived from real failures
+- Documentation corrections grounded in the current runtime
 
-For a new skill, pick a test project that exercises it. For agent prompt changes, run the full pipeline end-to-end and verify the agent-log shows the correct dispatch sequence.
+## Validation
 
-### Running `validate.sh`
+Run before opening a pull request:
 
 ```bash
 ./scripts/validate.sh
+evals/run.sh 00-smoke
 ```
 
-Checks:
-- All agent frontmatter is valid
-- All skill SKILL.md files have required fields
-- Required model values are one of: `opus`, `sonnet`, `haiku`, `inherit`
+For broader runtime changes, also run `evals/run.sh all`. For version-sensitive
+skills, update and validate `skills/freshness.json`.
 
-## Pull Request Process
+## Agent changes
 
-1. **Fork** the repo
-2. **Branch** — `feat/skill-name` or `fix/agent-issue` or `docs/topic`
-3. **Commit** — one logical change per commit, clear message
-4. **Test** — run on at least one real project
-5. **PR description** — include:
-   - What failure case this addresses (or what new capability it adds)
-   - What you tested on
-   - Any trade-offs considered
+- Keep a worker stateless and bounded to its dispatch.
+- Preserve the structured return contract.
+- Do not give workers ledger/product write access or nested delegation.
+- Keep user questions and approvals in the conductor’s conversation.
+- Add a smoke assertion when the instruction protects a load-bearing behavior.
 
-## Contribution Guidelines
+## Gate and library changes
 
-### Adding a New Skill
+- Gates observe and return one JSON verdict; they do not repair state.
+- Execution claims must remain bound to current evidence.
+- `record.sh` remains the only evidence writer.
+- Test evidence remains pinned to the frozen intent’s exact tier command.
+- Shell scripts use `set -uo pipefail` and pass `bash -n`.
 
-Follow Anthropic's skill pattern:
+## Skill changes
 
-```
+Use the standard shape:
+
+```text
 skills/<category>/<skill-name>/
-├── SKILL.md              # entry point (required)
-├── rules/                # optional: progressive disclosure
-│   └── detail.md
-└── scripts/              # optional: bundled executables
-    └── helper.sh
+├── SKILL.md
+├── rules/       optional
+└── scripts/     optional
 ```
 
-Rules:
-- `SKILL.md` frontmatter must include `name` and `description`
-- Description is under 250 characters and front-loads the key use case
-- Keep `SKILL.md` under 500 lines — move detail to `rules/`
-- Reference scripts via `${CLAUDE_SKILL_DIR}/scripts/name.sh` inside SKILL.md
+Descriptions should state when the skill applies in fewer than 250 characters.
+Keep the entry file below 500 lines, move detail to rules, and cite primary
+sources for version-sensitive guidance.
 
-### Modifying Agent Prompts
+## Pull requests
 
-- **Keep it short** — agents skip instructions in long prompts. Aim for under 800 words per agent.
-- **Structure first** — tables for decision trees, numbered steps for processes
-- **Be explicit** — show exact Agent tool call syntax, exact script paths
-- **One change at a time** — don't rewrite the whole prompt in one PR
+Include:
 
-### Code Style
+- the observed failure or capability gap;
+- the design choice and important trade-offs;
+- commands and scenarios run;
+- screenshots for design-surface changes;
+- any remaining risk or untested environment.
 
-- Markdown: GitHub-flavored, ATX-style headers (`#`, not underlines)
-- Shell scripts: `set -uo pipefail`, comments for non-obvious logic
-- JSON: 2-space indent
+Use one logical commit per change and follow the version/changelog rules in
+[AGENTS.md](AGENTS.md). If outside work inspired a skill, update
+[ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md).
 
-## Skills Inspired by Other Sources
+## Bug reports
 
-Many skills in this plugin are inspired by or derived from patterns in public skill repositories. When adding a skill that's based on someone else's work:
-
-1. **Credit the source** in `ACKNOWLEDGMENTS.md`
-2. **Don't copy-paste** — rewrite in our plugin's voice and structure
-3. **Add our own angle** — link it to our agents and pipeline
-
-## Reporting Bugs
-
-Good bug reports include:
-
-- **The exact prompt** you gave the plugin
-- **The agent-log** showing what was dispatched
-- **The artifacts** produced (`.coding-agent/` contents)
-- **What you expected** vs what happened
-
-Agent misbehavior bugs should include the relevant agent prompt and which step was skipped.
-
-## Questions
-
-Open a [Discussion](https://github.com/devjarus/coding-agent/discussions).
+Provide the exact prompt, plugin version, active role/kind, relevant ledger and
+evidence excerpts with secrets removed, expected behavior, actual behavior, and
+the smallest reproduction you can share.
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
+Contributions are licensed under the repository’s [MIT License](LICENSE).

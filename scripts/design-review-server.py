@@ -11,7 +11,7 @@ output into the feature directory:
 
 Endpoints:
   GET  /                      → the review app (scripts/design-review.html)
-  GET  /artifact/<name>       → spec.md | plan.md | design.html from the feature dir
+  GET  /artifact/<name>       → ledger.md | design.html from the feature dir
   GET  /meta                  → feature slug, round, per-artifact sha256 (short)
   GET  /comments              → current design-comments.json (resume support)
   POST /comments              → write design-comments.json
@@ -32,11 +32,11 @@ import sys
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-ARTIFACTS = ("spec.md", "plan.md", "design.html")
+ARTIFACTS = ("ledger.md", "design.html")
 
 
 # ── server-side markdown → HTML (no external deps, fully offline) ────────
-# A compact, DEFENSIVE renderer for the constructs spec.md / plan.md actually
+# A compact, DEFENSIVE renderer for the constructs ledger.md actually
 # use: frontmatter strip, ATX headings, fenced code (incl. ASCII diagrams),
 # pipe tables, lists, blockquote, hr, and inline bold/code/links. Anything it
 # doesn't recognize falls through as a paragraph — it never throws on input.
@@ -168,7 +168,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
         except (OSError, ValueError):
             return []
 
-    def log_message(self, fmt, *args):  # quiet — orchestrator reads files, not logs
+    def log_message(self, fmt, *args):  # quiet — conductor reads files, not logs
         pass
 
     # ── GET ──────────────────────────────────────────────────────────
@@ -262,8 +262,7 @@ class ReviewHandler(BaseHTTPRequestHandler):
                 "comments_open": len(open_comments),
                 # authoritative server-side hashes of the bytes on disk NOW —
                 # the approval is bound to exactly these artifact versions
-                "spec_sha": sha256_file(os.path.join(self.feature_dir, "spec.md")),
-                "plan_sha": sha256_file(os.path.join(self.feature_dir, "plan.md")),
+                "ledger_sha": sha256_file(os.path.join(self.feature_dir, "ledger.md")),
                 "design_sha": sha256_file(os.path.join(self.feature_dir, "design.html")),
             }
             self._write_json("design-verdict.json", record)

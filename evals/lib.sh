@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Shared helpers for the eval harness. Sourced by run.sh and every assert.sh.
-# Philosophy mirrors the v5 gates: judge ARTIFACTS (ledger, evidence.jsonl, git
+# Philosophy mirrors the runtime gates: judge ARTIFACTS (ledger, evidence.jsonl, git
 # state), never the model's prose. Every assertion emits one JSON line.
 set -uo pipefail
 
@@ -47,23 +47,23 @@ ev_ledger()   { ls "$EV_PROJECT_DIR"/.coding-agent/*/ledger.md 2>/dev/null | hea
 ev_evidence() { ls "$EV_PROJECT_DIR"/.coding-agent/*/evidence.jsonl 2>/dev/null | head -1; }
 ev_product()  { echo "$EV_PROJECT_DIR/.coding-agent/product.md"; }
 # CURRENT is a stack (one slug per line); the ACTIVE feature is the last line.
-# Mirrors ca_current() in v5/gates/lib.sh — keep the two in step.
+# Mirrors ca_current() in gates/lib.sh — keep the two in step.
 ev_current()  { grep -v '^[[:space:]]*$' "$EV_PROJECT_DIR/.coding-agent/CURRENT" 2>/dev/null | tail -1 | tr -d '[:space:]'; }
 
-# ev_gate <name> — run a v5 gate in the project, echo its status word.
+# ev_gate <name> — run a gate in the project, echo its status word.
 # NB: a BLOCKING gate exits 1 by design, and pipefail makes the pipeline carry
 # that exit — so capture the parsed status first and only fall back to "error"
 # when parsing produced nothing (a `|| echo` on the pipeline would double-print).
 ev_gate() {
   local out
-  out="$( (cd "$EV_PROJECT_DIR" && bash "$EV_PLUGIN_ROOT/v5/gates/$1.sh" 2>/dev/null) \
+  out="$( (cd "$EV_PROJECT_DIR" && bash "$EV_PLUGIN_ROOT/gates/$1.sh" 2>/dev/null) \
           | python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])' 2>/dev/null )"
   echo "${out:-error}"
 }
 
 # ev_tree_sha — current content sha of the project (same algo as the gates).
 ev_tree_sha() {
-  (cd "$EV_PROJECT_DIR" && bash -c "source '$EV_PLUGIN_ROOT/v5/gates/lib.sh'; ca_tree_sha")
+  (cd "$EV_PROJECT_DIR" && bash -c "source '$EV_PLUGIN_ROOT/gates/lib.sh'; ca_tree_sha")
 }
 
 # ev_evidence_has <kind> <exit> [tree_sha] — grep evidence for a matching entry.

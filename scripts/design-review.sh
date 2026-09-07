@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # design-review — start/stop the local design-review surface for a feature.
 #
-# The surface renders spec.md / plan.md / design.html from the feature dir in
+# The surface renders ledger.md / design.html from the feature dir in
 # a browser with inline commenting, and writes the user's output back to the
 # feature dir as design-comments.json + design-verdict.json (sha-bound; see
-# design-review-server.py). The orchestrator reads those files after the user
-# returns to the chat — comments route to the architect, an approved verdict
-# is the gate (protocols/design-review.md).
+# design-review-server.py). The conductor reads those files after the user
+# returns to the chat — comments route to the planner, and an approved verdict
+# clears the `designed?` gate.
 #
 # Usage:
 #   design-review.sh start <feature_dir> [--port N] [--round N]   # background + opens browser
@@ -16,7 +16,7 @@
 #
 # `verify` is the machine-checkable gate: it exits 0 only when the user has
 # approved on the surface (design-verdict.json verdict=approved) AND the
-# artifacts are byte-identical to what was approved. v5's designer records it
+# artifacts are byte-identical to what was approved. The designer records it
 # via record.sh so `designed?` reads real evidence, not a prose claim.
 #
 # State: <feature_dir>/design-review.pid while running.
@@ -48,8 +48,8 @@ is_running() {
 case "$CMD" in
   start)
     command -v python3 >/dev/null 2>&1 || { echo '{"ok":false,"error":"python3 not found — design review needs the stdlib http server"}'; exit 1; }
-    [[ -f "$DIR/spec.md" || -f "$DIR/plan.md" || -f "$DIR/design.html" ]] \
-      || { echo "{\"ok\":false,\"error\":\"nothing to review in $DIR (no spec.md / plan.md / design.html)\"}"; exit 1; }
+    [[ -f "$DIR/ledger.md" || -f "$DIR/design.html" ]] \
+      || { echo "{\"ok\":false,\"error\":\"nothing to review in $DIR (no ledger.md / design.html)\"}"; exit 1; }
     if is_running; then
       echo "{\"ok\":true,\"already_running\":true,\"url\":\"http://127.0.0.1:$PORT\"}"
       exit 0
@@ -102,12 +102,12 @@ case "$CMD" in
     # sha-binding: a present verdict is strict. Missing helper/parser/hash data
     # fails closed; every reviewed artifact must match the approved bytes.
     # shellcheck disable=SC1091
-    source "$SCRIPT_DIR/../checks/lib.sh" 2>/dev/null \
+    source "$SCRIPT_DIR/../gates/lib.sh" 2>/dev/null \
       || { echo '{"ok":false,"error":"strict verdict verifier unavailable"}'; exit 1; }
     declare -f verify_design_verdict >/dev/null 2>&1 \
       || { echo '{"ok":false,"error":"strict verdict verifier missing"}'; exit 1; }
     found=0
-    for pair in "design.html:design_sha" "spec.md:spec_sha" "plan.md:plan_sha"; do
+    for pair in "design.html:design_sha" "ledger.md:ledger_sha"; do
       art="${pair%:*}"; key="${pair##*:}"
       [[ -f "$DIR/$art" ]] || continue
       found=1

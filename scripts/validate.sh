@@ -1,521 +1,254 @@
-#!/bin/bash
-# coding-agent plugin validation script
-# Runs structural, frontmatter, cross-reference, and schema checks
-# Exit 0 = all pass, Exit 1 = failures found
-
+#!/usr/bin/env bash
+# Validate the published plugin shape and its load-bearing runtime contracts.
 set -uo pipefail
 
-PLUGIN_ROOT="${1:-$(cd "$(dirname "$0")/.." && pwd)}"
-ERRORS=0
-WARNINGS=0
+PLUGIN_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+errors=0
+warnings=0
 
-red() { printf "\033[0;31m%s\033[0m\n" "$1"; }
-yellow() { printf "\033[0;33m%s\033[0m\n" "$1"; }
-green() { printf "\033[0;32m%s\033[0m\n" "$1"; }
-dim() { printf "\033[0;90m%s\033[0m\n" "$1"; }
+pass() { printf '  ✓ %s\n' "$1"; }
+warn() { printf '  ! %s\n' "$1"; warnings=$((warnings + 1)); }
+error() { printf '  ✗ %s\n' "$1"; errors=$((errors + 1)); }
 
-error() { red "  ✘ $1"; ERRORS=$((ERRORS + 1)); }
-warn() { yellow "  ⚠ $1"; WARNINGS=$((WARNINGS + 1)); }
-pass() { green "  ✔ $1"; }
+frontmatter() { sed -n '1,/^---$/p' "$1" | sed '1d;$d'; }
 
-echo ""
-echo "═══════════════════════════════════════════"
-echo "  coding-agent plugin validation"
-echo "═══════════════════════════════════════════"
-echo ""
+echo "coding-agent validator"
 
-# ─── 1. Structure checks ────────────────────────────────────────────
-echo "▸ Structure"
-
-for dir in .claude-plugin agents skills; do
-  if [ -d "$PLUGIN_ROOT/$dir" ]; then
-    pass "$dir/ exists"
-  else
-    error "$dir/ missing"
-  fi
+echo "▸ required structure"
+required_files="
+.claude-plugin/plugin.json
+.codex-plugin/plugin.json
+.agents/plugins/marketplace.json
+.claude-plugin/marketplace.json
+.mcp.json
+settings.json
+hooks/hooks.json
+principles.md
+README.md
+ARCHITECTURE.md
+AGENTS.md
+CONTRIBUTING.md
+CHANGELOG.md
+"
+for rel in $required_files; do
+  [ -f "$PLUGIN_ROOT/$rel" ] || error "missing $rel"
 done
-
-for file in .claude-plugin/plugin.json .codex-plugin/plugin.json .agents/plugins/marketplace.json settings.json .mcp.json hooks/hooks.json; do
-  if [ -f "$PLUGIN_ROOT/$file" ]; then
-    pass "$file exists"
-  else
-    error "$file missing"
-  fi
+for rel in agents gates hooks lib skills templates scripts evals docs/concepts; do
+  [ -d "$PLUGIN_ROOT/$rel" ] || error "missing directory: $rel/"
 done
-
-echo ""
-
-# ─── 2. JSON validation ─────────────────────────────────────────────
-echo "▸ JSON validity"
-
-for file in .claude-plugin/plugin.json .codex-plugin/plugin.json .agents/plugins/marketplace.json settings.json .mcp.json hooks/hooks.json; do
-  filepath="$PLUGIN_ROOT/$file"
-  if [ -f "$filepath" ]; then
-    if python3 -m json.tool "$filepath" > /dev/null 2>&1; then
-      pass "$file is valid JSON"
-    else
-      error "$file has invalid JSON"
-    fi
-  fi
+for retired in v5 protocols checks; do
+  [ ! -e "$PLUGIN_ROOT/$retired" ] || error "retired runtime path still exists: $retired/"
 done
+[ "$errors" -eq 0 ] && pass "canonical root layout present; retired runtime absent"
 
-echo ""
+echo "▸ JSON + manifests"
+json_ok=1
+for rel in .claude-plugin/plugin.json .codex-plugin/plugin.json .agents/plugins/marketplace.json .claude-plugin/marketplace.json .mcp.json settings.json hooks/hooks.json skills/freshness.json; do
+  python3 -m json.tool "$PLUGIN_ROOT/$rel" >/dev/null 2>&1 \
+    || { error "$rel is not valid JSON"; json_ok=0; }
+done
+[ "$json_ok" -eq 1 ] && pass "JSON files parse"
 
-# ─── 2.5 Codex packaging ───────────────────────────────────────────
-echo "▸ Codex packaging"
+claude_version="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"])' "$PLUGIN_ROOT/.claude-plugin/plugin.json" 2>/dev/null || true)"
+codex_version="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version"].split("+")[0])' "$PLUGIN_ROOT/.codex-plugin/plugin.json" 2>/dev/null || true)"
+[ -n "$claude_version" ] && [ "$claude_version" = "$codex_version" ] \
+  && pass "Claude/Codex semantic versions agree ($claude_version)" \
+  || error "manifest version mismatch: Claude=$claude_version Codex=$codex_version"
 
-codex_manifest="$PLUGIN_ROOT/.codex-plugin/plugin.json"
-codex_entry="$PLUGIN_ROOT/skills/general/delivery-pipeline/SKILL.md"
-codex_ui="$PLUGIN_ROOT/skills/general/delivery-pipeline/agents/openai.yaml"
-codex_ok=1
-
-if [ -f "$codex_manifest" ]; then
-  python3 - "$codex_manifest" <<'PY' || codex_ok=0
-import json, sys
-d = json.load(open(sys.argv[1]))
-assert d.get("name") == "coding-agent"
-assert d.get("skills") == "./skills/"
-assert d.get("mcpServers") == "./.mcp.json"
-assert "agents" not in d and "hooks" not in d
-prompts = d.get("interface", {}).get("defaultPrompt", [])
-assert any("$coding-agent:delivery-pipeline" in p for p in prompts)
+manifest_ok=1
+for role in conductor planner developer diagnostician designer deployer; do
+  python3 - "$PLUGIN_ROOT/.claude-plugin/plugin.json" "./agents/$role.md" <<'PY' >/dev/null 2>&1 || manifest_ok=0
+import json,sys
+raise SystemExit(0 if sys.argv[2] in json.load(open(sys.argv[1]))["agents"] else 1)
 PY
-else
-  codex_ok=0
-fi
-
-[ -f "$codex_entry" ] || codex_ok=0
-[ -f "$codex_ui" ] || codex_ok=0
-if [ -f "$codex_entry" ]; then
-  for role in planner developer diagnostician designer deployer; do
-    grep -q "v5/agents/$role.md" "$codex_entry" || codex_ok=0
-  done
-  grep -q 'explicitly requires subagent delegation' "$codex_entry" || codex_ok=0
-fi
-
-if [ "$codex_ok" -eq 1 ]; then
-  pass "Codex manifest and delivery-pipeline entry are wired"
-else
-  error "Codex manifest or delivery-pipeline wiring is incomplete"
-fi
-
-echo ""
-
-# ─── 3. Agent frontmatter checks ────────────────────────────────────
-echo "▸ Agent frontmatter"
-
-while IFS= read -r agent_file; do
-  rel_path="${agent_file#$PLUGIN_ROOT/}"
-
-  first_line=$(head -1 "$agent_file")
-  if [ "$first_line" != "---" ]; then
-    error "$rel_path: missing frontmatter (no opening ---)"
-    continue
-  fi
-
-  name=$(sed -n '/^---$/,/^---$/p' "$agent_file" | grep "^name:" | head -1 | sed 's/name: *//')
-  description=$(sed -n '/^---$/,/^---$/p' "$agent_file" | grep "^description:" | head -1)
-  model=$(sed -n '/^---$/,/^---$/p' "$agent_file" | grep "^model:" | head -1 | sed 's/model: *//')
-
-  if [ -z "$name" ]; then
-    error "$rel_path: missing 'name' in frontmatter"
-  fi
-  if [ -z "$description" ]; then
-    error "$rel_path: missing 'description' in frontmatter"
-  fi
-  if [ -z "$model" ]; then
-    error "$rel_path: missing 'model' in frontmatter"
-  elif [[ "$model" != "opus" && "$model" != "sonnet" && "$model" != "haiku" && "$model" != "fable" && "$model" != "inherit" && ! "$model" =~ ^claude-(opus|sonnet|haiku|fable)-[0-9]+ ]]; then
-    error "$rel_path: invalid model '$model' (must be opus/sonnet/haiku/fable/inherit, or a full model ID like claude-opus-4-8 or claude-fable-5)"
-  fi
-
-  if [ -n "$name" ] && [ -n "$model" ]; then
-    pass "$rel_path (name=$name, model=$model)"
-  fi
-done < <(find "$PLUGIN_ROOT/agents" -name "*.md" | sort)
-
-echo ""
-
-# ─── 4. Skill frontmatter checks ────────────────────────────────────
-echo "▸ Skill frontmatter"
-
-while IFS= read -r skill_file; do
-  rel_path="${skill_file#$PLUGIN_ROOT/}"
-
-  first_line=$(head -1 "$skill_file")
-  if [ "$first_line" != "---" ]; then
-    error "$rel_path: missing frontmatter (no opening ---)"
-    continue
-  fi
-
-  name=$(sed -n '/^---$/,/^---$/p' "$skill_file" | grep "^name:" | head -1 | sed 's/name: *//')
-  description=$(sed -n '/^---$/,/^---$/p' "$skill_file" | grep "^description:" | head -1)
-
-  if [ -z "$name" ]; then
-    error "$rel_path: missing 'name' in frontmatter"
-  fi
-  if [ -z "$description" ]; then
-    error "$rel_path: missing 'description' in frontmatter"
-  fi
-
-  if [ -n "$name" ]; then
-    pass "$rel_path (name=$name)"
-  fi
-done < <(find "$PLUGIN_ROOT/skills" -name "SKILL.md" | sort)
-
-echo ""
-
-# ─── 5. Cross-reference checks ──────────────────────────────────────
-echo "▸ Cross-references"
-
-# Check that specialist skills referenced in leads exist
-for lead_file in "$PLUGIN_ROOT"/agents/domain-lead.md; do
-  [ -f "$lead_file" ] || continue
-  lead_name=$(basename "$lead_file" .md)
-
-  while IFS= read -r skill_ref; do
-    skill_name="${skill_ref%-specialist}"
-    # Check if the specialist skill exists anywhere under skills/
-    found=$(find "$PLUGIN_ROOT/skills" -path "*/${skill_ref}/SKILL.md" -o -path "*/${skill_ref}-specialist/SKILL.md" 2>/dev/null | head -1)
-    if [ -n "$found" ]; then
-      pass "$lead_name references skill $skill_ref (exists)"
-    fi
-  done < <(grep -oE '[a-z]+-specialist' "$lead_file" 2>/dev/null | sort -u || true)
 done
+manifest_count="$(python3 -c 'import json,sys; print(len(json.load(open(sys.argv[1]))["agents"]))' "$PLUGIN_ROOT/.claude-plugin/plugin.json" 2>/dev/null || echo 0)"
+[ "$manifest_ok" -eq 1 ] && [ "$manifest_count" -eq 6 ] \
+  && pass "Claude manifest registers only the six canonical roles" \
+  || error "Claude manifest agent list is not the canonical six-role set"
 
-pass "skill references checked"
+python3 - "$PLUGIN_ROOT/.claude-plugin/plugin.json" <<'PY' >/dev/null 2>&1 || error "Claude manifest must register only ./hooks/hooks.json"
+import json,sys
+raise SystemExit(0 if json.load(open(sys.argv[1])).get("hooks") == ["./hooks/hooks.json"] else 1)
+PY
+python3 - "$PLUGIN_ROOT/settings.json" <<'PY' >/dev/null 2>&1 || error "settings.json must select coding-agent:conductor"
+import json,sys
+raise SystemExit(0 if json.load(open(sys.argv[1])).get("agent") == "coding-agent:conductor" else 1)
+PY
 
-# Check that every check named in a protocol "## Checks fired" table or the
-# orchestrator critical-checks list resolves to a checks/<name>.sh script.
-referenced_checks=$(
-  {
-    for pf in "$PLUGIN_ROOT"/protocols/*.md; do
-      awk '/^## Checks fired/{s=1;next} s&&/^#/{s=0} s&&/^\|/{print}' "$pf"
-    done
-    awk '/Critical checks/{s=1;next} s&&/^##/{s=0} s&&/^- `/{print}' "$PLUGIN_ROOT/agents/orchestrator.md"
-  } | sed -nE 's/^[^`]*`([a-z][a-z0-9-]+).*/\1/p' | sort -u
-)
-check_refs_missing=""
-for ref in $referenced_checks; do
-  [ -f "$PLUGIN_ROOT/checks/$ref.sh" ] || check_refs_missing="$check_refs_missing $ref"
+agent_count="$(find "$PLUGIN_ROOT/agents" -maxdepth 1 -name '*.md' | wc -l | tr -d ' ')"
+skill_count="$(find "$PLUGIN_ROOT/skills" -name SKILL.md | wc -l | tr -d ' ')"
+gate_count="$(find "$PLUGIN_ROOT/gates" -maxdepth 1 -name '*.sh' ! -name lib.sh | wc -l | tr -d ' ')"
+template_count="$(find "$PLUGIN_ROOT/templates" -maxdepth 1 -type f | wc -l | tr -d ' ')"
+mcp_count="$(python3 -c 'import json,sys; print(len(json.load(open(sys.argv[1]))["mcpServers"]))' "$PLUGIN_ROOT/.mcp.json" 2>/dev/null || echo 0)"
+printf '  inventory: %s agents · %s skills · %s gates · %s templates · %s MCP servers\n' \
+  "$agent_count" "$skill_count" "$gate_count" "$template_count" "$mcp_count"
+[ "$agent_count" -eq 6 ] || error "expected 6 agents, found $agent_count"
+[ "$skill_count" -eq 59 ] || error "expected 59 skills, found $skill_count"
+[ "$gate_count" -eq 8 ] || error "expected 8 gates, found $gate_count"
+[ "$template_count" -eq 12 ] || error "expected 12 templates, found $template_count"
+[ "$mcp_count" -eq 5 ] || error "expected 5 MCP servers, found $mcp_count"
+
+echo "▸ agent prompts"
+agent_ok=1
+for file in "$PLUGIN_ROOT"/agents/*.md; do
+  rel="${file#$PLUGIN_ROOT/}"
+  [ "$(head -1 "$file")" = "---" ] || { error "$rel has no frontmatter"; agent_ok=0; continue; }
+  fm="$(awk 'NR==1{next} /^---$/{exit} {print}' "$file")"
+  for key in name description model effort tools; do
+    echo "$fm" | grep -qE "^$key:" || { error "$rel missing frontmatter '$key'"; agent_ok=0; }
+  done
+  base="$(basename "$file" .md)"
+  name="$(echo "$fm" | sed -n 's/^name:[[:space:]]*//p' | head -1)"
+  [ "$name" = "$base" ] || { error "$rel declares name '$name'"; agent_ok=0; }
+  model="$(echo "$fm" | sed -n 's/^model:[[:space:]]*//p' | head -1)"
+  echo "$model" | grep -qE '^(opus|sonnet|haiku|inherit|claude-(opus|sonnet|haiku)-[0-9]+)' \
+    || { error "$rel has unsupported model '$model'"; agent_ok=0; }
+  effort="$(echo "$fm" | sed -n 's/^effort:[[:space:]]*//p' | head -1)"
+  echo "$effort" | grep -qE '^(low|medium|high|xhigh|max)$' \
+    || { error "$rel has unsupported effort '$effort'"; agent_ok=0; }
+  lines="$(wc -l < "$file" | tr -d ' ')"; limit=300
+  [ "$base" = conductor ] && limit=350
+  [ "$lines" -le "$limit" ] || { error "$rel is $lines lines (limit $limit)"; agent_ok=0; }
 done
-if [ -z "$check_refs_missing" ]; then
-  pass "all referenced checks resolve to scripts"
-else
-  # Warn (not error): some names are conceptual sub-conditions covered by a
-  # composite check (e.g. close-out-complete) or action-log events, not drift.
-  # Surfaced for triage so genuinely-missing scripts get caught early.
-  for m in $check_refs_missing; do
-    warn "referenced check '$m' has no checks/$m.sh (composite-covered, event, or drift — triage)"
-  done
-fi
+[ "$agent_ok" -eq 1 ] && pass "agent frontmatter, names, models, effort, and size valid"
 
-echo ""
+echo "▸ skills"
+skill_ok=1
+names_file="$(mktemp)"
+while IFS= read -r file; do
+  rel="${file#$PLUGIN_ROOT/}"
+  [ "$(head -1 "$file")" = "---" ] || { error "$rel has no frontmatter"; skill_ok=0; continue; }
+  fm="$(awk 'NR==1{next} /^---$/{exit} {print}' "$file")"
+  name="$(echo "$fm" | sed -n 's/^name:[[:space:]]*//p' | head -1)"
+  desc="$(echo "$fm" | sed -n 's/^description:[[:space:]]*//p' | head -1)"
+  [ -n "$name" ] || { error "$rel missing name"; skill_ok=0; }
+  [ -n "$desc" ] || { error "$rel missing description"; skill_ok=0; }
+  [ "${#desc}" -le 250 ] || { error "$rel description exceeds 250 characters"; skill_ok=0; }
+  lines="$(wc -l < "$file" | tr -d ' ')"
+  [ "$lines" -le 500 ] || { error "$rel is $lines lines (limit 500)"; skill_ok=0; }
+  printf '%s\n' "$name" >> "$names_file"
+done < <(find "$PLUGIN_ROOT/skills" -name SKILL.md | sort)
+dupes="$(sort "$names_file" | uniq -d)"
+[ -z "$dupes" ] || { error "duplicate skill names: $(echo "$dupes" | tr '\n' ' ')"; skill_ok=0; }
+rm "$names_file"
+[ "$skill_ok" -eq 1 ] && pass "skill frontmatter, descriptions, uniqueness, and size valid"
 
-# ─── 6. Artifact path checks ────────────────────────────────────────
-echo "▸ Artifact paths"
+echo "▸ shell + runtime paths"
+shell_ok=1
+while IFS= read -r file; do
+  rel="${file#$PLUGIN_ROOT/}"
+  [ -x "$file" ] || { error "$rel is not executable"; shell_ok=0; }
+  bash -n "$file" 2>/dev/null || { error "$rel has a Bash syntax error"; shell_ok=0; }
+done < <(find "$PLUGIN_ROOT/gates" "$PLUGIN_ROOT/lib" "$PLUGIN_ROOT/hooks" \
+  "$PLUGIN_ROOT/scripts" "$PLUGIN_ROOT/evals" \
+  -path "$PLUGIN_ROOT/evals/results" -prune -o -name '*.sh' -print | sort)
+[ "$shell_ok" -eq 1 ] && pass "shell scripts executable and syntax-clean"
 
-bad_refs=$(grep -rl "docs/agents/" "$PLUGIN_ROOT/agents/" "$PLUGIN_ROOT/hooks/" "$PLUGIN_ROOT/README.md" 2>/dev/null || true)
-if [ -z "$bad_refs" ]; then
-  pass "no stale docs/agents/ references found"
-else
-  for bad_file in $bad_refs; do
-    error "${bad_file#$PLUGIN_ROOT/} still references docs/agents/ (should be .coding-agent/)"
-  done
-fi
+path_ok=1
+while IFS= read -r ref; do
+  rel="${ref#\$\{CLAUDE_PLUGIN_ROOT\}/}"
+  [ -e "$PLUGIN_ROOT/$rel" ] || { error "missing plugin path referenced as $ref"; path_ok=0; }
+done < <(grep -rhoE '\$\{CLAUDE_PLUGIN_ROOT\}/[A-Za-z0-9_./-]+' \
+  "$PLUGIN_ROOT/agents" "$PLUGIN_ROOT/hooks" "$PLUGIN_ROOT/lib" \
+  "$PLUGIN_ROOT/skills" "$PLUGIN_ROOT/scripts" "$PLUGIN_ROOT/docs" 2>/dev/null | sort -u)
+[ "$path_ok" -eq 1 ] && pass "literal plugin-root references resolve"
 
-coord_refs=$(grep -rl "\.coding-agent/" "$PLUGIN_ROOT/agents/" 2>/dev/null | wc -l | tr -d ' ')
-if [ "$coord_refs" -gt 0 ]; then
-  pass "phase agents reference .coding-agent/ for artifact coordination"
-else
-  warn "no phase agents reference .coding-agent/ — coordination may be broken"
-fi
-
-echo ""
-
-# ─── 7. Model tier checks ───────────────────────────────────────────
-echo "▸ Model tier conventions"
-
-for agent_file in "$PLUGIN_ROOT"/agents/*.md; do
-  [ -f "$agent_file" ] || continue
-  name=$(basename "$agent_file" .md)
-  model=$(sed -n '/^---$/,/^---$/p' "$agent_file" | grep "^model:" | head -1 | sed 's/model: *//')
-
-  case "$name" in
-    orchestrator|brainstormer|planner|reviewer)
-      case "$model" in
-        opus|claude-opus-*|fable|claude-fable-*)
-          pass "$name uses $model (opus/fable tier — correct for decision-making agent)" ;;
-        *)
-          warn "$name uses $model (expected opus or fable for decision-making agent)" ;;
-      esac
-      ;;
-    domain-lead)
-      ;; # checked separately below
-  esac
+echo "▸ gates + evidence contracts"
+gate_ok=1
+for file in "$PLUGIN_ROOT"/gates/*.sh; do
+  [ "$(basename "$file")" = lib.sh ] && continue
+  rel="${file#$PLUGIN_ROOT/}"
+  grep -q 'gates/lib.sh\|/lib.sh"' "$file" || { error "$rel does not source the gate library"; gate_ok=0; }
+  grep -q '^GATE_NAME=' "$file" || { error "$rel has no GATE_NAME"; gate_ok=0; }
+  grep -q 'gate_result' "$file" || { error "$rel never emits a gate result"; gate_ok=0; }
 done
+grep -q 'declared_test_command' "$PLUGIN_ROOT/lib/record.sh" || { error "record.sh does not bind test commands"; gate_ok=0; }
+grep -q 'lockdir="${ev}.lock"' "$PLUGIN_ROOT/lib/record.sh" || { error "record.sh has no append lock"; gate_ok=0; }
+grep -q 'delivery plan is empty' "$PLUGIN_ROOT/gates/framed.sh" || { error "framed? does not require a delivery plan"; gate_ok=0; }
+grep -q 'comments_open' "$PLUGIN_ROOT/gates/lib.sh" || { error "design verdict validation does not require zero open comments"; gate_ok=0; }
+grep -q 'git add -- <explicit changed_paths' "$PLUGIN_ROOT/agents/conductor.md" || { error "conductor lacks explicit attributable staging"; gate_ok=0; }
+grep -q 'aggregate: false' "$PLUGIN_ROOT/agents/conductor.md" || { error "parallel review isolation contract missing"; gate_ok=0; }
+if grep -qE 'browser_(click|evaluate|fill_form)' "$PLUGIN_ROOT/agents/designer.md"; then
+  error "designer exposes approval-capable browser tools"; gate_ok=0
+fi
+[ "$gate_ok" -eq 1 ] && pass "gate, evidence, design, and shared-workspace invariants present"
 
-# Check domain-lead uses sonnet
-for agent_file in "$PLUGIN_ROOT"/agents/domain-lead.md; do
-  [ -f "$agent_file" ] || continue
-  name=$(basename "$agent_file" .md)
-  model=$(sed -n '/^---$/,/^---$/p' "$agent_file" | grep "^model:" | head -1 | sed 's/model: *//')
-  if [ "$model" = "sonnet" ]; then
-    pass "$name uses sonnet (correct for domain lead)"
-  else
-    warn "$name uses $model (expected sonnet for domain lead)"
-  fi
+echo "▸ principles + referenced skills"
+principle_ok=1
+for anchor in operating frame architect build prove diagnose review design ship; do
+  grep -qE "^## $anchor([[:space:]]|$)" "$PLUGIN_ROOT/principles.md" \
+    || { error "principles.md missing '$anchor' tier"; principle_ok=0; }
 done
+[ "$principle_ok" -eq 1 ] && pass "principle tier exists for every dispatch kind"
 
-echo ""
+agent_skill_ok=1
+while IFS= read -r name; do
+  [ -z "$name" ] && continue
+  find "$PLUGIN_ROOT/skills" -name SKILL.md -exec grep -qE "^name:[[:space:]]*$name$" {} \; -print | grep -q . \
+    || { error "agent preloads missing skill '$name'"; agent_skill_ok=0; }
+done < <(awk '/^skills:/{s=1;next} s&&/^  - /{sub(/^  - /,"");print;next} s{exit}' "$PLUGIN_ROOT"/agents/*.md)
+[ "$agent_skill_ok" -eq 1 ] && pass "preloaded agent skills exist"
 
-# ─── 8. Content quality checks ──────────────────────────────────────
-echo "▸ Content quality"
+echo "▸ documentation + retired terminology"
+docs_ok=1
+python3 - "$PLUGIN_ROOT" <<'PY' || docs_ok=0
+import pathlib, re, sys
+root = pathlib.Path(sys.argv[1])
+files = [root / n for n in ("README.md", "ARCHITECTURE.md", "AGENTS.md", "CONTRIBUTING.md")]
+files += sorted((root / "docs").rglob("*.md"))
+bad = []
+for path in files:
+    text = path.read_text(encoding="utf-8")
+    for target in re.findall(r"\[[^\]]+\]\(([^)]+)\)", text):
+        if target.startswith(("http://", "https://", "#")) or "<" in target:
+            continue
+        dest = target.split("#", 1)[0]
+        if dest and not (path.parent / dest).resolve().exists():
+            bad.append(f"{path.relative_to(root)} -> {target}")
+if bad:
+    print("broken relative Markdown links:", file=sys.stderr)
+    for item in bad:
+        print("  " + item, file=sys.stderr)
+    raise SystemExit(1)
+PY
+[ "$docs_ok" -eq 1 ] || error "canonical docs contain broken relative links"
 
-while IFS= read -r agent_file; do
-  rel_path="${agent_file#$PLUGIN_ROOT/}"
-  line_count=$(wc -l < "$agent_file" | tr -d ' ')
-  if [ "$line_count" -lt 20 ]; then
-    warn "$rel_path has only $line_count lines (may be a stub)"
-  fi
-done < <(find "$PLUGIN_ROOT/agents" -name "*.md")
+if rg -n 'coding-agent v[45]|\bv[45] runtime\b|/v5/|`v5/|protocols/|checks/' \
+  "$PLUGIN_ROOT/README.md" "$PLUGIN_ROOT/ARCHITECTURE.md" "$PLUGIN_ROOT/AGENTS.md" \
+  "$PLUGIN_ROOT/CONTRIBUTING.md" "$PLUGIN_ROOT/docs" >/dev/null 2>&1; then
+  error "canonical docs still reference a retired runtime or path"; docs_ok=0
+fi
+[ "$docs_ok" -eq 1 ] && pass "canonical docs link cleanly and present only the current runtime"
 
-while IFS= read -r skill_file; do
-  rel_path="${skill_file#$PLUGIN_ROOT/}"
-  line_count=$(wc -l < "$skill_file" | tr -d ' ')
-  if [ "$line_count" -lt 10 ]; then
-    warn "$rel_path has only $line_count lines (may be a stub)"
-  fi
-done < <(find "$PLUGIN_ROOT/skills" -name "SKILL.md")
+echo "▸ source hygiene"
+stale_ok=1
+if rg -n '\$\{CLAUDE_PLUGIN_ROOT\}/v5/|\$EV_PLUGIN_ROOT/v5/|\{\{PLUGIN_ROOT\}\}/v5/' \
+  "$PLUGIN_ROOT/agents" "$PLUGIN_ROOT/gates" "$PLUGIN_ROOT/hooks" "$PLUGIN_ROOT/lib" \
+  "$PLUGIN_ROOT/skills" "$PLUGIN_ROOT/evals" "$PLUGIN_ROOT/scripts" -g '!validate.sh' >/dev/null 2>&1; then
+  error "source contains a retired /v5/ runtime path"; stale_ok=0
+fi
+if rg -n '\$\{CLAUDE_PLUGIN_ROOT\}/(protocols|checks)/' \
+  "$PLUGIN_ROOT/agents" "$PLUGIN_ROOT/gates" "$PLUGIN_ROOT/hooks" "$PLUGIN_ROOT/lib" \
+  "$PLUGIN_ROOT/skills" "$PLUGIN_ROOT/evals" "$PLUGIN_ROOT/scripts" -g '!validate.sh' >/dev/null 2>&1; then
+  error "source references retired protocols/ or checks/ paths"; stale_ok=0
+fi
+[ "$stale_ok" -eq 1 ] && pass "no retired runtime path remains in executable sources"
 
-pass "content quality checked"
-
-echo ""
-
-# ─── 8.5 Skill freshness ───────────────────────────────────────────
-echo "▸ Skill freshness"
-freshness_output="$(bash "$PLUGIN_ROOT/scripts/validate-skill-freshness.sh" "$PLUGIN_ROOT" 2>&1)"
-if [ $? -eq 0 ]; then
-  registered="$(printf '%s' "$freshness_output" | jq -r '.registered // 0' 2>/dev/null || echo 0)"
-  pass "$registered version-sensitive skills have current sourced guidance"
+echo "▸ design surface + skill freshness"
+python3 -m py_compile "$PLUGIN_ROOT/scripts/design-review-server.py" 2>/dev/null \
+  && pass "design-review server compiles" \
+  || error "design-review server does not compile"
+if "$PLUGIN_ROOT/scripts/validate-skill-freshness.sh" >/dev/null; then
+  pass "version-sensitive skill guidance is current"
 else
-  error "skill freshness failed: $freshness_output"
+  error "version-sensitive skill guidance is stale"
 fi
 
-echo ""
-
-# ─── 9. v5 ──────────────────────────────────────────────────────────
-# v5 backs both the registered Claude agents and the Codex delivery-pipeline
-# skill. These checks lint the shared runtime on its own terms.
-if [ -d "$PLUGIN_ROOT/v5" ]; then
-  echo "▸ v5"
-
-  # 9.1 Agent frontmatter: required keys present, `name` matches the filename.
-  v5_agent_ok=1
-  while IFS= read -r f; do
-    rel="${f#$PLUGIN_ROOT/}"
-    base="$(basename "$f" .md)"
-    fm=$(awk 'NR==1&&/^---$/{f=1;next} f&&/^---$/{exit} f{print}' "$f")
-    for key in name description model tools; do
-      echo "$fm" | grep -qE "^$key:" || { error "$rel frontmatter missing '$key:'"; v5_agent_ok=0; }
-    done
-    fm_name=$(echo "$fm" | grep -E '^name:' | head -1 | sed 's/^name:[[:space:]]*//' | tr -d '"'"'"' ')
-    if [ -n "$fm_name" ] && [ "$fm_name" != "$base" ]; then
-      error "$rel declares name '$fm_name' but the file is '$base.md'"; v5_agent_ok=0
-    fi
-  done < <(find "$PLUGIN_ROOT/v5/agents" -name "*.md" 2>/dev/null)
-  [ "$v5_agent_ok" -eq 1 ] && pass "v5 agent frontmatter valid (name/description/model/tools)"
-
-  # 9.2 Shell scripts: executable and syntactically valid.
-  v5_sh_ok=1
-  while IFS= read -r f; do
-    rel="${f#$PLUGIN_ROOT/}"
-    [ -x "$f" ] || { error "$rel is not executable (chmod +x)"; v5_sh_ok=0; }
-    bash -n "$f" 2>/dev/null || { error "$rel has a bash syntax error"; v5_sh_ok=0; }
-  done < <(find "$PLUGIN_ROOT/v5/gates" "$PLUGIN_ROOT/v5/lib" "$PLUGIN_ROOT/v5/hooks" -name "*.sh" 2>/dev/null)
-  [ "$v5_sh_ok" -eq 1 ] && pass "v5 shell scripts executable + syntax-clean"
-
-  # 9.3 Referenced plugin-internal paths resolve (CLAUDE_PLUGIN_ROOT = repo root).
-  v5_path_ok=1
-  while IFS= read -r ref; do
-    target="$PLUGIN_ROOT/${ref#\$\{CLAUDE_PLUGIN_ROOT\}/}"
-    [ -e "$target" ] || { error "v5 references a missing path: $ref"; v5_path_ok=0; }
-  done < <(grep -rhoE '\$\{CLAUDE_PLUGIN_ROOT\}/[A-Za-z0-9_./-]+' \
-             "$PLUGIN_ROOT/v5/agents" "$PLUGIN_ROOT/v5/gates" "$PLUGIN_ROOT/v5/lib" 2>/dev/null \
-           | sed 's/[.,)]*$//' | sort -u)
-  [ "$v5_path_ok" -eq 1 ] && pass "v5 \${CLAUDE_PLUGIN_ROOT} paths all resolve"
-
-  # 9.4 Subcommand contract: every design-review.sh subcommand an agent invokes
-  #     must exist in the script's case statement. (A prompt telling an agent to
-  #     run a nonexistent subcommand silently blocks its gate forever.)
-  drs="$PLUGIN_ROOT/scripts/design-review.sh"
-  if [ -f "$drs" ]; then
-    known=$(grep -oE '^[[:space:]]+[a-z][a-z|-]*\)' "$drs" | tr -d ' )' | tr '|' '\n' | sort -u)
-    v5_cmd_ok=1
-    while IFS= read -r sub; do
-      [ -z "$sub" ] && continue
-      echo "$known" | grep -qx "$sub" \
-        || { error "v5 agents invoke 'design-review.sh $sub' but the script has no such subcommand (has: $(echo "$known" | tr '\n' ' '))"; v5_cmd_ok=0; }
-    done < <(grep -rhoE 'design-review\.sh[[:space:]]+[a-z][a-z-]*' "$PLUGIN_ROOT/v5/agents" 2>/dev/null \
-             | awk '{print $2}' | sort -u)
-    [ "$v5_cmd_ok" -eq 1 ] && pass "v5 design-review.sh subcommands all exist"
-  fi
-
-  # 9.5 Kind taxonomy: every evidence kind a gate greps for must be recordable —
-  #     i.e. some agent prompt instructs `record.sh ... <kind>`.
-  v5_kind_ok=1
-  # `.*` (not `[^\n]`): grep is line-based so `.` never crosses lines, and a
-  # bracket `[^\n]` would treat \n as the literal chars \ and n — breaking on a
-  # recorded command that contains backslashes (e.g. the review verdict's \$/\[).
-  recorded=$(grep -rhoE 'record\.sh.*"[[:space:]]+[a-z]+' "$PLUGIN_ROOT/v5/agents" 2>/dev/null \
-             | awk '{print $NF}' | sort -u)
-  while IFS= read -r kind; do
-    [ -z "$kind" ] && continue
-    echo "$recorded" | grep -qx "$kind" \
-      || { error "gates expect evidence kind '$kind' but no v5 agent records it via record.sh"; v5_kind_ok=0; }
-  done < <(for gf in "$PLUGIN_ROOT"/v5/gates/*.sh; do grep -vE '^[[:space:]]*#' "$gf"; done 2>/dev/null \
-           | grep -oE '"kind":"[a-z]+"|evidence_match[[:space:]]+[a-z]+' \
-           | sed -E 's/.*"kind":"([a-z]+)".*/\1/; s/evidence_match[[:space:]]+//' | sort -u)
-  [ "$v5_kind_ok" -eq 1 ] && pass "v5 evidence kinds are all recordable by some agent"
-
-  # 9.5b Every `principles.md#<tier>` an agent points at must be a real heading.
-  #      A dangling anchor is a craft tier the worker silently runs without —
-  #      which is how `diagnose`, the hardest kind, ended up with no tier at all.
-  v5_tier_ok=1
-  while IFS= read -r anchor; do
-    [ -z "$anchor" ] && continue
-    grep -qE "^## $anchor([[:space:]]|$)" "$PLUGIN_ROOT/v5/principles.md" \
-      || { error "v5 agent references principles.md#$anchor but no such tier exists"; v5_tier_ok=0; }
-  done < <(grep -rhoE 'principles\.md#[a-z-]+' "$PLUGIN_ROOT/v5/agents" 2>/dev/null \
-           | sed 's/.*#//' | sort -u)
-  # And the reverse: every kind the conductor dispatches should have a tier.
-  for k in frame architect build prove diagnose review design ship; do
-    grep -qE "^## $k([[:space:]]|$)" "$PLUGIN_ROOT/v5/principles.md" \
-      || { error "v5 dispatch kind '$k' has no tier in principles.md"; v5_tier_ok=0; }
-  done
-  [ "$v5_tier_ok" -eq 1 ] && pass "v5 principle tiers exist for every kind + anchor"
-
-  # 9.5c Every skill a v5 agent preloads or routes to must actually exist.
-  #      v5 shipped with a documented `skills=[…]` dispatch field that nothing
-  #      populated; now that it is wired, a typo would silently load nothing.
-  v5_skill_ok=1
-  while IFS= read -r sk; do
-    [ -z "$sk" ] && continue
-    find "$PLUGIN_ROOT/skills" -type d -name "$sk" 2>/dev/null | grep -q . \
-      || { error "v5 agent preloads skill '$sk' which does not exist under skills/"; v5_skill_ok=0; }
-  done < <(awk '/^skills:/{f=1;next} /^[a-z_-]+:/{f=0} /^---/{f=0} f&&/^[[:space:]]*- /{print $2}' \
-           "$PLUGIN_ROOT"/v5/agents/*.md 2>/dev/null | sort -u)
-  [ "$v5_skill_ok" -eq 1 ] && pass "v5 preloaded skills all exist"
-
-  # 9.6 Manifest paths resolve: the agents[]/hooks[] arrays REPLACE default
-  #     discovery (per the plugin reference), so a bad path silently drops an
-  #     agent/hook instead of erroring at load. Every listed file must exist.
-  man_ok=1
-  while IFS= read -r rel; do
-    [ -z "$rel" ] && continue
-    [ -e "$PLUGIN_ROOT/${rel#./}" ] || { error "plugin.json lists a missing path: $rel"; man_ok=0; }
-  done < <(python3 -c "import json;d=json.load(open('$PLUGIN_ROOT/.claude-plugin/plugin.json'));[print(x) for x in d.get('agents',[])+d.get('hooks',[])]" 2>/dev/null)
-  [ "$man_ok" -eq 1 ] && pass "plugin.json agents[]/hooks[] paths all resolve"
-
-  # 9.7 Shared-workspace safety contracts used by the Codex conductor.
-  v5_shared_ok=1
-  grep -q 'declared_test_command' "$PLUGIN_ROOT/v5/lib/record.sh" \
-    || { error "record.sh does not bind test evidence to frozen test commands"; v5_shared_ok=0; }
-  grep -q 'lockdir="${ev}.lock"' "$PLUGIN_ROOT/v5/lib/record.sh" \
-    || { error "record.sh has no shared evidence append lock"; v5_shared_ok=0; }
-  grep -q 'git add -- <explicit changed_paths' "$PLUGIN_ROOT/v5/agents/conductor.md" \
-    || { error "v5 conductor does not stage explicit attributable paths"; v5_shared_ok=0; }
-  if grep -qF "git add -- . ':(exclude).coding-agent'" "$PLUGIN_ROOT/v5/agents/conductor.md"; then
-    error "v5 conductor still prescribes repo-wide staging"; v5_shared_ok=0
-  fi
-  grep -q 'aggregate: false' "$PLUGIN_ROOT/v5/agents/conductor.md" \
-    || { error "v5 conductor does not keep parallel reviews read-only"; v5_shared_ok=0; }
-  if grep -qE 'browser_(click|evaluate|fill_form)' "$PLUGIN_ROOT/v5/agents/designer.md"; then
-    error "v5 designer exposes approval-capable browser tools"; v5_shared_ok=0
-  fi
-  grep -q 'comments_open' "$PLUGIN_ROOT/checks/lib.sh" \
-    || { error "design verdict verification does not fail closed on open comments"; v5_shared_ok=0; }
-  [ "$v5_shared_ok" -eq 1 ] && pass "v5 Codex shared-workspace safety contracts present"
-
-  echo ""
-fi
-
-# ─── 10. Evals ──────────────────────────────────────────────────────
-# The eval harness (evals/) is how the plugin is iterated; a syntactically
-# broken assert script would silently corrupt every future eval verdict.
-if [ -d "$PLUGIN_ROOT/evals" ]; then
-  echo "▸ Evals"
-
-  ev_sh_ok=1
-  while IFS= read -r f; do
-    rel="${f#$PLUGIN_ROOT/}"
-    [ -x "$f" ] || { error "$rel is not executable (chmod +x)"; ev_sh_ok=0; }
-    bash -n "$f" 2>/dev/null || { error "$rel has a bash syntax error"; ev_sh_ok=0; }
-  done < <(find "$PLUGIN_ROOT/evals" -name "*.sh" -not -path "*/results/*" 2>/dev/null)
-  [ "$ev_sh_ok" -eq 1 ] && pass "eval scripts executable + syntax-clean"
-
-  ev_struct_ok=1
-  for sdir in "$PLUGIN_ROOT"/evals/scenarios/*/; do
-    [ -f "$sdir/assert.sh" ] || { error "${sdir#$PLUGIN_ROOT/} has no assert.sh — a scenario without assertions can't fail"; ev_struct_ok=0; }
-  done
-  [ "$ev_struct_ok" -eq 1 ] && pass "every scenario has an assert.sh"
-
-  echo ""
-fi
-
-# ─── 11. Inventory ──────────────────────────────────────────────────
-echo "▸ Inventory"
-
-# Derive real counts from the directories (single source of truth).
-agent_count=$(find "$PLUGIN_ROOT/agents" -name "*.md" | wc -l | tr -d ' ')
-skill_count=$(find "$PLUGIN_ROOT/skills" -name "SKILL.md" | wc -l | tr -d ' ')
-protocol_count=$(find "$PLUGIN_ROOT/protocols" -name "*.md" ! -name "README.md" | wc -l | tr -d ' ')
-check_count=$(find "$PLUGIN_ROOT/checks" -name "*.sh" ! -name "lib.sh" | wc -l | tr -d ' ')
-template_count=$(find "$PLUGIN_ROOT/templates" -name "*.template.*" | wc -l | tr -d ' ')
-mcp_count=$(jq -r '(.mcpServers // {}) | length' "$PLUGIN_ROOT/.mcp.json" 2>/dev/null || echo "?")
-dim "  Agents:      $agent_count"
-dim "  Skills:      $skill_count"
-dim "  Protocols:   $protocol_count"
-dim "  Checks:      $check_count"
-dim "  Templates:   $template_count"
-dim "  MCP servers: $mcp_count"
-
-# Verify AGENTS.md's canonical inventory line matches reality. AGENTS.md is the
-# single source of truth (CLAUDE.md redirects to it); when it drifts, fix it +
-# the mirrors (ARCHITECTURE.md, docs/README.md, .claude-plugin/marketplace.json).
-summary=$(grep -m1 -E '[0-9]+ agents \+ .* [0-9]+ MCP servers' "$PLUGIN_ROOT/AGENTS.md" 2>/dev/null || true)
-if [ -z "$summary" ]; then
-  warn "AGENTS.md canonical inventory line not found — cannot verify counts"
-else
-  doc_n() { echo "$summary" | grep -oE "[0-9]+ $1" | grep -oE '^[0-9]+' | head -1; }
-  drift=0
-  for pair in "agents:$agent_count" "skills:$skill_count" "named protocols:$protocol_count" \
-              "deterministic checks:$check_count" "artifact templates:$template_count" "MCP servers:$mcp_count"; do
-    label="${pair%:*}"; real="${pair##*:}"; doc=$(doc_n "$label")
-    if [ -n "$doc" ] && [ "$doc" != "$real" ]; then
-      error "inventory drift: $real $label on disk, AGENTS.md says $doc — sync AGENTS.md + plugin.json + marketplace.json + ARCHITECTURE.md + docs/README.md"
-      drift=1
-    fi
-  done
-  [ "$drift" -eq 0 ] && pass "AGENTS.md inventory counts match the directories"
-fi
-
-echo ""
-echo "═══════════════════════════════════════════"
-
-if [ "$ERRORS" -gt 0 ]; then
-  red "  FAILED: $ERRORS errors, $WARNINGS warnings"
-  echo "═══════════════════════════════════════════"
-  echo ""
-  exit 1
-elif [ "$WARNINGS" -gt 0 ]; then
-  yellow "  PASSED with $WARNINGS warnings"
-  echo "═══════════════════════════════════════════"
-  echo ""
-  exit 0
-else
-  green "  ALL CHECKS PASSED"
-  echo "═══════════════════════════════════════════"
-  echo ""
+echo
+if [ "$errors" -eq 0 ]; then
+  printf 'PASSED (%s warning%s)\n' "$warnings" "$([ "$warnings" -eq 1 ] && echo '' || echo 's')"
   exit 0
 fi
+printf 'FAILED (%s error%s, %s warning%s)\n' "$errors" "$([ "$errors" -eq 1 ] && echo '' || echo 's')" "$warnings" "$([ "$warnings" -eq 1 ] && echo '' || echo 's')"
+exit 1

@@ -1,251 +1,201 @@
 # coding-agent
 
-**An evidence-gated multi-agent software-delivery plugin for Claude Code and Codex.**
+**Evidence-gated software delivery for Claude Code and Codex.**
 
-Drop-in multi-agent pipeline that turns `"build me a notifications system"` into shipped, tested, reviewed code — with human checkpoints at the decisions that matter and real runtime verification before anything ships.
+coding-agent turns a coding request into a controlled delivery loop: frame the
+intent, resolve consequential architecture with the user, build, prove, review,
+ship, and observe. Claims advance only when executable gates can find current
+evidence.
 
-[![Version](https://img.shields.io/badge/version-5.5.0-blue)]() [![Agents](https://img.shields.io/badge/agents-6-green)]() [![Skills](https://img.shields.io/badge/skills-59-green)]() [![License](https://img.shields.io/badge/license-MIT-blue)]()
+[![Version](https://img.shields.io/badge/version-6.0.0-blue)]()
+[![Agents](https://img.shields.io/badge/agents-6-green)]()
+[![Skills](https://img.shields.io/badge/skills-59-green)]()
+[![Gates](https://img.shields.io/badge/gates-8-green)]()
+[![License](https://img.shields.io/badge/license-MIT-blue)]()
 
 ---
 
 ## What you get
 
-- **A real pipeline, not a one-shot.** Intent → Design (spec+plan) → Implement → Review → Commit. Each stage has an owner, an artifact, and a deterministic check. (Large features split Design into separate Spec and Plan gates.)
-- **Human gates at the right spots.** You approve intent, design (spec+plan together for non-large; separate spec + plan gates for large), and push. No agent fakes your signature.
-- **Runtime testing, not just typechecks.** The reviewer launches your app in a real browser (Playwright) or iOS simulator, takes screenshots, runs your committed test suites. "Compiles" isn't evidence.
-- **Memory across sessions.** Decisions, gotchas, and patterns survive. Tomorrow's architect reads yesterday's learnings. No cold starts.
-- **Research from real docs, not stale training data.** Architect queries Context7 / Exa for current library APIs, while version-sensitive skills carry sourced verification and recheck dates enforced by the plugin validator.
-- **Per-task skill manifest.** Architect picks the right specialist skills for each task. Implementor loads them on dispatch. No one-size-fits-all prompt.
-- **Visual design review.** For UI features the architect ships a look-contract (`design.html`) you review in a browser surface — inline comments + a sha-bound approve, not ASCII mockups in a terminal.
-- **Product direction when you need it (opt-in).** A product-lead agent turns *"I don't know what to build"* into a concrete problem, a clean core flow, and a world-class bar — and evolves a `product.md` north-star across features.
-- **Portable docs at two architecture levels.** Close-out generates a cross-referenced, no-duplication documentation set: high-level topology/dataflow plus optional deep contracts for substantial components — vendor-neutral, so it keeps working even if you drop this plugin.
-- **Zero-ceremony touch-ups.** Fix a button color? One intent gate, smoke review, commit. Full pipeline only when the work warrants it.
+- **One durable control loop.** A conductor reads the ledger, runs the next gate,
+  and dispatches the smallest worker move that can clear it.
+- **Real role separation.** Planner, developer, diagnostician, designer, and
+  deployer are separate agent instances with bounded prompts—not personalities
+  switched inside one long-running worker.
+- **Architecture as dialogue.** Before a consequential ADR is written, the
+  planner can pause and return one to three system- or component-level questions.
+  The conductor asks you, records your answers, and then resumes planning.
+- **Evidence instead of narration.** Tests, reviews, design approval, deploys,
+  and health checks are recorded against the current source tree. “It passed”
+  without a matching evidence entry does not clear a gate.
+- **Human authority at one-way doors.** Intent, irreversible architecture,
+  visual approval, destructive actions, deployment, and push stay with you.
+- **Engineering depth on demand.** 59 scoped skills cover frontend, backend,
+  data, mobile, infrastructure, testing, security, documentation, and research.
+- **Portable technical documentation.** Consumer projects get high-level
+  topology and dataflow plus focused component contracts for substantial
+  boundaries; the documents remain useful without this plugin.
 
-## Why this exists
+## How it works
 
-Most AI coding tools happily generate code that compiles and breaks at runtime. They skip the design step, hallucinate library APIs, never actually launch the app, silently swallow errors, and forget everything the moment you close your terminal.
+```text
+                              You
+                               │
+                    intent + architecture choices
+                               │
+                               ▼
+                        ┌─────────────┐
+                        │  Conductor  │  sole ledger/product writer
+                        └──────┬──────┘
+                               │ first unmet gate
+          ┌────────────┬───────┼─────────┬────────────┐
+          ▼            ▼       ▼         ▼            ▼
+      Planner      Developer  Designer  Diagnostician  Deployer
+   frame/architect build/prove  design      diagnose   ship/observe
+                    /review
+          └────────────┴───────┼─────────┴────────────┘
+                               │
+                               ▼
+                  ledger + evidence.jsonl + gates
+```
 
-coding-agent is a reaction to those failures — an opinionated pipeline built from real pain:
+The runtime has three primitives:
 
-| Failure mode | How the plugin handles it |
+| Primitive | Purpose |
 |---|---|
-| "It compiles but the button is broken" | Evaluator runs Playwright against the live UI and screenshots it before PASS |
-| "The architect hallucinated an API" | Architect must cite MCP queries (Context7/Exa) for stack and test-infra decisions |
-| "Approvals got forged" | Only the orchestrator can call AskUserQuestion; subagents write drafts with blank signatures |
-| "Same bug twice" | After a fix fails, next round routes to the Debugger (not another Implementor) |
-| "Parallel work broke everything" | Plan declares explicit parallelism; orchestrator fans out only when declared |
-| "The evaluator skipped screenshots" | Orchestrator's `ui-evidence.sh` check verifies screenshots exist before commit |
-| "Learnings evaporated" | Close-out distills decisions/gotchas/patterns into `learnings.md`; every new feature reads it first |
+| **Ledger** | Durable intent, plan, decisions, log, and feature status |
+| **Evidence** | Append-only records of commands, exits, output hashes, and tree hashes |
+| **Gate** | Executable predicate that returns `pass`, `block`, or `n/a` |
 
----
+Roles and skills act on those primitives; they are not additional state models.
+See [Architecture](ARCHITECTURE.md) and [Primitives](docs/concepts/primitives.md).
+
+## The delivery arc
+
+```text
+Frame → [Architect] → [Design] → Build → Prove → Review → [Ship → Observe]
+  │          │            │         │       │        │        │       │
+framed? architected? designed?      proven? reviewed? clean? shipped? observed?
+```
+
+Brackets mark conditional stages. A documentation-only change does not need a UI
+design; a routine reversible change does not need an ADR; a local change does not
+need deployment gates. The gate sequence stays fixed while applicability flexes.
+
+| Gate | What it requires |
+|---|---|
+| `framed?` | A non-empty intent carrying the user’s recorded agreement |
+| `architected?` | A live ADR for consequential work; explicit agreement for a one-way door |
+| `designed?` | SHA-bound human approval from the browser review surface for UI work |
+| `proven?` | Every declared verification tier green at the current tree |
+| `reviewed?` | A current qualitative review with zero blocking findings |
+| `clean?` | No obvious secrets or raw debug output in the staged diff |
+| `shipped?` | Successful deployment evidence when deployment is in scope |
+| `observed?` | Successful post-deploy health evidence at the same tree |
+
+## Architecture dialogue
+
+The planner works at two altitudes before committing the project to a costly
+direction:
+
+- **System level:** boundaries, data ownership, public contracts, security model,
+  deployment topology, external dependencies, and migrations.
+- **Component level:** responsibility, public interfaces, dependencies, failure
+  behavior, observability, test seams, and rollout compatibility.
+
+If an answer changes the shape of the solution, the planner returns
+`needs-input`. The conductor asks the questions in the main conversation and
+redispatches the planner with your verbatim answers. Discovery does not count as
+a failed gate. The completed ADR still requires a separate agreement when it
+contains a one-way door.
+
+## Runtime state
+
+Project coordination lives under `.coding-agent/` and is gitignored:
+
+```text
+.coding-agent/
+├── CURRENT                 active-feature stack
+├── product.md              product memory + live ADRs + learnings
+└── <feature>/
+    ├── ledger.md           intent, plan, status, and append-only log
+    ├── evidence.jsonl      append-only measured evidence
+    ├── review.md           qualitative review artifact
+    ├── design.html         UI look-contract, when applicable
+    └── design-verdict.json SHA-bound human verdict, when applicable
+```
+
+The ledger is written only by the conductor. Evidence is written only by
+`lib/record.sh`; a hook rejects direct edits. Gate results can be recomputed after
+session restart or context compaction.
 
 ## Install
 
 ### Codex
-
-The repo now carries a Codex-local manifest at [`.codex-plugin/plugin.json`](.codex-plugin/plugin.json) and a repo marketplace at [`.agents/plugins/marketplace.json`](.agents/plugins/marketplace.json).
 
 ```bash
 codex plugin marketplace add /path/to/coding-agent
 codex plugin add coding-agent@coding-agent-local
 ```
 
-Start a new Codex task after install, then invoke the runtime explicitly:
+Start a new task, then invoke the delivery skill:
 
 > Use `$coding-agent:delivery-pipeline` to implement this feature end to end.
 
-The skill keeps the main Codex task as the v5 conductor and dispatches bounded
-Codex subagents as planner, developer, diagnostician, designer, and deployer.
-The existing role prompts, ledger, evidence recorder, and gates remain the source
-of truth; Claude-specific tool names are mapped at runtime by the skill.
+The main Codex task becomes the conductor and delegates bounded moves through
+Codex subagents.
 
 ### Claude Code
 
 ```bash
 git clone https://github.com/devjarus/coding-agent ~/.claude/plugins/coding-agent
-# or point to a working tree during development:
-claude --plugin-dir /path/to/coding-agent
+claude --plugin-dir ~/.claude/plugins/coding-agent
 ```
 
-## Setup (per project, one command)
+The manifest registers `conductor`, `planner`, `developer`, `diagnostician`,
+`designer`, and `deployer`, with the conductor selected by `settings.json`.
 
-```bash
-bash ~/.claude/plugins/coding-agent/scripts/setup.sh
+Optional MCP integrations are configured in `.mcp.json`: Context7, Exa,
+Playwright, XcodeBuildMCP, and iOS Simulator MCP. Set `EXA_API_KEY` in your shell
+when using Exa.
+
+## Example
+
+```text
+You: Build a notes API with Node and SQLite. Add POST /notes and GET /notes?tag.
+
+Conductor  → initializes the feature ledger and asks you to confirm the frame
+Planner    → asks one data-ownership question, then records the chosen ADR
+Developer  → writes tests and implementation, recording each declared tier
+Developer  → runs a separate review dispatch and writes review.md
+Conductor  → stages only attributable paths and runs clean?
+Conductor  → refreshes affected project docs and asks before push/deployment
 ```
-
-Writes `.claude/settings.local.json` with recommended permissions (broad allow + narrow ask for dangerous ops), enables all plugin MCPs, auto-detects iOS, updates `.gitignore`. Restart Claude Code to pick it up.
-
-## First run
-
-```bash
-cd ~/my-project
-claude
-```
-
-Then type something concrete:
-
-> *"Build a notes API with Node + SQLite. Endpoints for POST /notes (text + tags) and GET /notes?tag. Integration tests required."*
-
-What happens next:
-
-```
-Orchestrator: classifies (medium feature), proposes path → AskUserQuestion
-You: approve
-
-Architect:   reads profile + learnings.md
-             bundles stack decisions + discovery questions
-             → returns ask_user to orchestrator
-Orchestrator: surfaces questions in ONE AskUserQuestion
-You: confirm stack
-
-Architect:   researches test infra (Context7/Exa)
-             writes spec.md AND plan.md in ONE dispatch (non-large)
-             → orchestrator serves ONE design-review session (both as tabs)
-You: approve design (Gate 2) — one verdict binds spec + plan
-
-Implementor: loads skills from plan, writes tests first, implementation
-             returns structured update
-Orchestrator: applies to work.md
-
-Evaluator:   npm test + integration tests
-             (no runtime — not a UI project)
-             writes review.md: PASS
-
-Orchestrator: close-out — archives feature, distills to learnings.md,
-              updates AGENTS.md if conventions changed
-              shows diff + commit message → AskUserQuestion
-You: approve push (Gate 3)
-
-Done.
-```
-
-Three human gates for non-large features (intent, design = spec+plan, push); large features split design into separate spec + plan gates (four). Discovery prompts fire only for design-changing forks. Everything else is automated.
-
----
-
-## How it works
-
-Six agents, seven artifact categories, twelve named protocols, eighteen deterministic checks.
-
-```
-                          You
-                           │
-                           ▼
-                    ┌─────────────┐
-                    │ Orchestrator│ ← state machine, dispatches, never writes code
-                    └──┬──────────┘
-                       │
-     ┌───────────┬─────┴─────┬───────────┬───────────┐
-     ▼           ▼           ▼           ▼           ▼
-┌──────────┐┌─────────┐┌───────────┐┌─────────┐┌─────────┐
-│Product-  ││Architect││Implementor││Evaluator││Debugger │
-│Lead (opt)││ (design)││  (build)  ││ (review)││(diagnose)│
-└────┬─────┘└────┬────┘└─────┬─────┘└────┬────┘└────┬────┘
-     └───────────┴───────────┴───────────┴──────────┘
-                       │
-                       ▼
-        .coding-agent/features/<slug>/
-        intent.md → spec.md (+ design.html for UI) → plan.md → work.md → review.md
-        close-out distills the runtime north-star + code into the committed
-        docs set (README · AGENTS · PRODUCT · DESIGN · docs/ · deployment)
-```
-
-**Full architecture with ASCII diagrams:** [ARCHITECTURE.md](ARCHITECTURE.md)
-
-**Design principles** (four primitives, immutability, supersession): [docs/concepts/primitives.md](docs/concepts/primitives.md)
-
-**Canonical flow walkthrough:** [docs/concepts/workflow.md](docs/concepts/workflow.md)
-
-**Artifact lifecycle + protocols catalog:** [docs/concepts/lifecycle.md](docs/concepts/lifecycle.md)
-
----
-
-## Daily use — three common workflows
-
-### 1. Greenfield feature
-
-```
-You:    "Build a rate-limiter middleware with Redis"
-Gates:  Intent → Design (spec+plan, one approval) → Push   (non-large: 3 gates)
-        Large features split Design into Spec then Plan (4 gates — spec locked first)
-Output: Committed feature + learnings entry + updated AGENTS.md
-```
-
-### 2. Touch-up (fix, tweak, small addition)
-
-```
-You:    "The login button should be brand blue (#1A73E8)"
-Gates:  Intent → Push (2 approvals)
-Output: One-file change, smoke review, commit
-```
-
-### 3. Multi-feature session
-
-```
-You:    "Build A. Now add B. Now fix C."
-        Each restates → approves → ships → next.
-        Learnings carry forward; no contamination.
-        Close-out between features is automatic.
-```
-
----
-
-## Configuration
-
-### MCP servers (`.mcp.json` — enabled in settings)
-
-| Server | Used by | Purpose |
-|--------|---------|---------|
-| `context7` | architect, implementor, debugger, evaluator | Current library docs (memory is stale) |
-| `exa` | architect, implementor, evaluator | Web search for release notes, migration guides |
-| `playwright` | evaluator | Browser UI testing (required for UI PASS) |
-| `xcodebuild` | evaluator (iOS) | Build/test |
-| `ios-simulator` | evaluator (iOS) | Simulator control |
-
-### Permissions
-
-`scripts/setup.sh` writes `.claude/settings.local.json` with:
-
-- **`defaultMode: acceptEdits`** — no prompts for Read/Edit/Write/Bash/MCP
-- **`allow`**: blanket access to all normal tools
-- **`ask`**: `git push`, `rm -rf`, `sudo`, `npm publish` still prompt
-- **`deny`**: `rm -rf /` and `rm -rf ~` outright blocked
-
-**For parallel-implementor scenarios**: Bash patterns may not inherit reliably from `settings.local.json` to parallel subagent batches. If you see permission prompts during parallel work, move the permissions block to `settings.json` (project-shared).
-
-### Profile
-
-Edit `~/.coding-agent/profile.md` to set your stack defaults — architect reads it on every session and skips questions you've already answered (Next 15? shadcn? TanStack Query? All pre-filled.)
-
----
 
 ## Documentation
 
-| Doc | For |
-|-----|-----|
-| [ARCHITECTURE.md](ARCHITECTURE.md) | How the pipeline works internally, with ASCII diagrams |
-| [docs/concepts/primitives.md](docs/concepts/primitives.md) | The four primitives (Actor / Artifact / Skill / Check), invariants, supersession rule |
-| [docs/concepts/workflow.md](docs/concepts/workflow.md) | Canonical happy-path walkthrough (T=0 → T=10), Micro/Touch-up state machines |
-| [docs/concepts/lifecycle.md](docs/concepts/lifecycle.md) | Artifact states, close-out protocol, fix-round escalation, recovery |
-| [AGENTS.md](AGENTS.md) | Working on the plugin itself (meta-dev guide) |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | Contributing back |
-| [CHANGELOG.md](CHANGELOG.md) | Version history |
-| [docs/retrospective.md](docs/retrospective.md) | Why the design looks this way — v1 failure modes and how v2 addresses them |
+| Start here | Contents |
+|---|---|
+| [Architecture](ARCHITECTURE.md) | High-level topology and component contracts |
+| [Concepts: primitives](docs/concepts/primitives.md) | Ledger, evidence, and gate semantics |
+| [Concepts: workflow](docs/concepts/workflow.md) | Control loop, dialogue, dispatch, and gate routing |
+| [Concepts: lifecycle](docs/concepts/lifecycle.md) | Feature, evidence, interruption, deploy, and recovery lifecycle |
+| [Contributor guide](AGENTS.md) | Repository structure, invariants, validation, and release workflow |
+| [Docs index](docs/README.md) | Canonical documentation map |
 
----
+## Development
 
-## Status
+No build step is required. After changing agents, gates, hooks, skills, scripts,
+templates, or docs:
 
-v5.5.0. Used daily on real projects (blog platforms, research agents, iOS apps). Each iteration shaped by actual failures — see [CHANGELOG.md](CHANGELOG.md) for the full trail and [docs/concepts/](docs/concepts/) for the design rationale.
+```bash
+./scripts/validate.sh
+evals/run.sh 00-smoke
+```
 
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md). Design conversations start with opening an issue.
-
-## Acknowledgments
-
-See [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md). Inspired by [skills.sh](https://skills.sh), Anthropic's [official skills](https://github.com/anthropics/skills), and harness-design principles from Anthropic's research team.
+See [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) before making a
+release-affecting change.
 
 ## License
 
-MIT — [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE).

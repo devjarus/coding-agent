@@ -45,9 +45,10 @@ Wire these in the same pass so both entry points reach everything:
   contract, and README.
 - **PRODUCT.md** → README, docs/architecture, DESIGN. **DESIGN.md** → README, PRODUCT, docs/architecture. **deployment.md** → README, AGENTS, docs/architecture.
 
-The `docs-links` close-out check verifies every relative link resolves, each
-component contract is discoverable from both architecture and the index, and no
-committed doc leaks plugin-runtime references.
+Before returning, verify every relative link resolves, each component contract
+is discoverable from both architecture and the index, and no committed document
+leaks plugin-runtime references. Report the exact validation command in
+`skipped_or_assumed` when no link checker is available.
 
 ## Vendor-neutral — the committed set must be portable
 
@@ -71,7 +72,7 @@ A user must be able to remove this plugin and have every doc keep working for wh
 
 ## Replace scaffold READMEs — they are NOT real content
 
-A `create-vite` / `create-react-app` / `create-next-app` scaffold ships a placeholder README describing *the template*, not *your app*. **A scaffold README must be fully replaced, not preserved.** The `docs-current` close-out check (`checks/docs-current.sh`) blocks close-out while any of these fingerprints remain — keep this list in sync with it:
+A `create-vite` / `create-react-app` / `create-next-app` scaffold ships a placeholder README describing *the template*, not *your app*. **A scaffold README must be fully replaced, not preserved.** Refuse completion while any of these fingerprints remain:
 
 | Scaffold | Fingerprint phrase |
 |----------|--------------------|
@@ -102,7 +103,7 @@ Incremental adoption is fine: land AGENTS + README first, add the `docs/` bundle
 ### Step 1 — Scan the codebase
 
 - `package.json` / `go.mod` / `Package.swift` / `requirements.txt` → stack + pinned deps
-- `spec.md`, `plan.md`, product north-star (if present in `.coding-agent/`) → product + decisions (read-only sources; never referenced by name in the output)
+- the active ledger's intent/plan and product north-star (if present in `.coding-agent/`) → product + decisions (read-only sources; never referenced by name in the output)
 - Route/controller files → API surface; schema/migration files → data model
 - Component entry points + public types/events + failure paths + telemetry + tests
   → decide whether a detailed component contract is warranted
@@ -155,5 +156,6 @@ documentation.
 - **Two architecture altitudes.** `docs/architecture.md` owns system boundaries
   and the component inventory; `docs/components/*.md` owns deep contracts only
   for substantial components.
-- **Committed docs stay portable.** No `.coding-agent/`, no plugin/protocol/role names, no secrets. The `docs-links` check enforces this.
+- **Committed docs stay portable.** No `.coding-agent/`, plugin/gate/role names,
+  or secrets. Validate this before return and surface any exception explicitly.
 - **Omit empty sections.** A section with nothing useful is worse than no section.

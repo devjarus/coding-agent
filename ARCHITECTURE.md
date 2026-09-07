@@ -1,366 +1,279 @@
 # Architecture
 
-The coding-agent plugin is a dual-runtime multi-agent software-development pipeline built from four primitives. Claude registers the v4 and v5 role definitions directly; Codex enters v5 through `delivery-pipeline` and native subagents. This document maps the primitive relationships, dispatch topology, artifact flow, and gate/check placement. For formal primitive definitions see `docs/concepts/primitives.md`; for the canonical happy-path flow see `docs/concepts/workflow.md`.
+coding-agent is a Markdown-and-shell plugin for Claude Code and Codex. It has no
+application server and no build step. The product is a control system made of
+role prompts, durable project state, executable evidence gates, reusable skills,
+and optional tool integrations.
 
-> **v5 (current).** A second architecture ships alongside this one under `v5/`: a single **conductor** (sole writer of an append-only ledger) runs an 8-gate evidence pipeline (`framed? → architected? → designed? → proven? → reviewed? → clean? → shipped? → observed?`) and dispatches five stateless role agents (planner · developer · diagnostician · designer · deployer). Architecture includes a discovery dialogue before consequential ADRs. Verification is structural — `record.sh` is the only writer of `evidence.jsonl`, gates read evidence bound to the working-tree sha, and one PreToolUse wall enforces it. Both Claude agent sets coexist; Codex adapts the same v5 roles through the delivery skill. Canonical design: [`docs/concepts/v5-design.md`](docs/concepts/v5-design.md); promotion status: [`v5/PLAN.md`](v5/PLAN.md).
+This document owns both architecture altitudes:
 
-## High-level topology
+- **High level:** runtime topology, control flow, state ownership, and trust
+  boundaries.
+- **Component level:** contracts for the conductor, workers, ledger, evidence
+  recorder, gates, hooks, design surface, skills, and platform adapters.
 
-```
-                              ┌─────────┐
-                              │  USER   │ ← owns Intent, approves gates
-                              └────┬────┘
-                                   │  types request, answers AskUserQuestion
-                                   ▼
-  ┌────────────────────────────────────────────────────────────────┐
-  │                       ORCHESTRATOR                             │
-  │                   (main-thread, state machine)                 │
-  │                                                                │
-  │   ┌──────────────┐   ┌────────────┐   ┌───────────────┐        │
-  │   │ reads state  │→→ │ classifies │→→ │ runs Checks   │        │
-  │   └──────────────┘   └────────────┘   └───────┬───────┘        │
-  │                                               │ ok             │
-  │                                               ▼                │
-  │                                        ┌──────────────┐        │
-  │                                        │  dispatches  │        │
-  │                                        └──────┬───────┘        │
-  └───────────────────────────────────────────────┼────────────────┘
-                                                  │
-                ┌───────────────┬─────────────────┼──────────────┐
-                ▼               ▼                 ▼              ▼
-          ┌──────────┐   ┌──────────────┐   ┌──────────┐   ┌──────────┐
-          │ARCHITECT │   │ IMPLEMENTOR  │   │EVALUATOR │   │ DEBUGGER │
-          │  opus    │   │   sonnet     │   │  opus    │   │   opus   │
-          └────┬─────┘   └──────┬───────┘   └────┬─────┘   └────┬─────┘
-               │                │                │              │
-               │ writes         │ writes         │ writes       │ writes
-               │ spec.md        │ source + tests │ review.md    │ diagnosis.md
-               │ plan.md        │                │ screenshots/ │
-               │ (as draft)     │                │              │
-               ▼                ▼                ▼              ▼
-  ┌──────────────────────────────────────────────────────────────────┐
-  │            .coding-agent/features/<slug>/   (user project)       │
-  │                                                                  │
-  │  intent.md  spec.md  plan.md  work.md  review.md  diagnosis.md   │
-  │  screenshots/                                                    │
-  └──────────────────────────────────────────────────────────────────┘
-```
+Detailed behavior lives in [Workflow](docs/concepts/workflow.md),
+[Lifecycle](docs/concepts/lifecycle.md), and [Primitives](docs/concepts/primitives.md).
 
-**Single dispatch tool** — only the Orchestrator may dispatch via the `Agent` tool (subagents inherit it but are forbidden by prompt-level discipline to use it). Subagents return artifacts + structured YAML payloads; they never call each other. Subagent AskUserQuestion does NOT reach the real user (stays in subagent context), which is why only the Orchestrator gates user approvals.
+## 1. System topology
 
-## The four primitives
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                           PRIMITIVES                                │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│  ACTOR       produces work       User + 6 agents                    │
-│  ARTIFACT    durable typed state intent/spec/plan/work/review/...   │
-│  SKILL       scoped knowledge    domain / practice / protocol-help  │
-│  CHECK       deterministic verify bash scripts, JSON output         │
-│                                                                     │
-│  Composites (not primitives, just compositions):                    │
-│  PROTOCOL    named {Actor→Artifact}+Checks workflow                 │
-│  SESSION     live Protocol instance                                 │
-│  PIPELINE    default Protocol for shipping features                 │
-│                                                                     │
-└─────────────────────────────────────────────────────────────────────┘
+```text
+┌──────────────────────────────── Host: Claude Code or Codex ───────────────────────────────┐
+│                                                                                            │
+│  User conversation                                                                         │
+│          │                                                                                 │
+│          ▼                                                                                 │
+│  ┌────────────────┐       bounded dispatch       ┌────────────────────────────────────┐   │
+│  │   Conductor    │─────────────────────────────►│ planner · developer · diagnostician│   │
+│  │ sole state     │◄─────────────────────────────│ designer · deployer                 │   │
+│  │ writer         │       structured return      └────────────────────────────────────┘   │
+│  └───────┬────────┘                                                                         │
+│          │ reads/runs/writes                                                               │
+│          ▼                                                                                 │
+│  ┌──────────────────────────────── Consumer project ────────────────────────────────────┐  │
+│  │ source + tests + docs                                                                │  │
+│  │ .coding-agent/product.md                                                             │  │
+│  │ .coding-agent/CURRENT                                                                │  │
+│  │ .coding-agent/<feature>/{ledger.md,evidence.jsonl,review.md,design.*}                │  │
+│  └──────────────────────────────────────────────────────────────────────────────────────┘  │
+│          ▲                   ▲                         ▲                                     │
+│          │                   │                         │                                     │
+│      lib/*.sh           gates/*.sh              hooks/*.sh                                 │
+│   state/evidence         predicates          safety + resume                               │
+└──────────┬───────────────────┬─────────────────────────┬─────────────────────────────────────┘
+           │                   │                         │
+           ▼                   ▼                         ▼
+     skills/**           scripts/design-*          MCP servers
+  scoped knowledge       review surface      Context7 · Exa · Playwright
+                                             XcodeBuild · iOS Simulator
 ```
 
-## Pipeline (the default Protocol)
+The plugin contributes capabilities; the consumer repository remains the source
+of truth for product code, tests, commands, conventions, and committed technical
+documentation.
 
-```
-                  intake
-                    │
-                    │ AskUserQuestion (Gate 1: Intent)
-                    ▼
-  intent.md (state: approved, approved_by: user)
-                    │
-                    │ dispatch Architect — NON-LARGE: phase=SPEC+PLAN (one dispatch)
-                    │                       LARGE: phase=SPEC, then phase=PLAN (two)
-                    ▼
-            design (spec + plan)
-                    │
-                    │ NON-LARGE: architect writes spec.md AND plan.md (+ design.html for UI)
-                    │   in ONE dispatch; orchestrator serves ONE design-review session
-                    │   (both render as tabs); single sha-bound verdict binds BOTH
-                    │   spec_sha + plan_sha (Gate 2: Design). Flip both → approved.
-                    │
-                    │ LARGE: phase=SPEC → spec gate (spec.md locked, IMMUTABLE) →
-                    │   phase=PLAN against frozen spec → plan gate. Two verdicts.
-                    ▼
-   spec.md + plan.md (state: approved, approved_by: user, IMMUTABLE forever)
-                    │
-                    │ orchestrator creates work.md (active)
-                    │ dispatch Implementor(s) (serial or parallel per plan)
-                    ▼
-              implementation
-                    │
-                    │ implementor returns structured updates
-                    │ orchestrator applies to work.md
-                    │
-                    │ revisions (status: pending)? ───→ revision classify
-                    │                                        │
-                    │ ◄───────────── approve / architect / user ┘
-                    ▼
-                  review
-                    │
-                    │ evaluator runs npm test / integration / e2e
-                    │ evaluator drives Playwright for UI (required)
-                    │ writes review.md (PASS | FAIL)
-                    ▼
-              ┌─────┴─────┐
-              ▼           ▼
-           PASS         FAIL ────→ fix-round (Round 1 → 2 → 3)
-              │
-              │ close-out (8 steps)
-              │  1. freeze feature dir → archived
-              │  2. distill to learnings.md
-              │  3. update AGENTS.md (if conventions changed)
-              │  4. update ARCHITECTURE.md (if architecture changed)
-              │  5. clear CURRENT
-              │  6. update session.md Checkpoint
-              │  7. append close-out entry to Action Log
-              │  8. run all close-out checks
-              ▼
-          commit gate (Push gate)
-              │
-              │ orchestrator shows diff + commit message
-              │ AskUserQuestion (approve push / local-only / redo)
-              ▼
-            DONE
+## 2. Control plane
+
+The conductor runs one ordered loop:
+
+```text
+read durable state
+       │
+       ▼
+run first applicable unmet gate
+       │
+       ├── pass/n-a ───────────────► next gate
+       │
+       └── block ─► dispatch owner ─► verify return ─► record log ─► rerun gate
+                                                                  │
+                                                                  └─ two same blocks → user
 ```
 
-**User gates are size-conditional.** Non-large (small/medium): **three** — Intent, Design (spec+plan in one approval), Push. Large: **four** — Intent, Spec, Plan, Push (spec locked before plan). Architect's discovery-Q&A bundle fires only for design-changing forks; ≤2 low-stakes forks are defaulted and flagged in the spec's `## Assumed Defaults`, resolved inside the single Design approval. Touch-up skips the design gate(s); micro skips all but intent + push; refactor is plan-only (no spec).
+The sequence is fixed:
 
-## Artifact lifecycle and mutability
-
-```
-    ┌──────────┐  author signs   ┌────────────┐  work begins  ┌──────────┐  close-out  ┌──────────┐
-    │  draft   │ ─────────────► │  approved  │ ─────────────►│  active  │ ───────────►│ archived │
-    └──────────┘                 └────────────┘                └──────────┘              └──────────┘
-       mutable                    IMMUTABLE                   mutable per                IMMUTABLE
-                                                              mutability class           forever
+```text
+framed → architected → designed → proven → reviewed → clean → shipped → observed
 ```
 
-Mutability class is declared in each artifact's frontmatter:
+Applicability is data-driven. Intent tags turn architecture, design, and deploy
+stages on or off; they do not create alternate pipelines.
 
-| Class | Rule | Examples |
-|-------|------|----------|
-| `immutable` | Never written after state transition | spec.md, plan.md, intent.md (approved); review.md, diagnosis.md (active); any archived artifact |
-| `append-only` | Writes only add content; never modify existing | learnings.md, session.md Action Log |
-| `single-writer-mutable` | One declared writer can edit any part | work.md, session.md Checkpoint, cache.json, CURRENT |
-| `composite` | Multiple sections, each with own class | session.md |
+## 3. Role architecture
 
-### Supersession (how to change an immutable artifact)
+The six files under `agents/` are six registered roles. A dispatch creates a
+separate worker instance; roles are not mode switches on one shared worker.
 
-Approved `spec.md` / `plan.md` are immutable **forever**. If wave work reveals the plan needs to change, we do NOT edit `plan.md` — the change goes into `work.md § Plan Revisions` with `Supersedes: plan.md §<section>` as a pointer. Readers (next Implementor, Evaluator) consult both: `plan.md` for the base contract, `work.md` for approved amendments. Original signatures stay meaningful.
+| Role | Kinds | Writes | Must not write |
+|---|---|---|---|
+| **Conductor** | coordination | ledger, product memory, user-approved state, explicit git staging | product code, direct evidence |
+| **Planner** | `frame`, `architect` | returned intent/plan/ADR artifact | ledger, source, user answers |
+| **Developer** | `build`, `prove`, `review` | scoped source/tests; one aggregate `review.md` | ledger, product memory |
+| **Diagnostician** | `diagnose` | scoped fix and tests | ledger, speculative fixes without repro |
+| **Designer** | `design` | look-contract and design-review artifacts | approval verdict on the user’s behalf |
+| **Deployer** | `ship`, `rollback` | external deployment state via declared commands | source, deployment authority decisions |
 
-```
-  plan.md (approved_by: user, IMMUTABLE)
-     ▲
-     │ supersedes
-     │
-  work.md § Plan Revisions
-     R-1: Supersedes: plan.md §Wave 2 T-5
-          Change: use in-memory LRU instead of Redis
-          Why: target env has no managed Redis
-          Status: approved by user   ← orchestrator signs after AskUserQuestion
-```
+Different `developer` dispatches can implement, prove, and review. Review stays
+independent by dispatch contract: read-only dimension reviewers cannot modify
+the implementation, and only one aggregate reviewer writes `review.md`.
 
-## Where Checks fire
+## 4. State model
 
-```
-         ┌──────────── Input (before an actor runs) ─────────────┐
-         │                                                       │
-         │   intent-approved ─────────────┐                      │
-         │                                │ before architect dispatch
-         │   spec-approved ───────────────┤                      │
-         │                                │ before implementor dispatch
-         │   plan-approved ───────────────┤                      │
-         │                                │                      │
-         │   revisions-resolved ──────────┘ before next wave     │
-         │                                                       │
-         └───────────────────────────────────────────────────────┘
-
-         ┌──────────── Output (after an actor returns) ──────────┐
-         │                                                       │
-         │   review-has-required-sections                        │
-         │   tests-actually-committed                            │
-         │   no-raw-print (on changed files)                     │
-         │                                                       │
-         └───────────────────────────────────────────────────────┘
-
-         ┌──────────── Invariant (continuous) ───────────────────┐
-         │                                                       │
-         │   active-feature-consistent                           │
-         │   action-logged                                       │
-         │                                                       │
-         └───────────────────────────────────────────────────────┘
-
-         ┌──────────── Evidence (guards a transition) ───────────┐
-         │                                                       │
-         │   ui-evidence   ─── required before review PASS       │
-         │                       on UI projects                  │
-         │   close-out-complete ─ required before commit gate    │
-         │                                                       │
-         └───────────────────────────────────────────────────────┘
+```text
+.coding-agent/
+├── CURRENT                     stack; last non-empty line is active
+├── product.md                  product-wide memory
+│   ├── vision/current state
+│   ├── decisions               append-only live/superseded ADRs
+│   ├── learnings               accumulated operational knowledge
+│   └── shipped                 closed-feature rollups
+└── <feature>/
+    ├── ledger.md               single-writer feature record
+    ├── evidence.jsonl          append-only measured evidence
+    ├── review.md               review contract
+    ├── design.html             optional look-contract
+    ├── design-comments.json    optional comment batch
+    └── design-verdict.json     optional SHA-bound human verdict
 ```
 
-All checks exit 0 (ok) or 1 (fail) with a JSON line to stdout. Failed checks block transitions.
+`.coding-agent/` is deliberately gitignored. Committed project docs are separate
+and vendor-neutral: README, AGENTS, PRODUCT, DESIGN, `docs/architecture.md`,
+`docs/dataflow.md`, optional `docs/components/*.md`, and deployment guidance.
 
-## Fix-round escalation
+### Ownership invariants
 
-```
-  review FAIL  ─────────────────► Round 1: re-implement with findings
-                                     │
-                                     │ FAIL again (same symptom)
-                                     ▼
-                                  Round 2: debugger
-                                     │
-                                     ├── inspection mode ──→ 10-line note, orchestrator applies
-                                     └── full mode      ──→ diagnosis.md, implementor re-dispatched
-                                     │
-                                     │ FAIL again
-                                     ▼
-                                  Round 3: escalate
-                                     │
-                                     │ orchestrator writes session.md checkpoint
-                                     │ AskUserQuestion: take over / new direction /
-                                     │                  abandon / /clear and resume
-                                     ▼
-                                  USER decides
+1. The conductor is the only writer of `ledger.md`, `product.md`, and `CURRENT`.
+2. `lib/record.sh` is the only writer of `evidence.jsonl`.
+3. Workers return structured changes; the conductor checks them against their
+   pre-dispatch scope and snapshot.
+4. User approval is recorded from the user’s actual reply, never inferred.
+5. `.coding-agent/` is never staged.
+
+## 5. Evidence binding
+
+Each evidence line records:
+
+```text
+id · kind · tier · command · exit · stdout_sha · tree_sha · head · timestamp
 ```
 
-## Memory scopes
+`tree_sha` hashes the content and paths of tracked and untracked project files
+while excluding `.coding-agent/`. It is stable across staging and committing
+byte-identical content, but changes when source changes. This lets gates reject a
+green result from an older tree.
 
+For `kind=test`, `record.sh` accepts only the exact command declared as
+`test-command-<tier>` in the frozen intent. The `proven?` gate requires a current
+green entry for every declared tier, preventing a convenient unit command from
+standing in for integration or end-to-end coverage.
+
+## 6. Architecture decisions
+
+Consequential work sets `consequential: yes`, enabling `architected?`.
+
+```text
+Planner inspects system + component choices
+       │
+       ├── unresolved design-changing choice
+       │        └─► needs-input (1–3 questions)
+       │                 └─► conductor asks user and redispatches
+       │
+       └── settled choices ─► ADR with options, trade-offs, decision, consequences
+                                  │
+                                  └─ one-way door? yes ─► explicit user agreement
 ```
-┌────────────────────────────────┐          ┌────────────────────────────────┐
-│   PROJECT memory               │          │   GLOBAL memory                │
-│   .coding-agent/   (gitignored)│          │   ~/.coding-agent/             │
-├────────────────────────────────┤          ├────────────────────────────────┤
-│                                │          │                                │
-│  CURRENT                       │          │  profile.md                    │
-│  session.md (checkpoint + log) │          │    - default stack preferences │
-│  learnings.md                  │          │    - speed dial                │
-│  decisions.md (optional)       │          │    - per-domain defaults       │
-│  cache.json                    │          │                                │
-│                                │          │                                │
-│  features/                     │          │                                │
-│    <slug>/                     │          │                                │
-│      intent.md   spec.md       │          │                                │
-│      plan.md    work.md        │          │                                │
-│      review.md  diagnosis.md?  │          │                                │
-│      screenshots/              │          │                                │
-│                                │          │                                │
-└────────────────────────────────┘          └────────────────────────────────┘
-          read on every                              read on every
-          session start                              session across repos
-```
 
-**Cross-project breadcrumbs** — was considered, dropped. Project learnings per repo + global profile is sufficient. May reintroduce later if real usage shows demand.
+ADRs live under `product.md ## decisions` and carry a stable `feature: <slug>`
+anchor. Superseded ADRs remain readable but stop satisfying the gate.
 
-## Plugin file layout (after v2)
+## 7. Component contracts
 
-```
+### 7.1 `agents/conductor.md`
+
+- **Input:** user request, gate results, worker returns, durable state.
+- **Output:** user questions, bounded dispatches, ledger/product updates, explicit
+  staging/commit actions when authorized.
+- **Invariant:** no code writing and no claim-based advancement.
+- **Failure behavior:** log every block; after two same-gate blocks with no new
+  evidence, stop and ask the user.
+
+### 7.2 Worker prompts in `agents/`
+
+- **Input:** kind, gate, feature slug, scoped brief, relevant state slice,
+  allowed paths, pre-dispatch snapshot, named skills.
+- **Output:** `did`, `changed_paths`, `evidence_ids`, `gate_status`,
+  `open_questions`, and `skipped_or_assumed`.
+- **Invariant:** stateless between dispatches; no nested delegation; no ledger or
+  product-memory writes.
+
+### 7.3 `lib/ledger.sh`
+
+- Initializes product and feature records from templates.
+- Implements feature interruption as a stack in `CURRENT`.
+- Freezes intent only when given the user’s recorded answer.
+- Supports revision markers, incident framing, rollback lookup, block history,
+  and feature rollup/close.
+
+### 7.4 `lib/record.sh`
+
+- Runs a command and preserves its real exit status.
+- Restricts evidence kinds and tier syntax.
+- Binds tests to frozen commands and all evidence to the source tree.
+- Serializes concurrent appends with an atomic directory lock.
+
+### 7.5 `gates/`
+
+- Shell predicates source `gates/lib.sh` and emit one JSON verdict.
+- `pass` and `n/a` exit zero; `block` exits non-zero.
+- Gate scripts observe state; they do not repair it.
+- `gates/lib.sh` owns root resolution, ledger parsing, hashing, evidence lookup,
+  declared tiers, intent tags, and strict design-verdict verification.
+
+### 7.6 `hooks/`
+
+- `session-start.sh` ensures `.coding-agent/` is ignored before state is written,
+  then injects the active ledger tail on resume.
+- `evidence-wall.sh` denies direct Edit/Write or shell redirection into
+  `evidence.jsonl`.
+- Hooks are safety rails; workflow transitions remain visible in gates.
+
+### 7.7 Design-review surface
+
+`scripts/design-review.sh` controls a localhost Python server and browser app.
+The user can leave anchored comments and approve exact bytes. The verdict stores
+SHA-256 digests plus a zero-open-comments proof; changing an approved artifact
+reopens the gate.
+
+### 7.8 Skills and templates
+
+Skills are scoped craft and domain knowledge loaded by worker need. Templates
+define runtime artifacts and portable consumer documentation. Neither owns
+workflow state; the conductor, ledger, evidence recorder, and gates do.
+
+### 7.9 Platform adapters
+
+- **Claude Code:** `.claude-plugin/plugin.json` registers agents and hooks;
+  `settings.json` selects the conductor.
+- **Codex:** `.codex-plugin/plugin.json` exposes the skill tree and MCP servers;
+  `skills/general/delivery-pipeline/SKILL.md` maps role instructions onto Codex
+  collaboration tools while keeping the main task as conductor.
+
+Both adapters consume the same prompts, scripts, gates, templates, and state
+model.
+
+## 8. Trust boundaries
+
+| Boundary | Threat | Control |
+|---|---|---|
+| Agent prose → gate | fabricated or stale success | evidence lookup bound to current tree |
+| Worker → shared workspace | claiming another change | scoped paths + pre-dispatch snapshot |
+| Agent → human authority | forged approval | verbatim answer markers and user-owned design verdict |
+| Parallel workers → evidence | interleaved JSON or duplicate ids | serialized append lock |
+| Source → commit | secret/debug leakage | staged-diff `clean?` gate |
+| Deploy attempt → production health | treating “deployed” as “healthy” | separate `deploy` and `observe` evidence |
+
+## 9. Repository layout
+
+```text
 coding-agent/
-├── .claude-plugin/plugin.json           ← manifest, v2.1.0
-├── .mcp.json                            ← 5 MCP servers
-├── agents/                              ← 6 rewritten prompts (each ~150 lines)
-│   ├── orchestrator.md  product-lead.md  architect.md  implementor.md  evaluator.md  debugger.md
-├── skills/                              ← 59 scoped-knowledge modules (including the Codex delivery entry)
-│   ├── frontend/  backend/  data/  mobile/  infra/  general/  practices/
-├── protocols/                           ← 12 named workflows (one source of truth each)
-│   ├── intake.md   product-direction.md   research.md   spec-writing.md   plan-writing.md   design-review.md
-│   ├── implementation.md   review.md   fix-round.md   close-out.md   redirect.md   recovery.md
-│   └── README.md
-├── checks/                              ← 18 deterministic verification scripts (+ lib.sh helper)
-│   ├── lib.sh
-│   ├── intent-approved.sh   spec-approved.sh   plan-approved.sh
-│   ├── ui-evidence.sh   no-raw-print.sh   close-out-complete.sh
-│   ├── action-logged.sh   active-feature-consistent.sh   revisions-resolved.sh
-│   ├── env-vars-present.sh   no-secrets-staged.sh   review-passed.sh
-│   ├── stack-justified.sh   test-infra-declared.sh   tests-actually-committed.sh
-│   ├── docs-current.sh   docs-links.sh   commit-gate.sh
-├── templates/                           ← 23 artifact templates (22 .md stubs + design.template.html)
-│   ├── intent.template.md   product.template.md   spec.template.md   plan.template.md   component-doc.template.md
-│   ├── work.template.md   review.template.md   diagnosis.template.md
-│   ├── research.template.md   session.template.md   learnings.template.md
-│   ├── deployments.template.md   environments.template.md   open-threads.template.md
-│   ├── design.template.html
-├── hooks/hooks.json                     ← SessionStart context-inject + PreCompact breadcrumb + SubagentStart logging + PostToolUse validate
-├── scripts/
-│   ├── setup.sh                         ← one-command per-project installer
-│   ├── validate.sh                      ← plugin self-validator
-│   ├── validate-skill-freshness.sh      ← sourced version-guidance expiry gate
-│   └── post-edit-validate.sh
-├── docs/
-│   └── concepts/                        ← canonical design docs
-│       ├── primitives.md  workflow.md  lifecycle.md  v5-design.md
-├── CHANGELOG.md
-├── CLAUDE.md
-├── README.md
-├── ARCHITECTURE.md                      ← this file
-└── AGENTS.md
+├── agents/                 conductor + five worker roles
+├── gates/                  eight executable predicates + shared library
+├── lib/                    ledger and evidence recorder
+├── hooks/                  evidence wall and resume preflight
+├── skills/                 59 scoped knowledge packages
+├── templates/              runtime + portable project-doc templates
+├── scripts/                validation, skill freshness, design-review surface
+├── evals/                  artifact-based scenario harness
+├── docs/concepts/          canonical design documentation
+├── .claude-plugin/         Claude Code manifest
+├── .codex-plugin/          Codex manifest
+└── .mcp.json               optional MCP integrations
 ```
 
-## Path resolution
+## 10. Intentional constraints
 
-| Reference | Path pattern | When |
-|-----------|--------------|------|
-| Plugin internal (protocols, checks, templates, design docs) | `${CLAUDE_PLUGIN_ROOT}/...` | Always — survives marketplace caching |
-| User project artifacts | `.coding-agent/...` (relative to project root) | During pipeline runs |
-| Global memory | `~/.coding-agent/profile.md` | Session start, across repos |
-
-**Never use `../` relative paths** — they break after marketplace caching copies the plugin into `~/.claude/plugins/cache/`.
-
-## Subagent tool & MCP access (why `tools:` is unset on subagents)
-
-Claude Code plugin subagents have two constraints that shape their frontmatter:
-
-1. **`mcpServers:` frontmatter is IGNORED in plugin subagents.** Per [subagents docs](https://code.claude.com/docs/en/subagents.md): plugin agents drop the `mcpServers:`, `hooks:`, and `permissionMode:` fields at load time. This field only works for project-level (`.claude/agents/`) or user-level (`~/.claude/agents/`) subagents.
-2. **`tools:` is an allowlist that FILTERS OUT MCPs.** If a subagent frontmatter sets `tools: Read, Write, Bash, ...`, MCP tools are NOT included unless the field is omitted. There's no way to pattern-match MCP names inside `tools:`.
-
-The combination means: **a plugin subagent that needs MCP access must omit the `tools:` field entirely.** It then inherits the full parent-session tool set — MCPs included.
-
-### Applied in this plugin
-
-| Agent | `tools:` frontmatter | MCP access | Reason |
-|-------|---------------------|-----------|--------|
-| orchestrator | Explicit: `Read, Write, Edit, Bash, Glob, Grep, Agent, AskUserQuestion` | None (doesn't need them) | Only orchestrator dispatches (needs `Agent`) and asks user (needs `AskUserQuestion`); both are exclusive to the main thread. |
-| product-lead | Omitted | Context7, Exa inherit | Opt-in product direction; may research market/anchors. Writes only `product.md`. |
-| architect | Omitted | Context7, Exa inherit | Stack research, test-infra research |
-| implementor | Omitted | Context7, Exa inherit | Library API verification |
-| evaluator | Omitted | Playwright, Xcodebuild, iOS Simulator, Context7, Exa inherit | UI runtime testing (REQUIRED for `ui-evidence` check) |
-| debugger | Omitted | Context7 inherits | Real library docs when diagnosing |
-
-### Tradeoff
-
-Omitting `tools:` means subagents inherit all parent tools including `Agent` and `AskUserQuestion`. The "only orchestrator dispatches" and "only orchestrator asks user" invariants are now enforced by **prompt-level discipline** (each subagent's Hard Rules section), not by tool-level filtering. Subagents explicitly told:
-
-- *"Do not dispatch other subagents via Agent tool even if inherited."*
-- *"Do not call AskUserQuestion even if inherited. Return ask_user.questions in your structured payload."*
-
-This is the cost of needing MCPs at all. If a future version of Claude Code lifts one of the two constraints (supports `mcpServers:` in plugin subagents, OR allows MCP patterns in `tools:`), the tool-level restrictions should come back.
-
-## Model tier
-
-| Agent | Model |
-|-------|-------|
-| Orchestrator | `claude-opus-4-8` (pinned) |
-| Product-Lead | `opus` (effort `xhigh`; opt-in) |
-| Architect | `opus` (effort `xhigh`) |
-| Evaluator | `opus` |
-| Debugger | `opus` |
-| Implementor | `sonnet` |
-
-Model tuning (haiku-orchestrator, sonnet-evaluator-lightweight) is an open optimization — measured after real-run data.
-
-## See also
-
-- `docs/concepts/primitives.md` — formal primitive definitions and invariants
-- `docs/concepts/workflow.md` — canonical happy path + edge flows
-- `docs/concepts/lifecycle.md` — artifact states, close-out protocol, named protocols table
-- `/Users/suraj-devloper/workspace/test-agents/V2-ACCEPTANCE-TESTS.md` — acceptance suite
-- `CHANGELOG.md` — version history
+- Markdown + Bash, with a Python-standard-library localhost review server.
+- No database, service process, or build system inside the plugin.
+- Three runtime primitives only: ledger, evidence, gate.
+- Prompt changes express craft; gates enforce claims that must be mechanical.
+- Coordinator state remains local and disposable from Git’s perspective; product
+  code and portable docs remain ordinary repository content.

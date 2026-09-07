@@ -5,6 +5,47 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.0.0] — 2026-09-06 — Canonical evidence-gated runtime
+
+### Added
+
+- **Finished high-level and component-level architecture documentation** — the
+  landing page, architecture reference, primitives, workflow, lifecycle,
+  contributor guide, and eval guide now document one production runtime with
+  consistent diagrams, ownership tables, trust boundaries, and cross-links.
+- **Delivery plans are part of framing** — the planner returns both intent and
+  bounded ordered steps; `framed?` blocks until both are concrete and the user
+  agrees to the frame.
+- **Canonical-layout validation** — the self-validator derives inventory,
+  verifies both manifests, role frontmatter, executable gates, evidence/design
+  invariants, plugin-root links, documentation links, stale runtime paths, shell
+  syntax, and skill freshness.
+
+### Changed
+
+- **The evidence-gated conductor runtime is now the project itself** —
+  conductor, planner, developer, diagnostician, designer, and deployer live in
+  root `agents/`; gates, libraries, and hooks live at root canonical paths; the
+  Claude manifest selects only these roles and hooks; Codex uses the same
+  runtime through `delivery-pipeline`.
+- **Design review reads the canonical ledger** — the browser surface presents
+  the agreed intent/plan beside the visual look-contract and binds approval to
+  `ledger.md` and `design.html` digests.
+- **Runtime-coupled skills were refreshed** — project docs, research,
+  prototypes, artifact migration, CI, observability, UI verification, and role
+  routing now use the conductor/ledger/evidence model and current root paths.
+- **CI now runs the same validator and zero-cost smoke eval used locally.**
+
+### Removed
+
+- **The parallel legacy runtime** — the old agent set, protocol tree,
+  deterministic-check tree, setup/verification scripts, runtime templates, and
+  historical work-in-progress design files are removed. Release history remains
+  in this changelog and Git history.
+- **The experimental runtime namespace** — there is no `v5/` directory or
+  version-qualified execution path. The promoted design is the sole supported
+  architecture.
+
 ## [5.5.0] — 2026-09-06 — Architecture dialogue and durable technical docs
 
 ### Added

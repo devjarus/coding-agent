@@ -1,14 +1,16 @@
 ---
 name: product-shaping
-description: Method for turning a vague feature request into concrete product direction — trace the request to a real user problem, name the job-to-be-done, design the ONE clean core flow, set a testable world-class bar, declare non-goals, and place the product on a maturity ladder.
-scope: product-lead
+description: Turn a vague request into product direction: real user problem, job-to-be-done, one clean core flow, testable quality bar, non-goals, and maturity position.
+scope: planner
 trigger: on-invoke
 category: practice
 ---
 
 # Product Shaping
 
-The discipline that converts "I want to build X" into a product decision you can defend: a real problem, a clean usable flow, and an explicit bar for world-class. Used by the `product-lead` agent in Shape and Review modes.
+The discipline that converts "I want to build X" into a product decision you
+can defend: a real problem, a clean usable flow, and an explicit quality bar.
+Used by the planner during framing and product reflection.
 
 ## The core move: solution → problem → clean flow
 

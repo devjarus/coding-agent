@@ -8,9 +8,9 @@
 # broke. Nearly every assertion here corresponds to a defect that shipped once.
 set -uo pipefail
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../" && pwd)/lib.sh"
-L="$EV_PLUGIN_ROOT/v5/lib/ledger.sh"
-R="$EV_PLUGIN_ROOT/v5/lib/record.sh"
-H="$EV_PLUGIN_ROOT/v5/hooks/session-start.sh"
+L="$EV_PLUGIN_ROOT/lib/ledger.sh"
+R="$EV_PLUGIN_ROOT/lib/record.sh"
+H="$EV_PLUGIN_ROOT/hooks/session-start.sh"
 
 setintent() { # <slug> <body>
   python3 - "$1" "$2" <<'PY'
@@ -18,15 +18,16 @@ import sys, re
 p = ".coding-agent/%s/ledger.md" % sys.argv[1]
 s = open(p).read()
 s = re.sub(r'(?ms)^## intent\n.*?(?=^## )', '## intent\n' + sys.argv[2] + '\n', s)
+s = re.sub(r'(?ms)^## plan\n.*?(?=^## )', '## plan\n1. Execute the bounded smoke step.\n', s)
 open(p, "w").write(s)
 PY
 }
 
 # ── architecture discovery is a dialogue, not a planner-side decision ──────
-ev_assert "planner can pause architecture for input" grep -q 'status: complete | needs-input' "$EV_PLUGIN_ROOT/v5/agents/planner.md"
-ev_assert "architecture questions explain consequences" grep -q 'consequence: <what this changes or trades away>' "$EV_PLUGIN_ROOT/v5/agents/planner.md"
-ev_assert "conductor owns architecture questions" grep -q 'Ask them in the main conversation' "$EV_PLUGIN_ROOT/v5/agents/conductor.md"
-ev_assert "architecture discovery is not a gate strike" grep -q 'failed gate or a strike' "$EV_PLUGIN_ROOT/v5/agents/conductor.md"
+ev_assert "planner can pause architecture for input" grep -q 'status: complete | needs-input' "$EV_PLUGIN_ROOT/agents/planner.md"
+ev_assert "architecture questions explain consequences" grep -q 'consequence: <what this changes or trades away>' "$EV_PLUGIN_ROOT/agents/planner.md"
+ev_assert "conductor owns architecture questions" grep -q 'Ask them in the main conversation' "$EV_PLUGIN_ROOT/agents/conductor.md"
+ev_assert "architecture discovery is not a gate strike" grep -q 'failed gate or a strike' "$EV_PLUGIN_ROOT/agents/conductor.md"
 
 # ── TA1 — data safety: the ledger must never become trackable ───────────────
 bash "$H" >/dev/null 2>&1
@@ -34,6 +35,7 @@ ev_assert "session-start gitignores .coding-agent" grep -qE '^\.coding-agent/?$'
 
 bash "$L" product-init smoke >/dev/null
 bash "$L" init smoke-feature >/dev/null
+ev_assert "framed? rejects template plan"        test "$(ev_gate framed)" = block
 
 # ── TA4 — agreement is evidence, not a stamp the writer wrote itself ────────
 setintent smoke-feature 'goal: smoke the arc
@@ -84,7 +86,7 @@ touches: api
 '
 bash "$L" freeze intent --answer "yes" >/dev/null
 ev_assert "one green tier is not proof of two"  test "$(ev_gate proven)" = block
-ev_assert "the missing tier is named"           bash "$EV_PLUGIN_ROOT/v5/gates/proven.sh" 2>&1 | grep -q 'e2e'
+ev_assert "the missing tier is named"           bash "$EV_PLUGIN_ROOT/gates/proven.sh" 2>&1 | grep -q 'e2e'
 bash "$R" "bash thing.e2e.sh" test e2e >/dev/null
 ev_assert "proven? passes with every tier"      test "$(ev_gate proven)" = pass
 
@@ -99,11 +101,13 @@ ev_assert "reviewed? passes on a clean verdict" test "$(ev_gate reviewed)" = pas
 # ── design verdicts fail closed on missing/stale SHA metadata ───────────────
 mkdir -p .coding-agent/smoke-design
 printf '<main>approved bytes</main>\n' > .coding-agent/smoke-design/design.html
+printf '# ledger: smoke-design\n\n## intent\ngoal: approve this design\n' > .coding-agent/smoke-design/ledger.md
 printf '{"verdict":"approved"}\n' > .coding-agent/smoke-design/design-verdict.json
 if bash "$EV_PLUGIN_ROOT/scripts/design-review.sh" verify .coding-agent/smoke-design >/dev/null 2>&1; then weak=0; else weak=$?; fi
 ev_assert "minimal design verdict is rejected"  test "$weak" -ne 0
 design_sha="$(shasum -a 256 .coding-agent/smoke-design/design.html | cut -d' ' -f1)"
-printf '{"verdict":"approved","comments_open":0,"design_sha":"%s"}\n' "$design_sha" > .coding-agent/smoke-design/design-verdict.json
+ledger_sha="$(shasum -a 256 .coding-agent/smoke-design/ledger.md | cut -d' ' -f1)"
+printf '{"verdict":"approved","comments_open":0,"design_sha":"%s","ledger_sha":"%s"}\n' "$design_sha" "$ledger_sha" > .coding-agent/smoke-design/design-verdict.json
 ev_assert "sha-bound design verdict passes" bash "$EV_PLUGIN_ROOT/scripts/design-review.sh" verify .coding-agent/smoke-design
 printf '<main>changed after approval</main>\n' > .coding-agent/smoke-design/design.html
 if bash "$EV_PLUGIN_ROOT/scripts/design-review.sh" verify .coding-agent/smoke-design >/dev/null 2>&1; then stale=0; else stale=$?; fi

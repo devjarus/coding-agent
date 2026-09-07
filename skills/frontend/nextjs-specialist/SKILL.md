@@ -42,7 +42,7 @@ as part of unrelated feature work.
 
 ## Next.js 16 gotchas
 
-These bite real projects and produce **runtime errors, not typecheck errors** — easy to miss in smoke tests. Always navigate actual routes in the evaluator's runtime verification, not just curl `/`.
+These bite real projects and produce **runtime errors, not typecheck errors** — easy to miss in smoke tests. The declared end-to-end tier must navigate actual routes, not just curl `/`.
 
 ### Async params and searchParams
 
@@ -125,7 +125,7 @@ Verify dark-mode-won't-flash by inspecting the served HTML, not just the React t
 
 ### Dev server port fallback
 
-`next dev` silently falls back to port 3001 (or the next available) if 3000 is taken, and only logs it once in the initial output. **Never hardcode 3000** in evaluator scripts — parse the actual port from stderr. Curling the wrong port will hit whatever other process owns 3000, which is almost always misleading.
+`next dev` silently falls back to port 3001 (or the next available) if 3000 is taken, and only logs it once in the initial output. **Never hardcode 3000** in runtime-verification scripts — parse the actual port from stderr. Curling the wrong port will hit whatever other process owns 3000, which is almost always misleading.
 
 ### `pnpm dev` wipes `.next/` on restart
 

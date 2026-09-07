@@ -1,6 +1,6 @@
 ---
 name: deep-research
-description: Multi-source research method — decompose a question, fan out parallel investigators, interleaved-think each result, verify claims adversarially, synthesize a cited answer. Use for breadth-heavy research, stack comparisons, "which approach wins" questions.
+description: Decompose breadth-heavy research, fan out independent investigators, verify claims adversarially, and synthesize a cited answer. Use for stack comparisons and approach selection.
 scope: any
 trigger: on-invoke
 category: practice
@@ -8,7 +8,10 @@ category: practice
 
 # Deep Research
 
-How to run research that holds up: parallel breadth, then adversarial depth. The orchestrator is the lead agent; this skill is the method it (and its research subagents) follow. See `${CLAUDE_PLUGIN_ROOT}/protocols/research.md` for the actor choreography.
+How to run research that holds up: parallel breadth, then adversarial depth. The
+conductor owns decomposition and synthesis; bounded research workers return
+cited briefs and do not delegate further. Follow the dispatch and structured
+return rules in `${CLAUDE_PLUGIN_ROOT}/agents/conductor.md`.
 
 ## The shape
 

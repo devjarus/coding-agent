@@ -72,9 +72,9 @@ run_one() {
       cat >> "$rendered" <<'ADDENDUM'
 
 ---
-EVAL-MODE NOTE: if `Task` dispatch with a v5 `subagent_type` is unavailable in
+EVAL-MODE NOTE: if `Task` dispatch with a registered `subagent_type` is unavailable in
 this session, perform that worker's role INLINE, following the corresponding
-agent file under the plugin root's `v5/agents/` — the gates and evidence rules
+agent file under the plugin root's `agents/` — the gates and evidence rules
 still apply exactly. Do not skip recording evidence because dispatch was inline.
 ADDENDUM
     fi
@@ -103,6 +103,36 @@ ADDENDUM
     fi
   fi
   t1=$(date +%s)
+
+  # A model runner/API failure is not a product assertion failure. Detect it
+  # before inspecting artifacts so expired auth, quota, or transport errors are
+  # reported as infrastructure errors rather than a wall of misleading misses.
+  local runner_error=""
+  if [ "$MANUAL" -eq 0 ] && [ -f "$sdir/prompt.md" ]; then
+    runner_error="$(python3 - "$rdir" <<'PY'
+import glob, json, os, sys
+for path in sorted(glob.glob(os.path.join(sys.argv[1], "claude-output*.json"))):
+    try:
+        data = json.load(open(path))
+    except (OSError, ValueError) as exc:
+        print(f"{os.path.basename(path)}: invalid runner output ({exc})")
+        continue
+    if data.get("is_error"):
+        print(f"{os.path.basename(path)}: {data.get('result') or data.get('terminal_reason') or 'model runner failed'}")
+PY
+)"
+  fi
+  if [ -n "$runner_error" ]; then
+    python3 - "$name" "$((t1-t0))" "$runner_error" > "$rdir/report.json" <<'PY'
+import json, sys
+print(json.dumps({"scenario": sys.argv[1], "verdict": "error",
+                  "duration_s": int(sys.argv[2]), "summary": {"pass": 0, "fail": 0},
+                  "checks": [], "runner_error": sys.argv[3]}, indent=2))
+PY
+    printf '\n  verdict: ERROR   (model runner unavailable, %ss)\n' "$((t1-t0))"
+    printf '   %s\n' "$runner_error"
+    return 2
+  fi
 
   # 3. assert on artifacts → report.json
   local raw="$rdir/assertions.jsonl"

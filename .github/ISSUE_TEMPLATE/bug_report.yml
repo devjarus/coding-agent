@@ -33,17 +33,17 @@ body:
       required: true
 
   - type: textarea
-    id: agent-log
+    id: ledger-log
     attributes:
-      label: Agent log
-      description: Contents of `.coding-agent/agent-log.txt` (dispatch sequence)
+      label: Ledger log
+      description: Relevant lines from `.coding-agent/<feature>/ledger.md`
       render: text
 
   - type: textarea
     id: artifacts
     attributes:
       label: Relevant artifacts
-      description: Any relevant content from spec.md, plan.md, review.md, etc.
+      description: Relevant intent/plan/review content and evidence entries, with secrets removed
       render: markdown
 
   - type: dropdown
@@ -51,11 +51,12 @@ body:
     attributes:
       label: Which agent misbehaved?
       options:
-        - orchestrator
-        - architect
-        - implementor
-        - evaluator
-        - debugger
+        - conductor
+        - planner
+        - developer (build/prove/review)
+        - diagnostician
+        - designer
+        - deployer
         - not sure
 
   - type: input
@@ -63,7 +64,7 @@ body:
     attributes:
       label: Plugin version
       description: From .claude-plugin/plugin.json
-      placeholder: "1.0.0"
+      placeholder: "6.0.0"
 
   - type: input
     id: claude-code-version

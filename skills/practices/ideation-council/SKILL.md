@@ -1,6 +1,6 @@
 ---
 name: ideation-council
-description: Multi-perspective ideation. Architect researches the query through relevant lenses (product, architecture, security, data, cost) in its own context using Glob/Grep/Context7/Exa. Only runs the perspectives the query actually needs.
+description: Multi-perspective ideation. A planner researches only the relevant product, architecture, security, data, and cost lenses, then synthesizes one recommendation.
 ---
 
 # Ideation Council
@@ -13,7 +13,7 @@ description: Multi-perspective ideation. Architect researches the query through 
 
 ## How It Works
 
-The **architect** assesses the query and researches **only the relevant** perspectives in its own context — it does NOT dispatch subagents (only the orchestrator has the Agent tool in this plugin). Each perspective is a focused research mode using Glob/Grep + MCP servers. The architect synthesizes findings into a unified recommendation for the spec.
+The **planner** assesses the query and researches **only the relevant** perspectives in its own context. It does not dispatch subagents; only the conductor coordinates parallel work. Each perspective is a focused research mode using code search and MCP servers. The planner synthesizes findings into one recommendation for the frame or ADR.
 
 ## Perspectives (rules/perspective-prompts.md)
 
@@ -31,7 +31,11 @@ The **architect** assesses the query and researches **only the relevant** perspe
 ## Process
 
 1. **Assess** -- read the query and determine which perspectives are relevant
-2. **Research** -- use Glob/Grep for codebase, Context7 for library docs, Exa for web search. Use **interleaved thinking** -- reason about each result before the next query. For breadth-heavy lenses (a real stack comparison, an unfamiliar ecosystem), don't grind sequentially in your own context: return `status: needs-research` with a `research_request` so the orchestrator fans out parallel investigators and hands back verified, cited findings (see `${CLAUDE_PLUGIN_ROOT}/protocols/research.md`).
+2. **Research** -- use code search for the repository, Context7 for library docs,
+   and Exa for web research. Reason about each result before the next query. For
+   breadth-heavy lenses, return an `open_question` describing the independent
+   research slices so the conductor can fan them out and redispatch you with
+   verified, cited findings.
 3. **Synthesize (think hard)** -- this is the irreversible step; engage extended thinking. Unified recommendation with tradeoffs and open questions -- name a winner and why, don't average conflicting perspectives.
 
 ## Rules

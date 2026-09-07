@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 04-recovery driver — phase A is killed mid-arc (--max-turns), phase B is a
-# FRESH session told only to resume. Tests v5's resume-as-property claim: the
+# FRESH session told only to resume. Tests the resume-as-property claim: the
 # ledger + gates alone must carry the state across the session boundary.
 set -uo pipefail
 command -v claude >/dev/null 2>&1 || { echo "claude CLI not found"; exit 1; }
@@ -17,7 +17,7 @@ claude -p "$(cat "$EV_RENDERED_PROMPT")" \
 cp .coding-agent/*/ledger.md "$EV_RESULT_DIR/ledger-after-phase-a.md" 2>/dev/null || true
 
 # phase B: fresh session, resume-only instruction — no task restatement
-claude -p "You are the conductor defined at $EV_PLUGIN_ROOT/v5/agents/conductor.md.
+claude -p "You are the conductor defined at $EV_PLUGIN_ROOT/agents/conductor.md.
 A previous session on this project died mid-feature. Re-enter your loop at
 step 1 (read the ledger tail + evidence), find the first unmet gate, and finish
 the feature. Eval-mode: intent agreement and commit are pre-approved; work

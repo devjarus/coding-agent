@@ -11,7 +11,7 @@ Every project the plugin builds must ship with a working CI pipeline. Tests that
 
 - After the first feature ships (greenfield — no CI exists yet)
 - When an existing project has code but no CI workflow
-- When CI exists but doesn't cover the tests the evaluator ran
+- When CI exists but doesn't cover the frozen verification contract
 - When adding a new test type (integration, e2e) that CI doesn't know about
 
 Do NOT apply during touch-up on projects that already have working CI.
@@ -24,7 +24,7 @@ The project must have a single command that runs all tests. Read `package.json` 
 
 | Stack | Test command | If missing, add |
 |-------|-------------|----------------|
-| Node/TS | `npm test` or `pnpm test` | Add `"test": "vitest run"` (or `jest`, `mocha` — match what the implementor used) |
+| Node/TS | `npm test` or `pnpm test` | Add `"test": "vitest run"` (or `jest`, `mocha` — match what the developer used) |
 | Python | `pytest` | Add `[tool.pytest.ini_options]` to `pyproject.toml` |
 | Go | `go test ./...` | Already works if test files exist |
 | Swift | `swift test` | Already works if test targets exist |
@@ -176,7 +176,7 @@ echo "npx lint-staged" > .husky/pre-commit
 
 ## What the CI Must Cover
 
-At minimum, CI must run everything the evaluator checks:
+At minimum, CI must run every verification tier declared by the frozen intent:
 
 - [ ] **Build** — project compiles without errors
 - [ ] **Typecheck** — zero type errors (if the project has types)
@@ -193,7 +193,9 @@ Additional for libraries:
 ## Rules
 
 1. **CI is mandatory.** A project without CI is a project that silently breaks. Set it up after the first feature, not "when we get around to it."
-2. **CI must match what the evaluator tested.** If the evaluator ran `npm test` and `npm run build`, CI must run both. If CI runs fewer checks than the evaluator, the CI is incomplete.
+2. **CI must match the frozen verification contract.** If the intent declares
+   `npm test` and `npm run build`, CI must run both. Fewer checks make CI
+   incomplete even if a local review looked clean.
 3. **Don't over-engineer.** One workflow file, one job, sequential steps. Parallelize only when CI takes >10 minutes.
 4. **Frozen lockfiles in CI.** `npm ci`, `pnpm install --frozen-lockfile`, `pip install -r requirements.txt` — not `npm install` which can drift.
 5. **Pre-commit hooks are optional.** They add developer UX but aren't a replacement for CI. Don't block on setting them up if the CI workflow is the priority.

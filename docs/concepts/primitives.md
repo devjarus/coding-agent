@@ -1,285 +1,114 @@
-# Primitives
+# Runtime primitives
 
-The system is built from four primitives. Everything else — Protocols, Sessions, the Pipeline, the shape of each agent prompt — composes from these.
+coding-agent is built on exactly three state-and-control primitives: **ledger**,
+**evidence**, and **gate**. Roles, skills, hooks, and workflows operate on these
+primitives; they do not introduce another state model.
 
-> **Status:** implemented and shipping (see [CHANGELOG.md](../../CHANGELOG.md)). See `workflow.md` for the canonical flow and `lifecycle.md` for artifact states and close-out.
+## Ledger
 
-## 1. Actor
+A ledger is the durable account of what a feature means and what happened to it.
 
-An Actor produces work. Each has an identity, a fixed contract (what it promises to produce), a tool set, and a scope (what it is permitted to touch). Two classes: **Human** and **Agent**.
-
-### Agent types (named by software-engineering role)
-
-| Actor | Role analog | Unique responsibility |
-|-------|-------------|----------------------|
-| **Orchestrator** | Tech lead / PM | Reads state, classifies requests, dispatches other agents. **Only** actor with dispatch authority. |
-| **Product-Lead** | Founder / product strategist | Sets product *direction* (the what/why/for-whom): real problem, core flow, world-class bar. Owns the evolving `product.md` north-star. **Opt-in** — never auto-gates. |
-| **Architect** | Design / staff eng | Converts intent into `spec.md` and `plan.md`. Makes irreversible choices (stack, scope, test infra, architecture). |
-| **Implementor** | Engineer | Converts plan into code + tests. Shape varies per project via **Skills**. |
-| **Evaluator** | Code reviewer / QA | Independent review of just-written code. Invokes committed test suites; does not write ad-hoc scripts. |
-| **Debugger** | SRE / incident responder | Root cause analysis for production bugs or fix-round regressions. Writes diagnoses, not code. |
-
-### User
-
-The User is the Product Owner. Owns **Intent**. Approves named gates. Agents interact with the User only through structured approvals (not freeform chat), because approvals must be verifiable after the fact.
-
-### Invariants
-
-- **Only the Orchestrator dispatches.** Agents return Artifacts; they never call other agents.
-- **Every Actor transition is mediated by an Artifact.** The Orchestrator does not convey information by prose in a dispatch prompt — the receiving agent reads it from disk.
-- **User approval is an Artifact signature**, not a chat message. (See Artifact section.)
-
----
-
-## 2. Artifact
-
-A durable output on disk. Typed, owned by exactly one Actor, with declared readers. Has a **state** and a **category**.
-
-### Categories
-
-| Category | Purpose | Typical files |
-|----------|---------|---------------|
-| **Intent** | What we're trying to do, approved by User | `intent.md` |
-| **Plan** | How we'll do it, approved by User | `spec.md`, `plan.md`, `design.html` (UI features — the *look* contract; spec.md stays the *behavior* contract) |
-| **Work** | Current state: task ledger, decisions, deviations, revisions, nits — one place | `work.md` |
-| **Findings** | What the Critic saw | `review.md`, `diagnosis.md` |
-| **Research** | Verified, cited research backing a decision | `research.md` |
-| **Memory** | Durable across features or sessions | *Runtime (gitignored):* `product.md` (north-star direction, evolves), `profile.md`, `learnings.md`, `session.md`, `open-threads.md`. *Committed doc set (vendor-neutral, distilled from runtime at close-out):* `README.md`, `AGENTS.md`, `PRODUCT.md`, `DESIGN.md`, `docs/architecture.md`, `docs/dataflow.md`, optional `docs/components/*.md`, `docs/index.md`, `deployment.md` |
-| **Operations** | Deploy history + declared per-env deploy/verify state | `deployments.md`, `environments.md` |
-
-Seven categories, five-to-seven files per active feature at most. (`research.md` is optional — written only when a decision needs breadth-heavy investigation; otherwise research folds inline into `spec.md`.) **Memory and Operations artifacts are global**, not per-feature — they persist across the whole project and are read on session start.
-
-### States
-
-```
-draft ──(author signs)──> approved ──(work begins)──> active ──(close-out)──> archived
+```text
+.coding-agent/
+├── product.md          product-wide decisions, learnings, and shipped rollups
+├── CURRENT             active-feature stack
+└── <feature>/
+    └── ledger.md       intent, plan, status, and chronological log
 ```
 
-| State | Who may read | Who may write | Typical transition |
-|-------|--------------|---------------|--------------------|
-| `draft` | Author only | Author | Agent is building it |
-| `approved` | Everyone | Nobody (immutable) | User-signed approval recorded in frontmatter |
-| `active` | Everyone | Writer declared in frontmatter | Implementation in flight |
-| `archived` | Everyone | Nobody (immutable) | Close-out complete |
+Properties:
 
-Memory category is always `active` (never transitions). Spec and Plan go `draft → approved`. Work goes `active → archived`. Findings go `draft → active` (reviewed, not approved by user in the same sense).
+- **Single writer:** only the conductor edits ledger state.
+- **Human agreement is quoted:** freezing intent requires the user’s actual
+  reply, not an agent-authored `approved: true` field.
+- **Revisions are visible:** a revision marker reopens a frozen section until
+  the user agrees again.
+- **Interruptions are stacked:** an incident can become active without losing
+  the feature it interrupted.
+- **Closure rolls knowledge forward:** summary and learnings move into
+  `product.md` so the next worker receives durable context.
 
-#### Avoid vocabulary collision: three "state" concepts
+The ledger records decisions and transitions. It does not prove that a command
+ran successfully.
 
-The word "state" appears in three distinct vocabularies in this plugin. Don't confuse them:
+## Evidence
 
-| Vocabulary | Field name | Values | Where it lives |
-|------------|-----------|--------|---------------|
-| **Artifact lifecycle state** | `state:` (frontmatter) | `draft / approved / active / archived` | Every artifact's frontmatter |
-| **Task state** | `task-state` (column in table) | `ready / in-progress / complete / blocked / failed / needs-revision` | `work.md § Tasks` table |
-| **Review status** | `Status:` (heading body) | `PASS / FAIL` | `review.md ## Status` section |
+Evidence is an append-only JSONL record written exclusively by `lib/record.sh`.
 
-The vocabularies do NOT overlap. A task with `task-state: complete` lives in a `work.md` whose frontmatter says `state: active`. A review with `## Status: PASS` lives in a `review.md` whose frontmatter says `state: active` (until close-out flips to `archived`). When in doubt, the artifact frontmatter `state:` always uses the lifecycle vocabulary — the other two never appear there.
-
-### Mutability class
-
-Every Artifact declares its mutability class in frontmatter. Three classes, no ambiguity:
-
-| Class | Write rules | Examples |
-|-------|-------------|----------|
-| `immutable` | Never written after state transition. Amendments live in a separate mutable artifact that references it. | `spec.md`, `plan.md`, `review.md`, `diagnosis.md`, archived artifacts |
-| `append-only` | Writes must add content; never modify or delete existing content. One writer. | `learnings.md`, the action-log portion of `session.md` |
-| `single-writer-mutable` | One owner writes any part. Others return structured updates; owner parses and applies. | `work.md`, the checkpoint portion of `session.md`, `cache.json`, `CURRENT`, `profile.md` |
-| `composite` | A file with multiple sections, each section declares its own class. Rare; used only when splitting would cost more than it saves. | `session.md` (checkpoint = single-writer-mutable + action-log = append-only) |
-
-### Supersession rule
-
-When an `immutable` artifact needs an effective change, we **do not rewrite it**. A `single-writer-mutable` artifact holds the amendment with a reference back to the immutable source. Readers must consult both.
-
-Concrete example: an approved `plan.md` cannot be modified. If wave 2 needs a design change, the amendment goes into `work.md`:
-
-```markdown
-## Plan Revisions
-### R-1 — 2026-04-20 — material, approved by user
-Supersedes: plan.md §Wave 2 T-5
-Change: replace Redis counters with in-memory LRU
-Why: target env has no managed Redis
-Downstream: T-7 evaluation criterion "survives restart" → "degrades gracefully on restart"
+```json
+{"id":7,"kind":"test","tier":"e2e","cmd":"npm run test:e2e","exit":0,"stdout_sha":"…","tree_sha":"…","head":"…","at":"…"}
 ```
 
-`plan.md` is untouched. Its approval signature remains meaningful. The Evaluator reads `plan.md` for the original contract and `work.md` for approved amendments. Same for spec revisions, findings retractions, etc.
+Every entry carries:
 
-### Memory scopes
+| Field | Meaning |
+|---|---|
+| `id` | Monotonic feature-local identifier |
+| `kind` | `test`, `review`, `design`, `deploy`, `observe`, or `run` |
+| `tier` | Named verification tier such as `unit`, `integration`, or `e2e` |
+| `cmd` / `exit` | Exact command and real process result |
+| `stdout_sha` | Digest of captured output |
+| `tree_sha` | Content identity of the project tree the result covers |
+| `head` / `at` | Git commit and UTC timestamp at execution |
 
-| Scope | Path | Contents | Read |
-|-------|------|----------|------|
-| **Project** | `.coding-agent/` in repo | `learnings.md`, `decisions.md`, `session.md`, `features/<slug>/` archives | Every session start in this repo |
-| **Global** | `~/.coding-agent/` | `profile.md` (user preferences) | Every session across all repos |
+Test evidence is accepted only when its command exactly matches the frozen
+intent’s `test-command-<tier>` contract. Direct writes are rejected by the
+evidence-wall hook, and concurrent recorders serialize their append.
 
-Profile is the only Global Memory item by default. Cross-project "breadcrumbs" (topic-tagged gotchas) may be added later but are not required; the Project learnings are usually enough.
+Evidence proves execution. It does not decide whether the result is sufficient
+to advance.
 
-### Frontmatter format
+## Gate
 
-Every Artifact carries a frontmatter block. Checks read this block; they never parse prose.
+A gate is an executable predicate over current ledger, evidence, artifacts, and
+Git state.
 
-```yaml
----
-artifact: plan                      # category (intent | plan | work | findings | research | memory | operations)
-feature: notifications-v1           # feature slug (or "global" for profile)
-writer: architect                   # declared owner — only this Actor may write
-mutability: immutable               # immutable | append-only | single-writer-mutable | composite
-state: approved                     # draft | approved | active | archived
-approved_by: user                   # present only in approved state
-approved_at: 2026-04-20T14:32:00Z   # ISO timestamp
-supersedes: null                    # set when this artifact amends another (e.g. work.md R-1 → plan.md §Wave 2)
----
+```json
+{"gate":"proven","status":"block","reason":"no passing test at current tree for tier: e2e"}
 ```
 
-### Invariants
+Every gate returns one of:
 
-- **Every Artifact has exactly one `writer`.** Declared in frontmatter. No multi-writer state.
-- **Every Artifact has at least one Check.** Existence + required frontmatter fields minimum.
-- **Memory is read at session start and generally distilled at feature close-out.** The explicit runtime exception is orchestrator-owned operational memory: `session.md` (Checkpoint overwritten mid-session, Action Log appended continuously) and other orchestrator-owned runtime pointers such as `CURRENT` / `cache.json`.
-- **`approved` artifacts are `immutable` forever.** Amendments go into a `single-writer-mutable` artifact via the supersession rule.
-- **`work.md` is the amendment surface.** Plan revisions, deviations, nits, decisions — all live here, not in the spec/plan themselves.
+- `pass` — applicable and satisfied;
+- `block` — applicable but missing or contradictory evidence;
+- `n/a` — not applicable to this feature.
 
----
+Gates are read-only. They report what is missing; the conductor routes work to
+the owning role and reruns the predicate.
 
-## 3. Skill
+## Composition
 
-A Skill is scoped knowledge an Actor loads to adapt. The Implementor producing a Next.js frontend is a different engineer than the Implementor producing a Swift iOS app — same Actor, different Skills. Skills make Actors pluripotent.
-
-### Skill properties
-
-| Property | Meaning | Example |
-|----------|---------|---------|
-| `name` | Unique id | `react-specialist` |
-| `scope` | Which Actor(s) may use it | `implementor`, `architect`, `any` |
-| `trigger` | When it loads | `always` (frontmatter preload), `on-match: [tags]` (routed), `on-invoke` (explicit `Skill` tool call) |
-| `category` | What kind of knowledge | `domain-specialist`, `practice`, `protocol-helper`, `general` |
-| `content` | The SKILL.md body | Prose + rules + optional scripts |
-
-### Skill categories
-
-| Category | Purpose | Examples |
-|----------|---------|----------|
-| **Domain specialist** | Stack knowledge for a specific technology | `react-specialist`, `nodejs-specialist`, `postgres-specialist`, `ios-swiftui-specialist` |
-| **Practice** | Cross-cutting engineering discipline | `tdd`, `test-doubles-strategy`, `observability`, `security-checklist` |
-| **Protocol helper** | Executes part of a multi-Actor Protocol | (v2 collapsed these into `protocols/*.md` + `templates/*.md`; no skill instances currently — protocols ARE the helpers) |
-| **General** | Widely applicable, not tied to a stack or practice | `debugging`, `git-workflow` |
-
-### Skill manifest
-
-Each Implementor dispatch carries an explicit Skill manifest derived from the task's domain tags. The Architect decides the manifest in `plan.md`; the Orchestrator passes it through verbatim.
-
-Example task block in `plan.md`:
-
-```markdown
-### T-3 — signing-helper (backend)
-domain_tags: [backend, nodejs, security]
-skills: [nodejs-specialist, api-design, security-checklist, test-doubles-strategy, tdd, observability]
+```text
+ledger says what was agreed
+        +
+evidence says what actually ran
+        +
+gate decides whether the current claim is justified
+        =
+safe transition to the next delivery stage
 ```
 
-### Invariants
+The delivery workflow, agent roles, and skills are compositions around this
+equation:
 
-- **Architect decides the manifest.** Not the Orchestrator, not the Implementor.
-- **Manifest is visible to the User during plan approval.** Skill choice is a design decision; the User can override.
-- **A Skill with `trigger: always` is preloaded.** Declared in Actor frontmatter.
-- **A Skill with `trigger: on-match` requires the dispatch prompt to name it.** No magic routing.
+- A **role** is a bounded actor contract.
+- A **skill** is reusable knowledge loaded when relevant.
+- A **hook** protects an invariant at the tool boundary.
+- A **workflow** is the conductor repeatedly running ordered gates and routing
+  blocked work.
 
----
+They are useful concepts, but the durable runtime can always be reconstructed
+from the three primitives.
 
-## 4. Check
+## Why only three
 
-A Check is a deterministic predicate over state:
+More artifact types and protocol-specific state make recovery harder: after a
+long session, the coordinator must remember which file and which transition was
+authoritative. Here, recovery is mechanical:
 
-```
-check(state) → { ok: bool, reason: string }
-```
+1. Read `CURRENT` and the active ledger.
+2. Read `evidence.jsonl`.
+3. Run gates in order.
+4. Resume at the first applicable block.
 
-No LLM. Runs in <1s. Written in bash or a small scripting language — whatever the repo can execute without adding heavy dependencies.
-
-### Check kinds (by timing)
-
-| Kind | Fires when | Example |
-|------|-----------|---------|
-| **Input** | Before an Actor runs | `plan-approved` before Implementor dispatch |
-| **Output** | After an Actor returns | `review-has-required-sections` after Evaluator |
-| **Invariant** | Continuously (or on each dispatch) | `active-feature-consistent` |
-| **Evidence** | Guards a state transition | `ui-evidence` before `Status: PASS` on a UI feature |
-
-### Checks that replace prose rules
-
-Every prose rule that has failed twice becomes a Check. Starting list:
-
-| Check | Replaces today's prose |
-|-------|------------------------|
-| `intent-approved` | "Orchestrator must get user approval before spec" |
-| `stack-justified` | "Architect must show stack tradeoffs" |
-| `spec-approved` | "Gate 1: user approves spec" |
-| `plan-approved` | "Gate 2: user approves plan" |
-| `test-infra-declared` | "Plan must include test infrastructure research" |
-| `tests-actually-committed` | "Claimed artifacts exist + changed in git, not narrated" |
-| `review-passed` | "Commit only after the evaluator's review.md Status: PASS" |
-| `ui-evidence` | "UI projects require Playwright evidence" |
-| `no-raw-print` | "Use structured logging; no console.log in prod code" |
-| `no-secrets-staged` | "No .env / private keys / tokens in a commit" |
-| `close-out-complete` | "Feature completion distills to learnings + clears CURRENT" |
-| `revisions-resolved` | "No pending plan revisions before next wave" |
-| `active-feature-consistent` | "CURRENT points to a real, non-archived feature dir" |
-
-> Not every prose rule is codified yet — **test-tier coverage, logger-import, and UI MCP-preflight remain prose-enforced** (evaluator/implementor judgment), not scripts. Codify a rule only once it has failed twice.
-
-### Invariants
-
-- **Checks do not write Artifacts.** They only report.
-- **A failed Check blocks a transition.** The Orchestrator refuses to dispatch or mark PASS.
-- **Checks are composable.** A dispatch-time Check may invoke multiple atomic Checks; the Orchestrator reports all failures, not just the first.
-
----
-
-## Composites (not primitives — compositions of the above)
-
-### Protocol
-
-A named, ordered sequence of `{Actor → Artifact} + Checks`. Lives in `protocols/*.md`. Agents reference a Protocol by name; they do not redescribe it in their own prompts.
-
-Named Protocols in this design:
-- `intake` — user request → Intent artifact → approval
-- `research` — lead decomposes → parallel investigators → adversarial verification → cited synthesis
-- `spec-writing` — Architect discovery → `spec.md` → approval
-- `plan-writing` — test-infra research → `plan.md` → approval
-- `implementation` — serial or parallel Implementor dispatch
-- `review` — Evaluator invocation (full / lightweight / smoke)
-- `fix-round` — failure re-dispatch with `work.md` handoff
-- `close-out` — freeze + distill + clear CURRENT
-- `redirect` — mid-pipeline user direction change
-- `recovery` — compact, clear, rewind with session checkpoint
-
-### Session
-
-A live instance of a Protocol (usually `pipeline`), running against a live repo. A Session reads Memory on start, writes Memory at feature close-out, and is checkpointed to `session.md` periodically.
-
-### Pipeline
-
-The default Protocol for shipping a feature. The composition:
-
-```
-intake → spec-writing → plan-writing → implementation → review → (fix-round)* → close-out
-```
-
-`(fix-round)*` means zero or more fix rounds depending on Evaluator findings.
-
----
-
-## What's not a primitive (and why)
-
-| Candidate | Status | Why demoted |
-|-----------|--------|-------------|
-| **Intent** | Artifact category | Behaves like an Artifact; no unique primitive properties |
-| **Protocol** | Composite | Ordered use of primitives; adds no new capability |
-| **Feedback / learning** | Property of Memory | Close-out protocol handles it; no separate primitive needed |
-| **Preset** | Content in Profile | A preset is a named set of Profile defaults; not structural |
-| **Breadcrumb** | Dropped | Project Memory's `learnings.md` is already the mechanism |
-| **Session** | Composite | A live Protocol instance; not a distinct thing |
-
----
-
-## Primitive count: 4
-
-Actor, Artifact, Skill, Check. Everything else composes.
+No conversational memory is required to determine where work stands.

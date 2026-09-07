@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   design-review app — served by design-review-server.py at /.
-  Renders spec.md / plan.md (server-side markdown → HTML) and design.html (iframe),
+  Renders ledger.md (server-side Markdown → HTML) and design.html (iframe),
   lets the user pin comments to any block/element, and ends the round with
   a verdict: Approve (sha-bound, blocked while comments are open) or
   Request changes. All persistence goes through the local server; nothing
@@ -92,7 +92,7 @@
 (function () {
   'use strict';
   var META = null, COMMENTS = [], locked = false, pendingAnchor = null;
-  var TABS = [["design","Design","design.html"],["spec","Spec","spec.md"],["plan","Plan","plan.md"]];
+  var TABS = [["design","Design","design.html"],["ledger","Intent + Plan","ledger.md"]];
 
   function $(id){ return document.getElementById(id); }
   function esc(s){ var d=document.createElement('div'); d.textContent=s; return d.innerHTML; }

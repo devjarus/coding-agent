@@ -47,8 +47,8 @@ grep -nE '// *(LOAD-BEARING|HACK|FIXME|F-[0-9]+)' <file>
 
 If matches are found:
 - **Refactor agent:** paste the exact matching lines into the refactor prompt with the instruction *"Preserve these lines. They encode non-obvious fixes. Do not silently simplify."*
-- **Orchestrator (pre-dispatch):** include the matches in the implementor dispatch so the marker survives the rewrite.
-- **Implementor (before editing a file):** run the grep yourself on files you're about to modify. If you remove a load-bearing line, you own the justification.
+- **Conductor (pre-dispatch):** include the matches in the developer dispatch so the marker survives the rewrite.
+- **Developer (before editing a file):** run the grep yourself on files you're about to modify. If you remove a load-bearing line, you own the justification.
 
 ## Rules
 

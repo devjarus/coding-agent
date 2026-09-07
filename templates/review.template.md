@@ -1,48 +1,28 @@
----
-artifact: review
-feature: <slug>
-writer: evaluator
-mutability: immutable
-state: active                    # ARTIFACT lifecycle: draft|approved|active|archived. Use `active` here. Close-out flips to `archived`. Do NOT confuse with task-state (in work.md § Tasks: ready|in-progress|complete|blocked|failed) or review status (## Status section: PASS|FAIL).
-supersedes: null
-mode: full                       # full | lightweight | smoke
----
+# review: <feature-slug>
 
-# Review
+<!-- Written by the `review` kind. The FORMAT is load-bearing: `reviewed?`
+     counts lines matching `^- \[blocking\]` and cross-checks that count against
+     the recorded evidence entry. A finding written any other way (`* [blocking]`,
+     an indented bullet, prose) is invisible to the gate — it would record a
+     clean verdict with defects on the page. Keep findings flush-left, one per
+     line, in exactly the shape below. -->
 
-## Status
-PASS | FAIL                      # FAIL means findings must be fixed
-Reason: <one line>
+reviewed-tree: <the tree sha this review covered — `gates/lib.sh ca_tree_sha`>
+base: <the diff base this review read>
 
-## Build Result
-<success/failure, warning count>
+## findings
 
-## Test Results
-- Unit: <N passed / M failed>
-- Integration: <N passed / M failed>
-- E2E: <N passed / M failed or N/A>
-- Typecheck: <ok | N errors>
+<!-- One per line, flush-left, `file:line` required. Nothing else at this level.
+     blocking = fails an acceptance criterion, or a security/correctness defect.
+     advisory = everything else (naming, structure, nits). Recorded, not gating.
+     A clean review keeps this section with zero finding lines — do not delete it.
 
-## Evaluation Criteria Results
-| Criterion (from plan.md) | Result | Evidence |
-|--------------------------|--------|----------|
+     Shape (these examples live inside the comment so they are not counted):
+       - [blocking] auth: token compared with == not constant-time — src/auth.ts:42
+       - [advisory] naming: `doIt` reads as a stub — src/cart.ts:88          -->
 
-## Spec Compliance
-| FR | Status | Evidence |
-|----|--------|----------|
+## notes
 
-## Findings
-| ID | Severity | File:Line | Description | Fix Direction |
-|----|----------|-----------|-------------|---------------|
-
-## Screenshots                   # required for UI projects
-- home.png — landing after login
-- mobile-375.png — responsive at 375px
-
-## Regressions
-| Previous Finding | Still Present? | Evidence |
-
-## Dispatch Recommendation
-next_step: re-implement | debugger | done
-reason: <why>
-priority_findings: <IDs>
+<!-- Optional prose: what you looked for and did not find, coverage you judged
+     thin, anything the conductor should weigh. Never put findings here — the
+     gate cannot see them. -->

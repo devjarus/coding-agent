@@ -14,7 +14,7 @@ claude -p "$(cat "$EV_RENDERED_PROMPT")" \
   > "$EV_RESULT_DIR/claude-output.json" 2> "$EV_RESULT_DIR/claude-stderr.log" || true
 
 # phase 2: the requirement changes (fresh session, resumes from the ledger)
-claude -p "You are the conductor defined at $EV_PLUGIN_ROOT/v5/agents/conductor.md — a prior session worked this project; re-enter your loop from the ledger (step 1).
+claude -p "You are the conductor defined at $EV_PLUGIN_ROOT/agents/conductor.md — a prior session worked this project; re-enter your loop from the ledger (step 1).
 
 REQUIREMENT CHANGE (from the user): greet.sh must now print 'hello <name>!' with a trailing exclamation mark. This changes the agreed intent — handle it per your Requirements-shift / redirect rules (ledger.sh revise, then re-freeze; eval-mode: treat this message as the user's re-agreement). Update the code and test, get proven?/reviewed? green again, commit, then close the feature." \
   --permission-mode bypassPermissions --output-format json \

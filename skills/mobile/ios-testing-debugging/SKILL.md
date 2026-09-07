@@ -45,7 +45,7 @@ Simulator control and UI interaction:
 
 ## Testing Workflow
 
-### For Evaluator (verifying iOS apps)
+### For Developer, review/prove kinds
 
 1. **Build the app** — use XcodeBuildMCP to build for simulator
 2. **Boot simulator** — use `xcrun simctl boot` via Bash or MCP
@@ -56,7 +56,7 @@ Simulator control and UI interaction:
 7. **Run test suite** — use XcodeBuildMCP to run XCTest/XCUITest
 8. **Clean up** — `xcrun simctl shutdown all`
 
-### For Implementor (writing tests)
+### For Developer, build kind
 
 1. **Unit tests first** (TDD):
    - XCTest: `XCTAssertEqual`, `XCTAssertTrue`, `XCTAssertThrowsError`

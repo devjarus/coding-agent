@@ -1,201 +1,208 @@
-# Development Workflow — Plugin Self
+# Development workflow — coding-agent
 
-This file tells agents (and humans) how to work on the coding-agent plugin itself. (For consumer-project AGENTS.md, see what individual projects generate during close-out.)
+This file is the contributor contract for the plugin itself. Consumer projects
+may generate their own AGENTS.md; do not copy plugin-runtime details into them.
 
-## What This Is
+## What this is
 
-A Claude Code and Codex plugin: 6 agents + 59 skills + 12 named protocols + 18 deterministic checks + 23 artifact templates + 5 MCP servers. Codex enters the v5 multi-agent runtime through the `delivery-pipeline` skill. All Markdown + Bash (plus a stdlib-Python localhost server for the design-review surface). No build step.
+A Claude Code and Codex plugin: 6 registered agents, 59 skills, 8 executable
+gates, 12 artifact/documentation templates, 2 runtime libraries, 2 hooks, and 5
+optional MCP servers. The runtime has one conductor, five bounded worker roles,
+and three primitives: ledger, evidence, and gate.
 
-## Project Structure (v2)
+Codex enters through the `delivery-pipeline` skill. Claude Code registers the six
+role prompts directly and selects the conductor in `settings.json`.
 
-```
+## Project structure
+
+```text
 coding-agent/
-├── .agents/plugins/marketplace.json # repo-local Codex marketplace entry
-├── .claude-plugin/plugin.json    # plugin manifest
-├── .codex-plugin/plugin.json     # Codex local-plugin manifest
-├── .mcp.json                     # MCP server config
-├── agents/                       # 6 agent prompts (each ≤300 lines, references protocols)
-│   ├── orchestrator.md   product-lead.md   architect.md   implementor.md   evaluator.md   debugger.md
-├── skills/                       # 59 skill folders, each with SKILL.md
-│   ├── frontend/   backend/   data/   mobile/   infra/
-│   ├── general/   practices/    # practices includes prototype-first (disposable mock-app mode)
-│   └── freshness.json            # verification dates + upstream sources for version-sensitive skills
-├── protocols/                    # 12 named multi-actor workflows
-│   ├── intake.md   product-direction.md   research.md   spec-writing.md   plan-writing.md
-│   ├── design-review.md          # browser review surface: comment batches + sha-bound verdict gate
-│   ├── implementation.md   review.md   fix-round.md
-│   ├── close-out.md   redirect.md   recovery.md
-├── checks/                       # 18 deterministic verification scripts
-│   ├── lib.sh                    # shared helpers (sourced)
-│   ├── intent-approved.sh    spec-approved.sh    plan-approved.sh
-│   ├── ui-evidence.sh   no-raw-print.sh   close-out-complete.sh
-│   ├── action-logged.sh   active-feature-consistent.sh   revisions-resolved.sh
-│   ├── env-vars-present.sh   no-secrets-staged.sh   review-passed.sh
-│   ├── stack-justified.sh   test-infra-declared.sh   tests-actually-committed.sh
-│   ├── docs-current.sh          # close-out: README is real, not framework scaffold
-│   ├── docs-links.sh            # close-out: committed doc set present, cross-links resolve, no plugin-runtime/secret leakage
-│   ├── commit-gate.sh            # composite: review-passed→tests-committed→no-secrets→last-verify
-├── templates/                    # 23 artifact templates (22 .md + 1 .html)
-│   ├── intent.template.md   product.template.md   spec.template.md   plan.template.md
-│   ├── # committed vendor-neutral doc set (any agent): readme/agents/product-doc/design-doc/
-│   ├── #   architecture/component-doc/dataflow/docs-index/deployment-doc .template.md
-│   ├── work.template.md   review.template.md   diagnosis.template.md
-│   ├── research.template.md   session.template.md   learnings.template.md
-│   ├── deployments.template.md   environments.template.md   open-threads.template.md
-│   ├── design.template.html      # UI look-contract reviewed in the design-review surface
-├── hooks/hooks.json              # SessionStart context-inject + PreCompact breadcrumb + SubagentStart logging + PostToolUse validation
+├── .agents/plugins/marketplace.json # repo-local Codex marketplace
+├── .claude-plugin/plugin.json       # Claude Code manifest
+├── .codex-plugin/plugin.json        # Codex local-plugin manifest
+├── .mcp.json                        # 5 optional MCP servers
+├── agents/                          # conductor + 5 worker prompts
+│   ├── conductor.md    planner.md       developer.md
+│   └── diagnostician.md designer.md     deployer.md
+├── gates/                           # 8 predicates + shared helpers
+│   ├── framed.sh       architected.sh   designed.sh   proven.sh
+│   ├── reviewed.sh     clean.sh          shipped.sh    observed.sh
+│   └── lib.sh
+├── lib/                             # ledger.sh + record.sh
+├── hooks/                           # evidence wall + session resume
+├── skills/                          # 59 scoped engineering skills
+│   ├── frontend/ backend/ data/ mobile/ infra/
+│   └── general/ practices/
+├── templates/                       # 12 runtime + portable-doc templates
 ├── scripts/
-│   ├── validate.sh               # plugin self-validator
-│   ├── validate-skill-freshness.sh # expiry/source checks for version-sensitive skills
-│   ├── post-edit-validate.sh     # called by PostToolUse hook
-│   ├── session-start-context.sh  # SessionStart hook — injects resume state (CURRENT, open-threads, action-log)
-│   ├── pre-compact-checkpoint.sh # PreCompact hook — durable compaction breadcrumb to agent-log.txt
-│   ├── run-and-record.sh         # runs verification, records exit+counts+tree → .coding-agent/last-verify.json
-│   ├── design-review.sh          # start/stop the localhost design-review surface for a feature
-│   ├── design-review-server.py   # stdlib http server: serves the review app, writes comments + sha-bound verdict
-│   ├── design-review.html        # the review app (render + inline comments + approve gate)
-│   └── setup.sh                  # writes .claude/settings.local.json + installs commit-msg hook (blocks fabricated "verified" claims)
-├── docs/
-│   ├── README.md                 # docs index
-│   └── concepts/                 # primitives, workflow, lifecycle (canonical design)
-├── CHANGELOG.md
-├── CLAUDE.md                     # short redirect index
-├── README.md                     # project landing page
-├── ARCHITECTURE.md               # topology + diagrams
-└── AGENTS.md (this file)
+│   ├── validate.sh                  # plugin self-validator
+│   ├── validate-skill-freshness.sh  # version-guidance expiry gate
+│   ├── design-review.sh             # browser review controller
+│   ├── design-review-server.py      # stdlib localhost server
+│   ├── design-review.html           # review application
+│   └── setup-external-skills.sh
+├── evals/                           # scenario prompts + artifact assertions
+├── docs/concepts/                   # canonical runtime design
+├── README.md                        # project landing page
+├── ARCHITECTURE.md                  # topology + component contracts
+└── CHANGELOG.md
 ```
 
-## After Making Changes — Checklist
+## Architecture invariants
 
-Run every time you edit an agent, skill, protocol, check, or doc:
+- **Three primitives, nothing more:** ledger, evidence, gate.
+- **One coordinator writer:** only the conductor edits ledger/product state.
+- **One evidence writer:** only `lib/record.sh` appends `evidence.jsonl`.
+- **Current-tree proof:** evidence cannot clear a gate after source changes.
+- **Frozen command contract:** test evidence must use the intent’s exact command
+  for that tier.
+- **User owns authority:** never invent intent agreement, a one-way-door
+  decision, design approval, destructive action, deployment, or push consent.
+- **Separate role instances:** each bounded dispatch is a worker instance; a
+  role is not a personality toggle on the conductor.
+- **Architecture dialogue first:** ask design-changing system/component questions
+  before drafting an ADR.
+- **Explicit staging:** never stage `.coding-agent/`, unrelated changes, or a
+  repo-wide pathspec.
+- **Portable consumer docs:** project docs never mention plugin runtime state or
+  vendor-specific instructions.
 
-1. **Run the validator** — `./scripts/validate.sh`. Must report PASSED before you commit (it lints protocol/check existence, frontmatter schema, and inventory counts).
-   - **On inventory drift, the directory count wins.** Copy the validator's counts into the AGENTS.md "Project Structure" inventory line, then mirror them into `.claude-plugin/plugin.json` `description`, `.codex-plugin/plugin.json`, the marketplace manifests, and `ARCHITECTURE.md` / `docs/README.md` if they cite counts. Re-run until PASSED.
+## After making changes
 
-2. **If you added a skill**: add to the implementor's domain routing (if domain-specific) and to the agent frontmatter `skills:` list (if preloaded). The skill *count* is derived by the validator — don't hand-maintain it anywhere.
+Run this checklist whenever you edit an agent, gate, library, hook, skill,
+template, script, eval, manifest, or canonical doc:
 
-3. **If you added a protocol or check**: protocol → row in `protocols/README.md`; check → add to the `agents/orchestrator.md` checks list. Reference it from the agent prompt(s) that use it via `${CLAUDE_PLUGIN_ROOT}/<protocols|checks>/<name>.{md,sh}`.
+1. Run `./scripts/validate.sh`; it must end in `PASSED`.
+2. Run `evals/run.sh 00-smoke` after any runtime script, gate, hook, agent, or
+   template change.
+3. If a skill contains version-sensitive guidance, update `skills/freshness.json`
+   and run `./scripts/validate-skill-freshness.sh`.
+4. If inventory changes, copy the validator’s actual counts into this file,
+   README badges/text, manifests, docs index, and architecture document.
+5. Update `CHANGELOG.md` and bump versions unless the edit is a truly internal
+   typo that changes no published behavior.
+6. Inspect `git diff --check`, JSON validity, shell syntax, and the final scoped
+   diff.
+7. Commit one logical change. Push only when the user asks.
 
-4. **If you added an artifact category**: update `docs/concepts/primitives.md` Artifact Categories table AND create `templates/<name>.template.md`.
+## Versioning
 
-5. **Path conventions**:
-   - Plugin internals: always `${CLAUDE_PLUGIN_ROOT}/...` (works in dev + marketplace cache)
-   - User project artifacts: `.coding-agent/...` (relative to project root, set by user)
-   - NEVER use relative `..` paths — they break in marketplace caching
+- **Patch:** documentation corrections and non-behavioral fixes.
+- **Minor:** a new skill, gate, agent instruction, hook behavior, or compatible
+  runtime capability.
+- **Major:** primitive changes, agent additions/removals, breaking artifact
+  formats, or replacing the canonical runtime.
 
-6. **Update CHANGELOG.md + bump the version** (skip only for typos/pure-doc tweaks). This is not optional and not user-prompted — do it as part of the change, before committing:
-   - **Semver** (see [Versioning](#versioning-semver)): patch = doc/typo; minor = new skill / protocol / check / agent instruction; major = primitive change or agent added/removed.
-   - Prepend a dated entry to `CHANGELOG.md` (Added / Changed / Fixed) covering the change.
-   - Set the new version in `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, and any manifest text that surfaces the released version, then re-run the validator.
+Keep `.claude-plugin/plugin.json` and `.codex-plugin/plugin.json` on the same
+semantic version. The Codex manifest may add `+codex.<UTC timestamp>` build
+metadata for local-plugin refreshes.
 
-7. **Commit**:
-   - One logical change per commit; subject mentions the affected agent/skill/protocol/check (`type(scope): subject`), or `release: vX.Y.Z — summary` when the version bumped.
-   - End the message with the `Co-Authored-By: Claude` line.
-   - Push only when the user asks. PostToolUse hook validates frontmatter on every save.
+Prepend a dated changelog entry with Added/Changed/Fixed/Removed sections as
+applicable.
 
-## Adding a New Skill
+## Modifying an agent
 
-```bash
-mkdir -p skills/<category>/<skill-name>
-cat > skills/<category>/<skill-name>/SKILL.md <<'EOF'
+- Keep prompts compact; target 300 lines or fewer (conductor may approach 350).
+- Put critical rules first and use tables/lists for routing.
+- Reference `${CLAUDE_PLUGIN_ROOT}/principles.md`, gates, and libraries instead
+  of duplicating their contracts.
+- Frontmatter fields: `name`, `description`, `model`, `effort`, `tools`, and
+  optional `skills`.
+- Worker returns must preserve: `did`, `changed_paths`, `evidence_ids`,
+  `gate_status`, `open_questions`, and `skipped_or_assumed`.
+- Worker prompts must not gain ledger/product write authority or nested
+  delegation.
+
+## Adding or changing a gate
+
+A gate lives at `gates/<name>.sh`, sources `gates/lib.sh`, and:
+
+- observes current state without repairing it;
+- emits exactly one JSON result through `gate_result`;
+- uses `pass`, `block`, or `n/a` semantics;
+- binds execution claims to current evidence;
+- is referenced from conductor routing and documented in README/architecture if
+  it changes the delivery arc.
+
+Add or update smoke assertions for every load-bearing condition.
+
+## Adding a skill
+
+```text
+skills/<category>/<skill-name>/
+├── SKILL.md
+├── rules/       optional progressive detail
+└── scripts/     optional deterministic helpers
+```
+
+Required frontmatter:
+
+```yaml
 ---
 name: <skill-name>
-description: <1-2 sentences — Claude uses this to decide when to apply. Under 250 chars.>
-scope: any | architect | implementor | evaluator | debugger | orchestrator
-trigger: always | on-match | on-invoke
-category: domain-specialist | practice | protocol-helper | general
+description: <when this knowledge should be used; under 250 characters>
 ---
-
-# <Title>
-
-Content...
-EOF
 ```
 
-Then update CLAUDE.md routing tables and run validate.sh.
+Keep SKILL.md under 500 lines and move details into `rules/`. Reference bundled
+resources relative to `${CLAUDE_SKILL_DIR}`. Add domain-specific skills to the
+conductor routing table or relevant worker preload list. Do not hand-maintain the
+skill count; use the validator’s directory count.
 
-## Modifying an Agent
+## Paths
 
-- **Keep prompts under 300 lines.** Long prompts get partially ignored.
-- **Reference protocols, don't re-describe.** Use `${CLAUDE_PLUGIN_ROOT}/protocols/<name>.md`.
-- **Critical rules first.** Ordering matters.
-- **Tables and lists over prose.**
+- Plugin internals: `${CLAUDE_PLUGIN_ROOT}/...`
+- Skill-local resources: `${CLAUDE_SKILL_DIR}/...`
+- Consumer runtime state: `.coding-agent/...`
+- Consumer committed docs: normal repository paths such as
+  `docs/architecture.md`
 
-## Adding a Protocol or Check
+Never use `../` to connect plugin internals; marketplace caches can change the
+installation parent directory.
 
-- **Protocol**: write `protocols/<name>.md`. Add row to `protocols/README.md`. Reference from each agent that uses it.
-- **Check**: write `checks/<name>.sh` (executable, exits 0/1, JSON output). Add to `agents/orchestrator.md` checks list. Source `lib.sh` for shared helpers.
+## Documentation architecture
 
-## Conventions
+For this repository:
 
-### Agent prompts
-- ≤300 lines target (orchestrator may be longer; aim for ≤350)
-- Frontmatter: `name`, `description`, `model`, `effort` (`low`–`max`; overrides session effort when this subagent is active), `tools`, `skills`
-- Body: capabilities + protocols referenced + structured-return contract + hard rules + refusals
+- README owns product overview, install, first use, and navigation.
+- ARCHITECTURE owns high-level topology and component-level contracts.
+- `docs/concepts/` owns detailed semantics and workflow.
+- AGENTS owns contributor mechanics and invariants.
+- CHANGELOG owns historical release evolution.
 
-### Skills
-- `SKILL.md` at root, optional `scripts/`, `rules/`
-- ≤500 lines in `SKILL.md` (push detail to `rules/`)
-- `description` ≤250 chars
-- Version-sensitive guidance: add a `## Version-sensitive guidance` section and
-  a sourced entry in `skills/freshness.json`; verify with Context7/Exa and set a
-  concrete `recheck_by` date. The validator fails after that date.
+For consumer projects, follow `skills/practices/project-docs/SKILL.md`: one fact,
+one owning file; system topology in `docs/architecture.md`; substantial
+component contracts in `docs/components/`; other docs link rather than copy.
 
-### Commits
-- One feature/fix per commit
-- Subject references affected file/folder
-- `Co-Authored-By: Claude` line
+## Testing
 
-### Versioning (semver)
-- Patch: typos, doc tweaks
-- Minor: new skill / protocol / check / agent instruction
-- Major: primitive change, agent removed/added, breaking artifact-format change
-
-## Architecture Decisions
-
-- **Four primitives, nothing more.** Actor / Artifact / Skill / Check. See [`docs/concepts/primitives.md`](docs/concepts/primitives.md).
-- **Approved artifacts are immutable.** Amendments via `work.md § Plan Revisions` supersession.
-- **Orchestrator owns coordinator state.** Subagents return structured updates.
-- **Codified > scripted.** Tests are committed code, not ad-hoc curl pipelines.
-- **`${CLAUDE_PLUGIN_ROOT}` for all plugin-internal references.** Survives marketplace caching.
-- **Prompt edits over enforcement hooks.** When a rule fails, fix the prompt or convert to a Check — don't add a PreToolUse blocker.
-
-## Testing Changes
-
-**In-repo eval harness (v5-first): `evals/`** — scenario prompts + deterministic
-assertion scripts. Assertions judge artifacts (ledger, `evidence.jsonl`, git
-state), never prose. See [`evals/README.md`](evals/README.md).
+The in-repo harness judges artifacts, evidence, and Git state—not prose:
 
 ```bash
-evals/run.sh 00-smoke      # zero-cost machinery check — run after ANY v5 script edit
-evals/run.sh all           # full suite, headless (claude -p in scratch repos)
-evals/run.sh 03-escalation --manual   # you drive the session interactively
-evals/compare.sh evals/results/<A> evals/results/<B>   # before/after or v4-vs-v5
+evals/run.sh 00-smoke
+evals/run.sh all
+evals/run.sh 03-escalation --manual
+evals/compare.sh evals/results/<A> evals/results/<B>
 ```
 
-**Legacy v4 test suite** lives in `~/workspace/test-agents/`:
-- W1 — greenfield backend (Todo API)
-- W2 — fullstack with parallel dispatch (Blog dashboard)
-- W3 — brownfield (extend W2)
-- W4 — session recovery
+`00-smoke` is the zero-cost runtime test and must pass after any runtime edit.
+Headless scenarios require the `claude` CLI. Manual scenarios are for interactive
+human gates.
 
-```bash
-cd ~/workspace/test-agents/W1-todo-api
-rm -rf .coding-agent/
-claude
-# paste prompt from PROMPT.md
-```
+## Commit convention
 
-Check `.coding-agent/session.md § Action Log` for the dispatch sequence.
+- Use `type(scope): subject`, or `release: vX.Y.Z — summary` for a release bump.
+- One logical change per commit.
+- Include:
 
-## Known issues
+  `Co-Authored-By: Claude <noreply@anthropic.com>`
 
-- `${user_config.exa_api_key}` in `.mcp.json` — plugin configs can't resolve this. Users set `EXA_API_KEY` in shell env.
-- No automated CI. `validate.sh` is the gate.
+- Do not push unless the user asked.
 
-## Notes
+## Known operational requirements
 
-- Agent/skill/protocol changes picked up on next session start
-- `.coding-agent/` in user projects is runtime state, gitignored
-- Test failures usually reveal prompt ambiguity — fix the prompt, not the test
-- Canonical concepts and design rationale: [`docs/concepts/`](docs/concepts/)
+- Exa requires `EXA_API_KEY` in the shell; plugin config cannot resolve a user
+  config placeholder reliably.
+- Agent, skill, gate, and hook changes are picked up on the next session/task.
+- `.coding-agent/` is runtime state and must remain gitignored.
+- There is no build step; validation and evals are the release gates.
