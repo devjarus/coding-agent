@@ -104,9 +104,12 @@ one-way door, the conductor asks for separate explicit agreement before build.
 When `touches:` includes `ui`, the designer writes a look-contract and opens the
 localhost review surface. The user comments and approves in the browser.
 
-Approval is bound to SHA-256 digests of the reviewed artifacts and to zero open
-comments. The designer may record the verdict but cannot create it. Any edit to
-approved bytes reopens `designed?`.
+Approval is bound to the SHA-256 digest of `design.html` and to zero open
+comments. The designer may record the verdict but cannot create it, and
+`designed?` re-verifies the verdict on every run rather than trusting the
+recorded command. Approval binds to the look-contract, not the source tree:
+building the design does not reopen the gate, but editing `design.html` does.
+Whether the build matches the approved design is a review question.
 
 ## 6. Build and prove
 
@@ -125,7 +128,8 @@ feature must declare an end-to-end tier that exercises the live path.
 
 ## 7. Review and repair
 
-Review is a separate dispatch from implementation. The conductor may fan out
+Review is a separate dispatch from implementation, and it runs before the
+commit, so the reviewer reads the working tree against the base. The conductor may fan out
 read-only dimensions—correctness, security, simplicity—then sends one aggregate
 reviewer to write `review.md` and record the verdict.
 
@@ -143,7 +147,10 @@ rather than spinning.
 ## 8. Clean, commit, document
 
 The conductor stages only attributable paths. `clean?` scans the staged diff for
-obvious secrets and raw debug prints. `.coding-agent/` is never staged.
+staged coordinator state, obvious secrets, and raw debug prints. The conductor
+then commits, and the git pre-commit gate re-runs `framed?` through `clean?`
+and refuses the commit at the first block. That holds even when the model
+skipped a gate or the commit message claims nothing.
 
 When product behavior, architecture, component contracts, commands, or
 deployment changed, the conductor refreshes portable consumer documentation:

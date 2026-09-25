@@ -5,9 +5,9 @@ may generate their own AGENTS.md; do not copy plugin-runtime details into them.
 
 ## What this is
 
-A Claude Code and Codex plugin: 6 registered agents, 59 skills, 8 executable
-gates, 12 artifact/documentation templates, 2 runtime libraries, 2 hooks, and 5
-optional MCP servers. The runtime has one conductor, five bounded worker roles,
+A Claude Code and Codex plugin: 6 registered agents, 60 skills, 8 executable
+gates, 12 artifact/documentation templates, 2 runtime libraries, 2 lifecycle
+hooks plus a git pre-commit gate, and 5 optional MCP servers. The runtime has one conductor, five bounded worker roles,
 and three primitives: ledger, evidence, and gate.
 
 Codex enters through the `delivery-pipeline` skill. Claude Code registers the six
@@ -29,8 +29,8 @@ coding-agent/
 │   ├── reviewed.sh     clean.sh          shipped.sh    observed.sh
 │   └── lib.sh
 ├── lib/                             # ledger.sh + record.sh
-├── hooks/                           # evidence wall + session resume
-├── skills/                          # 59 scoped engineering skills
+├── hooks/                           # evidence wall, session resume, pre-commit gate
+├── skills/                          # 60 scoped engineering skills
 │   ├── frontend/ backend/ data/ mobile/ infra/
 │   └── general/ practices/
 ├── templates/                       # 12 runtime + portable-doc templates
@@ -63,7 +63,11 @@ coding-agent/
 - **Architecture dialogue first:** ask design-changing system/component questions
   before drafting an ADR.
 - **Explicit staging:** never stage `.coding-agent/`, unrelated changes, or a
-  repo-wide pathspec.
+  repo-wide pathspec. `clean?` blocks staged coordinator state.
+- **Commit wall:** while a feature is active, the git pre-commit gate refuses a
+  commit past an unmet gate. Agents never pass `--no-verify`.
+- **Human design verdict:** `designed?` re-verifies the browser verdict against
+  `design.html` itself; a recorded command alone is never approval.
 - **Portable consumer docs:** project docs never mention plugin runtime state or
   vendor-specific instructions.
 
@@ -77,8 +81,9 @@ template, script, eval, manifest, or canonical doc:
    template change.
 3. If a skill contains version-sensitive guidance, update `skills/freshness.json`
    and run `./scripts/validate-skill-freshness.sh`.
-4. If inventory changes, copy the validator’s actual counts into this file,
-   README badges/text, manifests, docs index, and architecture document.
+4. If inventory changes, update the pinned counts in `scripts/validate.sh`,
+   then copy them into this file, README badges/text, both manifests and
+   marketplace files, the docs index, and the architecture document.
 5. Update `CHANGELOG.md` and bump versions unless the edit is a truly internal
    typo that changes no published behavior.
 6. Inspect `git diff --check`, JSON validity, shell syntax, and the final scoped
@@ -146,8 +151,9 @@ description: <when this knowledge should be used; under 250 characters>
 
 Keep SKILL.md under 500 lines and move details into `rules/`. Reference bundled
 resources relative to `${CLAUDE_SKILL_DIR}`. Add domain-specific skills to the
-conductor routing table or relevant worker preload list. Do not hand-maintain the
-skill count; use the validator’s directory count.
+conductor routing table or relevant worker preload list. The validator pins the
+skill count; when you add a skill, bump it there and sync the docs (checklist
+step 4).
 
 ## Paths
 
@@ -186,8 +192,9 @@ evals/compare.sh evals/results/<A> evals/results/<B>
 ```
 
 `00-smoke` is the zero-cost runtime test and must pass after any runtime edit.
-Headless scenarios require the `claude` CLI. Manual scenarios are for interactive
-human gates.
+Headless scenarios require an authenticated `claude` CLI running as a non-root
+user (`bypassPermissions` is refused under root). Manual scenarios are for
+interactive human gates.
 
 ## Commit convention
 

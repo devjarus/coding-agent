@@ -1,7 +1,7 @@
 {
   "name": "coding-agent",
-  "version": "6.0.0",
-  "description": "Evidence-gated software delivery for Claude Code and Codex: one conductor, five kind-specific agents, three runtime primitives, eight executable gates, 59 engineering skills, and five MCP servers.",
+  "version": "6.1.0",
+  "description": "Evidence-gated software delivery for Claude Code and Codex: one conductor, five kind-specific agents, three runtime primitives, eight executable gates, 60 engineering skills, and five MCP servers.",
   "agents": [
     "./agents/conductor.md",
     "./agents/planner.md",

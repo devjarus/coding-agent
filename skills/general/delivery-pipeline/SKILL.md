@@ -45,7 +45,10 @@ pipeline.
 
 1. Read the consumer project's `AGENTS.md` and inspect git state. Preserve all
    pre-existing work.
-2. Ensure `.coding-agent/` is ignored before creating coordinator state.
+2. Run `bash "${CLAUDE_PLUGIN_ROOT}/hooks/session-start.sh"` once. Codex runs no
+   lifecycle hooks, so this is the explicit preflight: it gitignores
+   `.coding-agent/` before any state is written and refreshes the git
+   pre-commit gate. Read its output for resume state.
 3. If `.coding-agent/CURRENT` identifies an active feature ledger, resume it. Read the
    ledger tail and evidence file; do not initialize competing state.
 4. Otherwise initialize product and feature state with the absolute scripts:
@@ -124,7 +127,9 @@ alone writes `review.md`; sibling agents never append to the same file.
 
 ## Keep git safe
 
-- Never stage `.coding-agent/`.
+- Never stage `.coding-agent/`. `clean?` blocks a commit that stages it.
+- Never bypass the pre-commit gate with `--no-verify`; a refused commit is a
+  gate block to route, not an obstacle.
 - Stage only explicit paths attributable to the dispatched worker after comparing
   them with its pre-dispatch snapshot. Never use a repo-wide `git add` pathspec.
 - Never use `git add -A`, `git add .`, `git reset --hard`, or `git clean`.

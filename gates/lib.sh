@@ -166,3 +166,36 @@ intent_touches() { # tag
   ledger_section "$(ca_ledger)" intent | strip_comments \
     | grep -qiE "^[[:space:]]*touches:.*\b$1\b"
 }
+
+# Install (or refresh) the git pre-commit shim that runs hooks/pre-commit.sh.
+# The shim is a few lines pointing at this plugin copy; it is rewritten on every
+# call so a plugin update or cache move never leaves it pointing at a stale path.
+# Never clobbers hooks it does not own, and never writes into a managed
+# core.hooksPath (husky and friends keep hooks in tracked files). Prints one
+# status line: installed | skipped: <why>.
+ca_install_commit_gate() { # [plugin_root]
+  local plugin="${1:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}" hooks hook
+  git rev-parse --git-dir >/dev/null 2>&1 || { echo "skipped: not a git repository"; return 0; }
+  if [ -n "$(git config --get core.hooksPath 2>/dev/null)" ]; then
+    echo "skipped: core.hooksPath is set — add '$plugin/hooks/pre-commit.sh' to your managed pre-commit hook"
+    return 0
+  fi
+  hooks="$(git rev-parse --git-path hooks 2>/dev/null)" || { echo "skipped: no hooks dir"; return 0; }
+  hooks="$(mkdir -p "$hooks" && cd "$hooks" && pwd)" || { echo "skipped: cannot create hooks dir"; return 0; }
+  hook="$hooks/pre-commit"
+  if [ -e "$hook" ] && ! grep -q 'coding-agent pre-commit gate' "$hook" 2>/dev/null; then
+    echo "skipped: an existing pre-commit hook is not coding-agent's — call '$plugin/hooks/pre-commit.sh' from it"
+    return 0
+  fi
+  cat > "$hook" <<SHIM
+#!/bin/sh
+# coding-agent pre-commit gate — installed by the coding-agent plugin; delete this
+# file to disable. Blocks a commit while the active feature has an unmet gate.
+gate="$plugin/hooks/pre-commit.sh"
+[ -f "\$gate" ] && exec bash "\$gate" "\$@"
+echo "coding-agent: \$gate not found — commit not gated (start a new session to refresh)" >&2
+exit 0
+SHIM
+  chmod +x "$hook"
+  echo "installed"
+}

@@ -162,13 +162,18 @@ or safe. That is this kind's job. Read the `review` principle tier
 
 1. **Read the contract.** The intent's `acceptance` criteria + any ADR in
    `product.md ## decisions` for this feature. These are what "correct" means.
+   When the intent `touches: ui`, the approved `.coding-agent/<slug>/design.html`
+   is part of the contract: a build that departs from it is a `[blocking]` finding.
 
-2. **Read the diff**, not the whole repo — the change under review:
+2. **Read the diff**, not the whole repo — the change under review. Review runs
+   **before** the commit (the pre-commit gate refuses a commit until `reviewed?`
+   passes), so read the working tree against the base, not `...HEAD`:
    ```bash
-   git diff $(git merge-base HEAD @{u} 2>/dev/null || git rev-list --max-parents=0 HEAD | tail -1)...HEAD
+   git diff $(git merge-base HEAD @{u} 2>/dev/null || git rev-list --max-parents=0 HEAD | tail -1)
+   git status --porcelain --untracked-files=all   # new files are not in the diff
    ```
-   (the brief may name the base; when in doubt review the feature's committed +
-   staged diff). Also read the files it touches for context.
+   The brief may name the base and scope; stay inside that scope. Also read the
+   files the change touches for context.
 
 3. For a dimensional fan-out brief (`aggregate: false`), stay read-only and
    return findings in the response; do not write `review.md` or record evidence.

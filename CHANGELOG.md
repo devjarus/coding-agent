@@ -5,6 +5,61 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [6.1.0] — 2026-09-25 — Close the design, commit, and staging holes
+
+An end-to-end and adversarial review of 6.0.0 against 4.3.0 found that the
+design gate could be satisfied without a human, that nothing stopped a commit
+past an unmet gate, and that the UI arc could not finish once built. This
+release closes those gaps and brings the runtime docs in line with the code.
+
+### Added
+
+- **Git pre-commit gate** (`hooks/pre-commit.sh`, installed as a shim by
+  `ledger.sh init` and refreshed by `session-start.sh`). While a feature is
+  active it runs `framed?` through `clean?` and refuses the commit at the first
+  block, regardless of the commit message. It is a no-op with no active feature,
+  never overwrites a foreign hook, and skips a managed `core.hooksPath`. This
+  restores and extends the commit wall 4.x had through its commit-msg hook.
+- **`architecture-visualization` skill** carried over from `main` (4.3.0 there),
+  which this branch had diverged from. It is routed from the conductor's skills
+  table. Inventory is 59 → 60 skills.
+- **Smoke assertions** for each fix: 48 → 61 checks.
+
+### Fixed
+
+- **`designed?` accepted any recorded `kind=design` command.**
+  `record.sh "true" design` passed the one gate that needs a human. The gate now
+  re-verifies `design-verdict.json` against `design.html` (approved, zero open
+  comments, matching SHA) on every run, and still requires the recorded entry.
+- **The UI arc could never reach `proven?`.** Design approval was bound to the
+  source tree, so the build that implemented the approved design re-opened
+  `designed?`. Approval now binds to the look-contract (`design.html`) instead.
+  Editing `design.html` still re-opens the gate.
+- **`design-review.sh verify` failed after any ledger log line.** It bound
+  approval to `ledger.md`, which the conductor appends to after every dispatch.
+  Verify now binds to `design.html`; the verdict keeps `ledger_sha` for audit.
+- **`clean?` passed force-staged coordinator state.** It now blocks any staged
+  path under `.coding-agent/`, which the architecture already claimed.
+- **Evidence wall let interpreter writes through.** It now also denies
+  in-place editors, file-moving tools, and Python/Perl/Node/Ruby writes that
+  name `evidence.jsonl`, while still allowing reads (including `2>/dev/null`).
+  It also covers `NotebookEdit`. The docs now say plainly that the wall is an
+  accident guard, not a security boundary.
+- **Review read `...HEAD` although review runs before the commit.** The
+  developer's review now diffs the working tree against the base and lists
+  untracked files. When the intent touches UI, departing from the approved
+  `design.html` counts as a blocking finding.
+- **Codex skipped the lifecycle preflight.** `delivery-pipeline` now runs
+  `hooks/session-start.sh` explicitly (gitignore, commit gate, resume state).
+
+### Changed
+
+- README, ARCHITECTURE, AGENTS, CONTRIBUTING, concept docs, and the evals guide
+  now describe the commit wall, the design-approval binding, the evidence
+  wall's real limits, the non-root requirement for headless evals, and 60
+  skills. AGENTS no longer claims the skill count is derived when the validator
+  pins it.
+
 ## [6.0.0] — 2026-09-06 — Canonical evidence-gated runtime
 
 ### Added

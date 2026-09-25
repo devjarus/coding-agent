@@ -110,14 +110,17 @@ look-contract → browser comments → revision → human approval
                                           ▼
                            sha-bound verdict + zero open comments
                                           │
-                            artifact bytes change later
+                          design.html bytes change later
                                           │
                                           ▼
                                    approval invalidated
 ```
 
 The designer controls iteration but not approval. The user’s verdict is written
-by the review surface, then verified and recorded as evidence.
+by the review surface, then verified and recorded as evidence. `designed?`
+re-verifies it on every run. Unlike test evidence, design approval is not
+tree-bound: implementing the approved design changes source but does not void
+the approval.
 
 ## Deployment lifecycle
 
@@ -129,6 +132,10 @@ prove → review → clean → commit → deploy → observe
                                       └────────────────┴─► rollback last known-healthy → diagnose
 ```
 
+The commit step is guarded twice: the conductor runs `clean?` on the staged
+diff, and the git pre-commit gate re-runs the arc up to `clean?` before the
+commit lands.
+
 A known-healthy rollback target requires both a successful deploy and a later
 successful observation at the same tree. The previous commit is not assumed to
 be safe merely because it is previous.
@@ -138,10 +145,11 @@ be safe merely because it is previous.
 On session start:
 
 1. ensure `.coding-agent/` is gitignored;
-2. read the last non-empty `CURRENT` entry;
-3. inject the active ledger tail;
-4. read its evidence file;
-5. run gates from the beginning and stop at the first applicable block.
+2. refresh the git pre-commit gate if the project already uses the runtime;
+3. read the last non-empty `CURRENT` entry;
+4. inject the active ledger tail;
+5. read its evidence file;
+6. run gates from the beginning and stop at the first applicable block.
 
 This is why the runtime does not need a separate recovery protocol. The normal
 loop is itself the recovery algorithm.

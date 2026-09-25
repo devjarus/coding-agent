@@ -1,7 +1,7 @@
 {
   "name": "coding-agent",
-  "version": "6.0.0+codex.20260907024736",
-  "description": "Evidence-gated multi-agent software delivery for Codex, with architecture dialogue, two-level technical docs, 59 engineering skills, and five MCP servers.",
+  "version": "6.1.0+codex.20260925013146",
+  "description": "Evidence-gated multi-agent software delivery for Codex, with architecture dialogue, two-level technical docs, 60 engineering skills, and five MCP servers.",
   "author": {
     "name": "Suraj",
     "email": "devjarus91@gmail.com",
@@ -24,7 +24,7 @@
   "interface": {
     "displayName": "Coding Agent",
     "shortDescription": "Multi-agent, evidence-gated delivery for Codex.",
-    "longDescription": "Run coding-agent's canonical workflow in Codex: the main task conducts planner, developer, diagnostician, designer, and deployer subagents through architecture dialogue and evidence-bound gates. Includes 59 skills and five MCP servers.",
+    "longDescription": "Run coding-agent's canonical workflow in Codex: the main task conducts planner, developer, diagnostician, designer, and deployer subagents through architecture dialogue and evidence-bound gates. Includes 60 skills and five MCP servers.",
     "developerName": "Suraj",
     "category": "Developer Tools",
     "capabilities": [

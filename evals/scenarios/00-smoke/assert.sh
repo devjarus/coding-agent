@@ -35,6 +35,7 @@ ev_assert "session-start gitignores .coding-agent" grep -qE '^\.coding-agent/?$'
 
 bash "$L" product-init smoke >/dev/null
 bash "$L" init smoke-feature >/dev/null
+ev_assert "init installs the commit gate"        grep -q 'coding-agent pre-commit gate' "$(git rev-parse --git-path hooks)/pre-commit"
 ev_assert "framed? rejects template plan"        test "$(ev_gate framed)" = block
 
 # ── TA4 — agreement is evidence, not a stamp the writer wrote itself ────────
@@ -117,6 +118,9 @@ ev_assert "post-approval design edit is rejected" test "$stale" -ne 0
 git add -- . ':(exclude).coding-agent'
 ev_assert "clean? passes on a clean stage"      test "$(ev_gate clean)" = pass
 ev_assert "no coordinator state is staged"      test -z "$(git diff --cached --name-only | grep coding-agent || true)"
+git add -f .coding-agent/product.md
+ev_assert "clean? blocks force-staged ledger state" test "$(ev_gate clean)" = block
+git restore --staged .coding-agent/product.md
 printf 'api_key = "sk-live-x"\n' > secret.py && git add secret.py
 ev_assert "clean? catches a staged secret"      test "$(ev_gate clean)" = block
 git rm -q --cached secret.py && rm -f secret.py
@@ -147,7 +151,10 @@ ev_assert "record.sh rejects a bad tier token"  test "$badt" -eq 64
 bash "$R" "true" deploy >/dev/null && bash "$R" "true" observe >/dev/null
 good_head="$(git rev-parse HEAD)"
 echo "regression" >> thing.sh
-git add -- . ':(exclude).coding-agent' && git commit -qm "bad release"
+git add -- . ':(exclude).coding-agent'
+if git commit -qm "bad release" >/dev/null 2>&1; then walled=0; else walled=1; fi
+ev_assert "the commit wall refuses an unproven tree" test "$walled" -eq 1
+git commit -q --no-verify -m "bad release"      # a human shipping past the loop
 bash "$R" "true" deploy >/dev/null; bash "$R" "false" observe >/dev/null 2>&1
 ev_assert "rollback targets the healthy head"   bash "$L" rollback | grep -q "$good_head"
 
@@ -182,5 +189,43 @@ ev_assert "close clears CURRENT"                test -z "$(ev_current)"
 ev_assert "close rolls into product.md"         grep -q "smoke-feature — shipped" "$(ev_product)"
 ev_assert "learnings land where workers read"   grep -q 'the gates hold' "$(ev_product)"
 ev_assert "evidence is well-formed"             ev_evidence_wellformed
+
+# ── designed? re-verifies the human verdict; approval binds to the look ─────
+bash "$L" init smoke-ui >/dev/null
+setintent smoke-ui 'goal: a landing page
+tiers: unit, e2e
+test-command-unit: bash thing.test.sh
+test-command-e2e: bash thing.test.sh
+touches: ui
+'
+bash "$L" freeze intent --answer "yes" >/dev/null
+UI=.coding-agent/smoke-ui
+ev_assert "designed? blocks with no look-contract" test "$(ev_gate designed)" = block
+printf '<main>hero</main>\n' > "$UI/design.html"
+bash "$R" "true" design >/dev/null
+ev_assert "a self-recorded design run is not approval" test "$(ev_gate designed)" = block
+printf '{"verdict":"approved","comments_open":0,"design_sha":"%s"}\n' \
+  "$(shasum -a 256 "$UI/design.html" | cut -d' ' -f1)" > "$UI/design-verdict.json"
+bash "$R" "bash $EV_PLUGIN_ROOT/scripts/design-review.sh verify $UI" design >/dev/null
+ev_assert "designed? passes on a verified verdict" test "$(ev_gate designed)" = pass
+echo '<h1>built</h1>' > index.html
+ev_assert "building the design keeps it approved" test "$(ev_gate designed)" = pass
+bash "$L" log "design approved" >/dev/null
+ev_assert "a ledger log does not void the approval" bash "$EV_PLUGIN_ROOT/scripts/design-review.sh" verify "$UI"
+printf '<main>changed</main>\n' > "$UI/design.html"
+ev_assert "designed? blocks a post-approval edit" test "$(ev_gate designed)" = block
+
+# ── the commit wall holds without anyone claiming anything ──────────────────
+git add index.html
+if git commit -qm "wip" >/dev/null 2>&1; then walled=0; else walled=1; fi
+ev_assert "the commit wall blocks an unmet gate" test "$walled" -eq 1
+git restore --staged index.html && rm -f index.html
+
+# ── the evidence wall denies hand-writes, allows reads ──────────────────────
+W="$EV_PLUGIN_ROOT/hooks/evidence-wall.sh"
+wall() { python3 -c 'import json,sys; print(json.dumps({"tool_name":"Bash","tool_input":{"command":sys.argv[1]}}))' "$1" | bash "$W"; }
+ev_assert "wall denies a shell append"      sh -c "$(declare -f wall); W='$W'; wall 'echo x >> $UI/evidence.jsonl' | grep -q deny"
+ev_assert "wall denies an interpreter write" sh -c "$(declare -f wall); W='$W'; wall \"python3 -c \\\"open('$UI/evidence.jsonl','a').write('x')\\\"\" | grep -q deny"
+ev_assert_not "wall allows a read"          sh -c "$(declare -f wall); W='$W'; wall 'grep test $UI/evidence.jsonl 2>/dev/null' | grep -q deny"
 
 ev_summary

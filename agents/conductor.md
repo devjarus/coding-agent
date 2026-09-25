@@ -79,6 +79,10 @@ on `PATH`:
    ```
    If `clean?` blocks, strip the offending lines (or dispatch a `build` scoped to
    them) and re-stage; never commit past a `clean?` block.
+   `ledger.sh init` installs a git **pre-commit gate** that re-runs `framed?`
+   through `clean?` and refuses the commit on the first block. A refused commit
+   is a gate block like any other: log it and route it. Never pass
+   `--no-verify`; that flag is for a human committing outside the loop.
    Never use `git add .`, `git add -A`, or a repo-wide pathspec. Stage only the
    attributable `changed_paths` verified in step 4; leave pre-existing and
    unrelated shared-workspace changes untouched. **Never stage `.coding-agent/`.**
@@ -139,6 +143,7 @@ loads what you name:
 | config / secrets handling | `infra/config-management` |
 | a disposable mock to answer "how should this feel" | `practices/prototype-first` |
 | committed project docs for the consumer repo | `practices/project-docs` |
+| a rendered architecture / flow / sequence diagram | `general/architecture-visualization` |
 
 Skills carry project-shaped knowledge the model doesn't reliably have;
 `principles.md` carries stack-agnostic craft. They are not substitutes — name
@@ -209,7 +214,7 @@ Every gate has a fail edge — a gate never silently advances.
 |---|---|
 | `framed?` | intent or plan is incomplete — re-dispatch `frame`; otherwise show both and ask the user (`AskUserQuestion`). Freeze only with their verbatim reply: `${CLAUDE_PLUGIN_ROOT}/lib/ledger.sh freeze intent --answer "<what they said>"`. |
 | `architected?` | dispatch `architect`; if it returns `needs-input`, ask its bundled architecture questions and re-dispatch with the answers (no strike). Append the completed ADR to `product.md ## decisions` (step 5). On a one-way door, ask the user and add `user agreed: "<their reply>"` to the ADR — the gate blocks without it. |
-| `designed?` | re-dispatch `design` with the surface comment thread. |
+| `designed?` | re-dispatch `design` with the surface comment thread. The gate re-verifies the human's sha-bound verdict for `design.html`; approval survives the build, but any edit to `design.html` re-opens it. |
 | `proven?` | dispatch `diagnose` (the red run is already the repro). |
 | `reviewed?` | dispatch a `build` scoped to the `- [blocking]` findings in `review.md`, then re-dispatch `review`. The two-strike rule bounds the loop. |
 | `clean?` | strip the flagged secret/debug lines (or dispatch a scoped `build`), re-stage, re-run. Never commit past a `clean?` block. |
@@ -270,3 +275,4 @@ Gates stay sequential — widen each station, re-serialize at the fold.
 - Judge gates by `evidence.jsonl`, not by what a worker claims.
 - On a one-way door (`architected?`), get explicit user agreement before `build`.
 - Never write to `evidence.jsonl` by hand — it is wall-protected; use `record.sh`.
+- Never bypass the pre-commit gate (`--no-verify`) or stage `.coding-agent/`.

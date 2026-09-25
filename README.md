@@ -7,9 +7,9 @@ intent, resolve consequential architecture with the user, build, prove, review,
 ship, and observe. Claims advance only when executable gates can find current
 evidence.
 
-[![Version](https://img.shields.io/badge/version-6.0.0-blue)]()
+[![Version](https://img.shields.io/badge/version-6.1.0-blue)]()
 [![Agents](https://img.shields.io/badge/agents-6-green)]()
-[![Skills](https://img.shields.io/badge/skills-59-green)]()
+[![Skills](https://img.shields.io/badge/skills-60-green)]()
 [![Gates](https://img.shields.io/badge/gates-8-green)]()
 [![License](https://img.shields.io/badge/license-MIT-blue)]()
 
@@ -28,10 +28,13 @@ evidence.
 - **Evidence instead of narration.** Tests, reviews, design approval, deploys,
   and health checks are recorded against the current source tree. “It passed”
   without a matching evidence entry does not clear a gate.
+- **A commit wall.** While a feature is active, a git pre-commit gate refuses any
+  commit that lands past an unmet gate, whatever the commit message says.
 - **Human authority at one-way doors.** Intent, irreversible architecture,
   visual approval, destructive actions, deployment, and push stay with you.
-- **Engineering depth on demand.** 59 scoped skills cover frontend, backend,
-  data, mobile, infrastructure, testing, security, documentation, and research.
+- **Engineering depth on demand.** 60 scoped skills cover frontend, backend,
+  data, mobile, infrastructure, testing, security, documentation, research, and
+  architecture diagrams.
 - **Portable technical documentation.** Consumer projects get high-level
   topology and dataflow plus focused component contracts for substantial
   boundaries; the documents remain useful without this plugin.
@@ -86,10 +89,10 @@ need deployment gates. The gate sequence stays fixed while applicability flexes.
 |---|---|
 | `framed?` | A non-empty intent carrying the user’s recorded agreement |
 | `architected?` | A live ADR for consequential work; explicit agreement for a one-way door |
-| `designed?` | SHA-bound human approval from the browser review surface for UI work |
+| `designed?` | The human's browser verdict still matches `design.html` byte-for-byte (re-checked on every run) |
 | `proven?` | Every declared verification tier green at the current tree |
 | `reviewed?` | A current qualitative review with zero blocking findings |
-| `clean?` | No obvious secrets or raw debug output in the staged diff |
+| `clean?` | No coordinator state, obvious secrets, or raw debug output in the staged diff |
 | `shipped?` | Successful deployment evidence when deployment is in scope |
 | `observed?` | Successful post-deploy health evidence at the same tree |
 
@@ -126,8 +129,15 @@ Project coordination lives under `.coding-agent/` and is gitignored:
 ```
 
 The ledger is written only by the conductor. Evidence is written only by
-`lib/record.sh`; a hook rejects direct edits. Gate results can be recomputed after
-session restart or context compaction.
+`lib/record.sh`; a hook rejects direct edits and obvious shell or interpreter
+writes. Gate results can be recomputed after session restart or context
+compaction.
+
+`ledger.sh init` also installs a small git `pre-commit` shim. While a feature is
+active it runs `framed?` through `clean?` and refuses the commit at the first
+block; with no active feature it does nothing. It never overwrites a hook it did
+not write and skips repositories that use `core.hooksPath` (husky and similar),
+telling you to call `hooks/pre-commit.sh` from your own hook instead.
 
 ## Install
 
@@ -168,7 +178,8 @@ Conductor  → initializes the feature ledger and asks you to confirm the frame
 Planner    → asks one data-ownership question, then records the chosen ADR
 Developer  → writes tests and implementation, recording each declared tier
 Developer  → runs a separate review dispatch and writes review.md
-Conductor  → stages only attributable paths and runs clean?
+Conductor  → stages only attributable paths, runs clean?, and commits
+             (the pre-commit gate re-checks every gate before the commit lands)
 Conductor  → refreshes affected project docs and asks before push/deployment
 ```
 

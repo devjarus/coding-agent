@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # ledger.sh — the conductor's safe primitives for the (single-writer) ledger.
-#   ledger.sh init <slug>          create a feature ledger, set it active
+#   ledger.sh init <slug>          create a feature ledger, set it active,
+#                                  and install the git pre-commit gate
 #   ledger.sh product-init [name]  create the product ledger
 #   ledger.sh tail [n]             show the last n lines of the active ledger
 #   ledger.sh log "<msg>"          append a timestamped line under ## log
@@ -36,7 +37,9 @@ case "$cmd" in
     else
       printf '%s\n' "$slug" > "$cur"
       echo "active feature: $slug  ($dir/ledger.md)"
-    fi ;;
+    fi
+    # The commit wall: from here on a commit cannot land past an unmet gate.
+    echo "commit gate: $(ca_install_commit_gate "$ROOT")" ;;
   product-init)
     name="${1:-$(basename "$(ca_root)")}"; prod="$(ca_product)"; mkdir -p "$(ca_dir)"
     [ -f "$prod" ] || sed "s/<name>/$name/g" "$ROOT/templates/product.template.md" > "$prod"

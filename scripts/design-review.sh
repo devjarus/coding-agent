@@ -15,9 +15,11 @@
 #   design-review.sh verify <feature_dir>   # exit 0 iff an approved, sha-current verdict exists
 #
 # `verify` is the machine-checkable gate: it exits 0 only when the user has
-# approved on the surface (design-verdict.json verdict=approved) AND the
-# artifacts are byte-identical to what was approved. The designer records it
-# via record.sh so `designed?` reads real evidence, not a prose claim.
+# approved on the surface (design-verdict.json verdict=approved, zero open
+# comments) AND design.html is byte-identical to what was approved. The verdict
+# also carries ledger_sha for audit, but verify does not bind to it: the ledger
+# is a running log. The designer records verify via record.sh, and `designed?`
+# re-runs the same verdict check itself rather than trusting the record.
 #
 # State: <feature_dir>/design-review.pid while running.
 set -uo pipefail
@@ -106,17 +108,14 @@ case "$CMD" in
       || { echo '{"ok":false,"error":"strict verdict verifier unavailable"}'; exit 1; }
     declare -f verify_design_verdict >/dev/null 2>&1 \
       || { echo '{"ok":false,"error":"strict verdict verifier missing"}'; exit 1; }
-    found=0
-    for pair in "design.html:design_sha" "ledger.md:ledger_sha"; do
-      art="${pair%:*}"; key="${pair##*:}"
-      [[ -f "$DIR/$art" ]] || continue
-      found=1
-      reason="$(verify_design_verdict "$DIR" "$art" "$key")"
-      if [[ -n "$reason" ]]; then
-        echo "{\"ok\":false,\"error\":\"$reason\"}"; exit 1
-      fi
-    done
-    [[ "$found" -eq 1 ]] || { echo '{"ok":false,"error":"no reviewed artifacts remain"}'; exit 1; }
+    # The approval binds to the look-contract only. ledger.md is the conductor's
+    # running log — it gains lines after every dispatch, so binding to it would
+    # void a genuine approval the moment the conductor logged it.
+    [[ -f "$DIR/design.html" ]] || { echo '{"ok":false,"error":"no design.html look-contract to verify"}'; exit 1; }
+    reason="$(verify_design_verdict "$DIR" design.html design_sha)"
+    if [[ -n "$reason" ]]; then
+      echo "{\"ok\":false,\"error\":\"$reason\"}"; exit 1
+    fi
     echo '{"ok":true,"approved":true}'
     ;;
   *)

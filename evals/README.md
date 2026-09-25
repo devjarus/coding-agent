@@ -37,7 +37,8 @@ always keep).
 
 Authentication, quota, or API failures are reported as `verdict: ERROR` before
 artifact assertions run. They are runner-infrastructure failures, not plugin
-regressions.
+regressions. The Claude CLI refuses `bypassPermissions` when run as root, so
+containers must run the harness as a non-root user (or use `--manual`).
 
 ## The scenarios
 

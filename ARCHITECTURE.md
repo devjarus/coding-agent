@@ -192,6 +192,7 @@ anchor. Superseded ADRs remain readable but stop satisfying the gate.
 - Freezes intent only when given the user’s recorded answer.
 - Supports revision markers, incident framing, rollback lookup, block history,
   and feature rollup/close.
+- On `init`, installs the git pre-commit gate (see 7.6).
 
 ### 7.4 `lib/record.sh`
 
@@ -206,22 +207,38 @@ anchor. Superseded ADRs remain readable but stop satisfying the gate.
 - `pass` and `n/a` exit zero; `block` exits non-zero.
 - Gate scripts observe state; they do not repair it.
 - `gates/lib.sh` owns root resolution, ledger parsing, hashing, evidence lookup,
-  declared tiers, intent tags, and strict design-verdict verification.
+  declared tiers, intent tags, strict design-verdict verification, and the
+  pre-commit gate installer.
+- Most gates bind evidence to the current tree. `designed?` is the exception by
+  design: it re-verifies the human's verdict against `design.html` on every run,
+  so approval survives the build that implements it but not an edit to the
+  look-contract.
 
 ### 7.6 `hooks/`
 
 - `session-start.sh` ensures `.coding-agent/` is ignored before state is written,
-  then injects the active ledger tail on resume.
-- `evidence-wall.sh` denies direct Edit/Write or shell redirection into
-  `evidence.jsonl`.
+  refreshes the pre-commit gate in projects already using the runtime, then
+  injects the active ledger tail on resume.
+- `evidence-wall.sh` (PreToolUse) denies Edit/Write to `evidence.jsonl` and Bash
+  commands that name it alongside a write mechanism (redirection, `tee`, in-place
+  editors, file-moving tools, interpreter writes). It catches accidents, not a
+  determined forger: an indirectly built path still gets through.
+- `pre-commit.sh` is a git hook, not a lifecycle hook. The shim `ledger.sh init`
+  installs calls it; while a feature is active it runs `framed?` through
+  `clean?` and refuses the commit at the first block. It never overwrites a
+  foreign hook and skips a managed `core.hooksPath`.
+- Codex runs no lifecycle hooks: the `delivery-pipeline` skill runs
+  `session-start.sh` explicitly, and the git gate works there unchanged.
 - Hooks are safety rails; workflow transitions remain visible in gates.
 
 ### 7.7 Design-review surface
 
 `scripts/design-review.sh` controls a localhost Python server and browser app.
 The user can leave anchored comments and approve exact bytes. The verdict stores
-SHA-256 digests plus a zero-open-comments proof; changing an approved artifact
-reopens the gate.
+SHA-256 digests plus a zero-open-comments proof. Approval binds to
+`design.html`, the look-contract: editing it reopens `designed?`. The verdict
+also carries a `ledger.md` digest for audit only, because the conductor keeps
+appending to the ledger after approval.
 
 ### 7.8 Skills and templates
 
@@ -244,11 +261,13 @@ model.
 
 | Boundary | Threat | Control |
 |---|---|---|
-| Agent prose → gate | fabricated or stale success | evidence lookup bound to current tree |
+| Agent prose → gate | fabricated or stale success | evidence lookup bound to current tree and frozen test command |
+| Agent → `evidence.jsonl` | hand-written green lines | `record.sh` sole writer; evidence-wall hook (accident guard, not a hard boundary) |
 | Worker → shared workspace | claiming another change | scoped paths + pre-dispatch snapshot |
-| Agent → human authority | forged approval | verbatim answer markers and user-owned design verdict |
+| Agent → human authority | forged approval | verbatim answer markers; `designed?` re-verifies the user-owned verdict instead of trusting a recorded command |
 | Parallel workers → evidence | interleaved JSON or duplicate ids | serialized append lock |
-| Source → commit | secret/debug leakage | staged-diff `clean?` gate |
+| Source → commit | commit past an unmet gate | git pre-commit gate runs `framed?` … `clean?` |
+| Source → commit | secret/debug leakage, tracked coordinator state | staged-diff `clean?` gate |
 | Deploy attempt → production health | treating “deployed” as “healthy” | separate `deploy` and `observe` evidence |
 
 ## 9. Repository layout
@@ -258,8 +277,8 @@ coding-agent/
 ├── agents/                 conductor + five worker roles
 ├── gates/                  eight executable predicates + shared library
 ├── lib/                    ledger and evidence recorder
-├── hooks/                  evidence wall and resume preflight
-├── skills/                 59 scoped knowledge packages
+├── hooks/                  evidence wall, resume preflight, git pre-commit gate
+├── skills/                 60 scoped knowledge packages
 ├── templates/              runtime + portable project-doc templates
 ├── scripts/                validation, skill freshness, design-review surface
 ├── evals/                  artifact-based scenario harness

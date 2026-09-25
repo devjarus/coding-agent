@@ -52,8 +52,11 @@ Every entry carries:
 | `head` / `at` | Git commit and UTC timestamp at execution |
 
 Test evidence is accepted only when its command exactly matches the frozen
-intent’s `test-command-<tier>` contract. Direct writes are rejected by the
-evidence-wall hook, and concurrent recorders serialize their append.
+intent’s `test-command-<tier>` contract. The evidence-wall hook rejects direct
+edits and obvious shell or interpreter writes, and concurrent recorders
+serialize their append. The wall guards against accidents; it is not a hard
+security boundary, so gates still check every line against the current tree
+and frozen command.
 
 Evidence proves execution. It does not decide whether the result is sufficient
 to advance.
@@ -93,7 +96,8 @@ equation:
 
 - A **role** is a bounded actor contract.
 - A **skill** is reusable knowledge loaded when relevant.
-- A **hook** protects an invariant at the tool boundary.
+- A **hook** protects an invariant at a tool or git boundary: the evidence wall
+  at tool calls, the pre-commit gate at `git commit`.
 - A **workflow** is the conductor repeatedly running ordered gates and routing
   blocked work.
 
