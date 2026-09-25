@@ -1,0 +1,20 @@
+{
+  "type": "sequence",
+  "title": "Login with Cached Session",
+  "nodes": [
+    { "id": "user", "label": "User" },
+    { "id": "web", "label": "Web App" },
+    { "id": "api", "label": "API" },
+    { "id": "redis", "label": "Redis" },
+    { "id": "db", "label": "Postgres" }
+  ],
+  "edges": [
+    { "from": "user", "to": "web", "label": "submit credentials" },
+    { "from": "web", "to": "api", "label": "POST /login" },
+    { "from": "api", "to": "redis", "label": "GET session", "style": "dashed" },
+    { "from": "api", "to": "db", "label": "verify password" },
+    { "from": "api", "to": "redis", "label": "SET session" },
+    { "from": "api", "to": "web", "label": "200 + token" },
+    { "from": "web", "to": "user", "label": "redirect /home" }
+  ]
+}

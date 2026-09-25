@@ -84,7 +84,7 @@ mcp_count="$(python3 -c 'import json,sys; print(len(json.load(open(sys.argv[1]))
 printf '  inventory: %s agents · %s skills · %s gates · %s templates · %s MCP servers\n' \
   "$agent_count" "$skill_count" "$gate_count" "$template_count" "$mcp_count"
 [ "$agent_count" -eq 6 ] || error "expected 6 agents, found $agent_count"
-[ "$skill_count" -eq 59 ] || error "expected 59 skills, found $skill_count"
+[ "$skill_count" -eq 60 ] || error "expected 60 skills, found $skill_count"
 [ "$gate_count" -eq 8 ] || error "expected 8 gates, found $gate_count"
 [ "$template_count" -eq 12 ] || error "expected 12 templates, found $template_count"
 [ "$mcp_count" -eq 5 ] || error "expected 5 MCP servers, found $mcp_count"

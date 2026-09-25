@@ -1,0 +1,25 @@
+{
+  "type": "architecture",
+  "title": "Web App — Request Path",
+  "direction": "LR",
+  "groups": [
+    { "id": "edge", "label": "Edge" },
+    { "id": "app", "label": "Application" },
+    { "id": "data", "label": "Data" }
+  ],
+  "nodes": [
+    { "id": "cdn", "label": "CDN", "group": "edge", "tech": "cloudflare" },
+    { "id": "web", "label": "Web App", "group": "app", "tech": "react" },
+    { "id": "api", "label": "API Gateway", "group": "app", "tech": "node" },
+    { "id": "auth", "label": "Auth Service", "group": "app", "tech": "go" },
+    { "id": "pg", "label": "Postgres", "group": "data", "tech": "postgres" },
+    { "id": "cache", "label": "Cache", "group": "data", "tech": "redis" }
+  ],
+  "edges": [
+    { "from": "cdn", "to": "web", "label": "HTTPS" },
+    { "from": "web", "to": "api", "label": "REST" },
+    { "from": "api", "to": "auth", "label": "gRPC" },
+    { "from": "api", "to": "pg", "label": "SQL" },
+    { "from": "api", "to": "cache", "label": "GET/SET", "style": "dashed" }
+  ]
+}
