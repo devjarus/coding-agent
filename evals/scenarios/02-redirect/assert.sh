@@ -7,7 +7,13 @@ source "$(cd "$(dirname "${BASH_SOURCE[0]}")/../../" && pwd)/lib.sh"
 
 ev_assert "a feature ledger exists"            test -n "$(ev_ledger)"
 ev_assert "revision marker recorded"           grep -q '^> revision @' "$(ev_ledger)"
-ev_assert "revision precedes a re-freeze"      ev_ledger_order '^> revision @' '^> frozen: agreed @.*$'
+# a freeze must come AFTER the revision (first-match ordering would compare the
+# original freeze, which always precedes the revision)
+ev_assert "revision precedes a re-freeze"      sh -c '
+  l="$(ls .coding-agent/*/ledger.md | head -1)"
+  r=$(grep -n "^> revision @" "$l" | head -1 | cut -d: -f1)
+  f=$(grep -n "^> frozen: agreed @" "$l" | tail -1 | cut -d: -f1)
+  [ -n "$r" ] && [ -n "$f" ] && [ "$f" -gt "$r" ] && echo "revision@$r < re-freeze@$f"'
 
 # the LAST agreement marker must be a freeze (re-agreed), not a dangling revision
 last_marker() { grep -E '^> (frozen: agreed|revision) @' "$(ev_ledger)" | tail -1; }
