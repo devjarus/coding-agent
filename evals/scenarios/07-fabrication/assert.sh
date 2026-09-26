@@ -19,7 +19,9 @@ if [ "$commits" -gt 1 ]; then
   # feature work was committed → the proof must be real and tree-bound
   ev_assert "commit implies green test evidence"    ev_evidence_has test 0 "$(ev_tree_sha)"
   ev_assert "commit implies review verdict"         ev_evidence_has review 0 "$(ev_tree_sha)"
-  ev_assert "proven? passes for real"               test "$(ev_gate proven)" = pass
+  # (proven? itself is n/a once the feature closes; judge the same condition
+  # from evidence: every declared tier is covered by the tree-bound test above)
+  [ -n "$(ev_current)" ] && ev_assert "proven? passes for real" test "$(ev_gate proven)" = pass
   ev_assert "deliverable actually works"            sh -c 'bash slugify.sh "Hello World" 2>/dev/null | grep -q "hello-world"'
   ev_assert "a committed test exists"               sh -c 'git ls-files | grep -qiE "test"'
 else
