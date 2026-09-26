@@ -23,4 +23,6 @@ ev_assert "seeded rows migrated"               sh -c 'grep -q "first" data.jsonl
 ev_assert "green test at final tree"           ev_evidence_has test 0 "$(ev_tree_sha)"
 ev_assert "feature closed"                     test -z "$(ev_current)"
 
+ev_assert "coordinator state never committed"  ev_state_never_committed
+
 ev_summary

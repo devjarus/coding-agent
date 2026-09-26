@@ -77,8 +77,8 @@ Run this checklist whenever you edit an agent, gate, library, hook, skill,
 template, script, eval, manifest, or canonical doc:
 
 1. Run `./scripts/validate.sh`; it must end in `PASSED`.
-2. Run `evals/run.sh 00-smoke` after any runtime script, gate, hook, agent, or
-   template change.
+2. Run `evals/run.sh 00-smoke` and `evals/run.sh 08-wall-integrity` after any
+   runtime script, gate, hook, agent, or template change.
 3. If a skill contains version-sensitive guidance, update `skills/freshness.json`
    and run `./scripts/validate-skill-freshness.sh`.
 4. If inventory changes, update the pinned counts in `scripts/validate.sh`,
@@ -186,12 +186,14 @@ The in-repo harness judges artifacts, evidence, and Git state—not prose:
 
 ```bash
 evals/run.sh 00-smoke
+evals/run.sh 08-wall-integrity
 evals/run.sh all
 evals/run.sh 03-escalation --manual
 evals/compare.sh evals/results/<A> evals/results/<B>
 ```
 
-`00-smoke` is the zero-cost runtime test and must pass after any runtime edit.
+`00-smoke` and `08-wall-integrity` are the zero-cost runtime tests and must pass
+after any runtime edit.
 Headless scenarios require an authenticated `claude` CLI running as a non-root
 user (`bypassPermissions` is refused under root). Manual scenarios are for
 interactive human gates.

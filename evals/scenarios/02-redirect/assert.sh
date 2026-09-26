@@ -21,4 +21,6 @@ ev_assert "greet.sh exists"                    test -f greet.sh
 ev_assert "new requirement in behavior"        sh -c 'bash greet.sh world 2>/dev/null | grep -q "hello world!"'
 ev_assert "green test at final tree"           ev_evidence_has test 0 "$(ev_tree_sha)"
 
+ev_assert "coordinator state never committed"  ev_state_never_committed
+
 ev_summary

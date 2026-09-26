@@ -18,4 +18,6 @@ ev_assert "feature closed (CURRENT empty)"     test -z "$(ev_current)"
 ev_assert "rolled up into product.md"          grep -qE '^### .+ — (shipped|closed) @' "$(ev_product)"
 ev_assert "evidence well-formed"               ev_evidence_wellformed
 
+ev_assert "coordinator state never committed"  ev_state_never_committed
+
 ev_summary

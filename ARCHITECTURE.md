@@ -225,8 +225,11 @@ anchor. Superseded ADRs remain readable but stop satisfying the gate.
   determined forger: an indirectly built path still gets through.
 - `pre-commit.sh` is a git hook, not a lifecycle hook. The shim `ledger.sh init`
   installs calls it; while a feature is active it runs `framed?` through
-  `clean?` and refuses the commit at the first block. It never overwrites a
-  foreign hook and skips a managed `core.hooksPath`.
+  `clean?` and refuses the commit at the first block. The check runs through
+  `record.sh` (`kind=run tier=commit`), so every gated commit leaves evidence
+  whose `head` is its parent; a commit without one went around the wall. It
+  proves the working tree the gates see, not a partially staged snapshot. It
+  never overwrites a foreign hook and skips a managed `core.hooksPath`.
 - Codex runs no lifecycle hooks: the `delivery-pipeline` skill runs
   `session-start.sh` explicitly, and the git gate works there unchanged.
 - Hooks are safety rails; workflow transitions remain visible in gates.

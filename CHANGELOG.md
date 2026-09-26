@@ -24,6 +24,18 @@ release closes those gaps and brings the runtime docs in line with the code.
   which this branch had diverged from. It is routed from the conductor's skills
   table. Inventory is 59 → 60 skills.
 - **Smoke assertions** for each fix: 48 → 61 checks.
+- **`08-wall-integrity` eval** (script-only, zero-cost like `00-smoke`):
+  install scope, foreign-hook and `core.hooksPath` safety, stale-shim refresh,
+  refusals naming the blocking gate, no-op with no active feature, every
+  evidence-wall write route, and a self-test that the bypass detectors fire.
+- **The pre-commit gate leaves a trace.** It runs its check through
+  `record.sh` as `kind=run tier=commit`, so every gated commit has green
+  evidence at its parent. A `--no-verify` commit has none.
+- **Model scenarios assert the wall held.** New helpers
+  `ev_commit_gate_intact`, `ev_every_commit_gated`, and
+  `ev_state_never_committed` are wired into 01–07 as each scenario allows.
+  05 also requires the look-contract to exist and no commit to land without
+  approval.
 
 ### Fixed
 

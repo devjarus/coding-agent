@@ -202,6 +202,7 @@ templates, or docs:
 ```bash
 ./scripts/validate.sh
 evals/run.sh 00-smoke
+evals/run.sh 08-wall-integrity
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) before making a

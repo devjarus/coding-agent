@@ -39,6 +39,7 @@ Run before opening a pull request:
 ```bash
 ./scripts/validate.sh
 evals/run.sh 00-smoke
+evals/run.sh 08-wall-integrity
 ```
 
 For broader runtime changes, also run `evals/run.sh all`. For version-sensitive
