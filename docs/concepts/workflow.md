@@ -165,7 +165,7 @@ rather than spinning.
 ## 8. Clean, commit, document
 
 The conductor stages only attributable paths. `clean?` scans the staged diff for
-staged coordinator state, obvious secrets, and raw debug prints. The conductor
+staged coordinator state, hardcoded secrets, and debugger statements. The conductor
 then commits, and the git pre-commit gate re-runs `framed?` through `clean?`
 and refuses the commit at the first block. That holds even when the model
 skipped a gate or the commit message claims nothing.

@@ -292,7 +292,8 @@ model.
 | Agent → human authority | forged approval | verbatim answer markers; `designed?` re-verifies the user-owned verdict instead of trusting a recorded command |
 | Parallel workers → evidence | interleaved JSON or duplicate ids | serialized append lock |
 | Source → commit | commit past an unmet gate | git pre-commit gate runs `framed?` … `clean?` |
-| Source → commit | secret/debug leakage, tracked coordinator state | staged-diff `clean?` gate |
+| Source → commit | hardcoded secrets, debugger statements, tracked coordinator state | staged-diff `clean?` gate (prints are left to review: a regex can't tell CLI output from debugging) |
+| Review → verdict | a verdict re-recorded over code the reviewer never saw | `ca verdict` refuses when non-doc files changed after `review.md` |
 | Deploy attempt → production health | treating “deployed” as “healthy” | separate `deploy` and `observe` evidence |
 
 ## 9. Repository layout

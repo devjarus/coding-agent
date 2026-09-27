@@ -97,6 +97,21 @@ echo notes > notes.txt && git add notes.txt
 ev_assert "no active feature: commits are untouched" git commit -qm "unrelated"
 ev_assert "helper: ledger state never committed"   ev_state_never_committed
 
+# ── clean? blocks real leaks, not ordinary code (false positives cost reworks) ─
+cleanst() { # <path> <line>
+  mkdir -p "$(dirname "$side/clean/$1")"; ( cd "$side/clean" && printf '%s\n' "$2" > "$1" && git add "$1" )
+  (cd "$side/clean" && bash "$EV_PLUGIN_ROOT/gates/clean.sh" | python3 -c 'import json,sys; print(json.load(sys.stdin)["status"])')
+  ( cd "$side/clean" && git rm -q --cached "$1" && rm -f "$1" )
+}
+fresh_repo "$side/clean"
+ev_assert "clean? passes a token generator"        test "$(cleanst app.py 'token = secrets.token_hex(24)')" = pass
+ev_assert "clean? passes reading a password field" test "$(cleanst app.py 'password = body.get("password")')" = pass
+ev_assert "clean? passes CLI output"               test "$(cleanst cli.py 'print(json.dumps(report))')" = pass
+ev_assert "clean? passes a test fixture password"  test "$(cleanst tests/test_auth.py 'body = {"password": "hunter2hunter2"}')" = pass
+ev_assert "clean? blocks a hardcoded key"          test "$(cleanst app.py 'API_KEY = "abcd1234efgh5678"')" = block
+ev_assert "clean? blocks an AWS key id"            test "$(cleanst app.py 'k = "AKIAABCDEFGHIJKLMNOP"')" = block
+ev_assert "clean? blocks a debugger statement"     test "$(cleanst app.py 'import pdb; pdb.set_trace()')" = block
+
 # ── evidence wall: every claimed write route is denied, reads are not ──────
 EV=".coding-agent/wall/evidence.jsonl"
 tool() { python3 -c 'import json,sys; print(json.dumps({"tool_name":sys.argv[1],"tool_input":{sys.argv[2]:sys.argv[3]}}))' "$@" | bash "$W"; }

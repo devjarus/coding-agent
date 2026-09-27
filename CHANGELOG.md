@@ -37,6 +37,17 @@ The causes were structural, so this release changes the runtime's shape.
   re-opens `proven?`), dispatches the reviewer in the foreground instead of
   polling, and asks for a delta re-review of the fixed findings only.
   `ca next` lists uncommitted paths when it says to commit.
+
+### Fixed
+
+- **`clean?` false positives.** It blocked `print(` (a CLI's output) and any
+  `token =` / `password:` line, which fired on 3 of 4 complex bench runs and
+  each time forced a rewrite plus another review round. It now blocks
+  high-confidence key formats, secret-named keys assigned a long non-placeholder
+  literal outside test files, and debugger statements.
+- **Verdicts over unreviewed code.** `ca verdict` refuses when any non-doc file
+  changed after `review.md` was written, so a post-review code change needs a
+  (delta) re-review; docs-only follow-ups don't.
 - **`bench/`**: a two-arm benchmark. The same tasks run under native Claude
   Code and under the plugin (loaded via `--plugin-dir`, as users install it),
   scored by hidden acceptance tests the agents never see. Tasks: a small

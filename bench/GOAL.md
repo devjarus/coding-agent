@@ -36,13 +36,13 @@ Why these shapes:
    the hidden tests are unreachable.
 3. Runs happen outside the repository, so no agent can walk up to the tests.
 4. One rep is directional. Claims need `min_reps_to_claim` reps per arm.
+5. Architecture changes are justified by a scoreboard delta, and a component
+   that does not move a number is a candidate for deletion.
 6. Hidden suites may grow when a **stated** requirement turns out to be
    untested (bench v2 added JSON-error and literal-search checks after a plugin
    review surfaced them). When they grow, re-score every run with
    `bench/rescore.py` so both arms are measured by the same suite, and record
    where the new check came from.
-5. Architecture changes are justified by a scoreboard delta, and a component
-   that does not move a number is a candidate for deletion.
 
 ## How to use it
 

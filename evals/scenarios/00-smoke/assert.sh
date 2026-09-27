@@ -250,6 +250,15 @@ bash "$CA" prove >/dev/null
 if bash "$CA" commit -m "x" -- . >/dev/null 2>&1; then c=0; else c=$?; fi
 ev_assert "ca commit refuses a repo-wide pathspec" test "$c" -ne 0
 ev_assert "ca next names the next step"          sh -c "bash '$CA' next | grep -q '^NEXT: close'"
+# a verdict vouches only for code the reviewer saw
+printf '# review\n\n## findings\n\n' > .coding-agent/smoke-quick/review.md
+sleep 1; echo "# changed after review" >> thing.sh
+if bash "$CA" verdict >/dev/null 2>&1; then v=0; else v=$?; fi
+ev_assert "ca verdict refuses after a code change" test "$v" -eq 64
+sed -i.bak '$d' thing.sh && rm -f thing.sh.bak
+touch .coding-agent/smoke-quick/review.md; sleep 1; echo "notes" >> NOTES.md
+ev_assert "ca verdict allows a docs-only follow-up" bash "$CA" verdict
+rm -f NOTES.md .coding-agent/smoke-quick/review.md
 bash "$CA" close --summary "quick" --learnings "lanes are measured" >/dev/null
 ev_assert "ca close defaults the deployment line" grep -q "deployment: not deployed" "$(ev_product)"
 

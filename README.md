@@ -106,7 +106,7 @@ need deployment gates. The gate sequence stays fixed while applicability flexes.
 | `designed?` | The human's browser verdict still matches `design.html` byte-for-byte (re-checked on every run), or the user declined visual review in their own words |
 | `proven?` | Every declared verification tier green at the current tree |
 | `reviewed?` | A current qualitative review with zero blocking findings (quick lane: a measured small, low-risk diff) |
-| `clean?` | No coordinator state, obvious secrets, or raw debug output in the staged diff |
+| `clean?` | No coordinator state, hardcoded secrets, or debugger statements in the staged diff |
 | `shipped?` | Successful deployment evidence when deployment is in scope |
 | `observed?` | Successful post-deploy health evidence at the same tree |
 

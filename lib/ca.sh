@@ -152,6 +152,12 @@ PY
     [ -n "$(ca_current)" ] || die "no active feature"
     rv=".coding-agent/$(ca_current)/review.md"
     [ -f "$(ca_feature_dir)/review.md" ] || die "no review.md — dispatch a reviewer first"
+    # A verdict vouches for code the reviewer saw. Code (anything but docs)
+    # changed after review.md was written needs a delta re-review first.
+    stale="$( { git diff --name-only HEAD 2>/dev/null; git ls-files -o --exclude-standard 2>/dev/null; } \
+      | grep -v '^\.coding-agent/' | grep -vE '(\.md|\.rst|\.txt)$|^docs/' | sort -u \
+      | while IFS= read -r f; do [ -f "$f" ] && [ "$f" -nt "$(ca_feature_dir)/review.md" ] && echo "$f"; done | head -5)"
+    [ -z "$stale" ] || die "code changed after the review ($(echo $stale | tr '\n' ' ')) — dispatch a delta re-review, then ca verdict"
     bash "$R" "test \$(grep -c '^- \\[blocking\\]' $rv) -eq 0" review >/dev/null
     gate_line reviewed
     show_next --brief ;;
