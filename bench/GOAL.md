@@ -1,35 +1,31 @@
 # The goal
 
-coding-agent exists to build, maintain, and extend software **better than the
-agent it runs on**. "Better" is measured, not asserted: on identical tasks, the
-plugin must beat native Claude Code on quality *and* not lose on cost or time.
+coding-agent exists for what native Claude Code cannot supply by itself:
+**continuity** across sessions, adherence to a project's **standards**, and
+**speed**. On the same model and the same tasks, it must win at least one of
+continuity or standards without falling below native on plain correctness.
+If it wins neither and is slower, it is not worth running.
 
 ## Targets (`bench/goal.json` is the source of truth)
 
-| Scope | Quality (hidden-test pass rate) | Cost vs native | Wall time vs native |
-|---|---|---|---|
-| **Suite** (all tasks) | ≥ native | ≤ 1.0× | ≤ 1.0× |
-| Small (maintenance fix) | ≥ native | ≤ 1.5× | ≤ 1.5× |
-| Medium (new service) | ≥ native | ≤ 1.2× | ≤ 1.2× |
-| **Complex** (app + change request) | **≥ native + 10 points** | ≤ 1.0× | ≤ 1.0× |
-| Integrity (plugin only) | 0 commits that bypassed the gate | — | — |
+| Pillar | Measured by | Target |
+|---|---|---|
+| **Continuity** | `continuity-inventory`: one codebase over five fresh sessions. Conventions are stated only in session 1; session 3 is killed mid-change and session 4 is told only "pick up where it left off"; session 5 only "build the thing we said we'd do later". | quality ≥ native + 5 pts |
+| **Standards** | `standards-orders`: an existing repo whose `AGENTS.md` sets house rules (logger, error type, numbered migrations, tests, docs, changelog) that the request never restates. Hidden checks verify the rules, not just the feature. | quality ≥ native + 5 pts |
+| **Speed** | suite-wide wall time | ≤ 1.0× native |
+| Correctness floor | single-session tasks (small fix, REST service, complex apps, job queue) | ≥ native |
+| Cost floor | suite-wide spend | ≤ 1.5× native |
 
-Why these shapes:
+**Verdict rule:** worth running if it wins continuity or standards while holding
+the correctness floor. Wins neither and is slower → retire it.
 
-- **Quality is judged by hidden acceptance tests** the agent never sees, run
-  after each phase, including regressions of earlier phases. Neither arm can
-  game them, and "tests pass" claims count for nothing.
-- **Complex work is where process must pay for itself.** A harness that only
-  matches native there is pure overhead, so it has to win by a margin.
-- **Small work may cost a little more, never a lot.** Some fixed overhead is the
-  price of evidence; a 10× tax on a one-line fix is a design failure.
-- **Suite-wide cost and time must not exceed native.** Savings on complex work
-  (less rework, cheaper workers, deterministic scripts instead of model turns)
-  have to fund the overhead on small work.
+Hidden acceptance tests score everything: the agent never sees them, and they
+run after each phase including earlier phases' tests.
 
 ## Rules of the comparison
 
-1. Same prompt, same seed repo, same main model, same machine. The only
+1. Same prompt, same seed repo, same machine, and the same pinned model
+   (`--model`, default `claude-sonnet-5`; subagents inherit it). The only
    difference is `--plugin-dir`.
 2. The plugin arm loads the plugin exactly as users do (registered agents,
    hooks, conductor as main agent), from a snapshot that excludes `bench/`, so

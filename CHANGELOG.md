@@ -5,6 +5,22 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — Bench measures what the plugin is for
+
+### Changed
+- **The goal is now three pillars:** continuity, standards, speed (`bench/GOAL.md`).
+  Worth running only if it wins continuity or standards without falling below
+  native on correctness; wins neither and is slower → retire.
+- **Both arms run the same pinned model** (`--model`, default `claude-sonnet-5`),
+  recorded per run.
+
+### Added
+- `continuity-inventory`: five fresh sessions on one codebase, with conventions
+  stated only once, a session killed mid-change, and a deferred request.
+- `standards-orders`: an existing repo whose `AGENTS.md` rules are checked
+  mechanically (migration discipline, logger, error type, docs, changelog, tests).
+- Runner support for deliberately interrupted phases (`max_turns`).
+
 ## [7.0.0] — 2026-09-27 — Goal-driven runtime: measured against native Claude Code
 
 The plugin now has a measured goal: beat native Claude Code on quality without

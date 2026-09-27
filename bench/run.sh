@@ -22,7 +22,7 @@ ROOT="$(cd "$HERE/.." && pwd)"
 
 TARGET="${1:-}"; shift || true
 [ -n "$TARGET" ] || { echo "usage: run.sh <task|all> [--arm native|plugin|both] [--reps N] [--model M] [--label L] [--work DIR]"; exit 64; }
-ARM=both; REPS=1; MODEL=""; LABEL="run"; WORK=""
+ARM=both; REPS=1; MODEL="${BENCH_MODEL:-claude-sonnet-5}"; LABEL="run"; WORK=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --arm) ARM="$2"; shift 2 ;;
@@ -66,19 +66,26 @@ run_one() { # task arm rep
   local budget timeout phases
   budget="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["budget_usd"])' "$tdir/task.json")"
   timeout="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["timeout_s"])' "$tdir/task.json")"
-  phases="$(python3 -c 'import json,sys; print(" ".join(json.load(open(sys.argv[1]))["phases"]))' "$tdir/task.json")"
+  # A phase is "file.md" or {"file": ..., "max_turns": N} — the latter kills the
+  # session mid-change on purpose (continuity tasks resume it in the next phase).
+  phases="$(python3 -c 'import json,sys
+for p in json.load(open(sys.argv[1]))["phases"]:
+    p = p if isinstance(p, dict) else {"file": p}
+    print("%s:%s" % (p["file"], p.get("max_turns", 0)))' "$tdir/task.json")"
 
-  local margs=()
-  [ -n "$MODEL" ] && margs+=(--model "$MODEL")
+  # Both arms run the same pinned model (subagents inherit it).
+  local margs=(--model "$MODEL")
   [ "$arm" = plugin ] && margs+=(--plugin-dir "$SNAP")
 
   echo "▶ $task · $arm · rep $rep  ($rdir)"
-  for ph in $phases; do
-    local n="${ph%.md}" t0 t1 rc
+  for spec in $phases; do
+    local ph="${spec%%:*}" mt="${spec##*:}"
+    local n="${ph%.md}" t0 t1 rc pargs=()
+    [ "$mt" != 0 ] && pargs+=(--max-turns "$mt")
     t0=$(date +%s)
     ( cd "$proj" && timeout "$timeout" claude -p "$(cat "$tdir/$ph")$FOOTER" \
         --permission-mode bypassPermissions --output-format json \
-        --max-budget-usd "$budget" "${margs[@]}" \
+        --max-budget-usd "$budget" "${margs[@]}" "${pargs[@]}" \
         > "$rdir/$n.claude.json" 2> "$rdir/$n.stderr.log" )
     rc=$?
     t1=$(date +%s)
@@ -99,7 +106,8 @@ row = {"phase": n, "exit": rc, "timed_out": rc == 124, "wall_s": wall,
        "cost_usd": c.get("total_cost_usd"), "turns": c.get("num_turns"),
        "is_error": c.get("is_error"), "subtype": c.get("subtype"),
        "models": {m: round(v.get("costUSD", 0), 4) for m, v in (c.get("modelUsage") or {}).items()},
-       "passed": s["passed"], "total": s["total"], "rate": s["rate"], "score_error": s.get("error")}
+       "passed": s["passed"], "total": s["total"], "rate": s["rate"], "score_error": s.get("error"),
+       "scored": s.get("scored", True)}
 with open(os.path.join(rdir, n + ".row.json"), "w") as f:
     json.dump(row, f)
 print("   %-7s %3d/%-3d hidden  $%-6s %4ss  turns=%s%s" % (
@@ -108,11 +116,13 @@ print("   %-7s %3d/%-3d hidden  $%-6s %4ss  turns=%s%s" % (
 PY
   done
 
-  python3 - "$rdir" "$task" "$arm" "$rep" "$tdir/task.json" "$proj" <<'PY'
+  BENCH_RUN_MODEL="$MODEL" python3 - "$rdir" "$task" "$arm" "$rep" "$tdir/task.json" "$proj" <<'PY'
 import glob, json, os, subprocess, sys
 rdir, task, arm, rep, tj, proj = sys.argv[1:7]
 meta = json.load(open(tj))
-rows = [json.load(open(os.path.join(rdir, p[:-3] + ".row.json"))) for p in meta["phases"]]
+files = [p["file"] if isinstance(p, dict) else p for p in meta["phases"]]
+rows = [json.load(open(os.path.join(rdir, p[:-3] + ".row.json"))) for p in files]
+scored = [r for r in rows if r.get("scored", True)]
 def git(*a):
     return subprocess.run(["git", "-C", proj] + list(a), capture_output=True, text=True).stdout
 root = git("rev-list", "--max-parents=0", "HEAD").split()[-1]
@@ -126,8 +136,9 @@ if arm == "plugin":
         entries += [json.loads(l) for l in open(f) if l.strip()]
     heads = {e.get("head") for e in entries if e.get("kind") == "run" and e.get("tier") == "commit" and e.get("exit") == 0}
     gated = sum(1 for c in commits if git("rev-parse", c + "^").strip() in heads)
-run = {"task": task, "tier": meta["tier"], "arm": arm, "rep": int(rep), "phases": rows,
-       "quality": round(sum(r["rate"] for r in rows) / len(rows), 4),
+run = {"task": task, "tier": meta["tier"], "pillar": meta.get("pillar", "correctness"), "arm": arm, "rep": int(rep),
+       "model": os.environ.get("BENCH_RUN_MODEL"), "phases": rows,
+       "quality": round(sum(r["rate"] for r in scored) / len(scored), 4),
        "cost_usd": round(sum(r["cost_usd"] or 0 for r in rows), 4),
        "wall_s": sum(r["wall_s"] for r in rows),
        "turns": sum(r["turns"] or 0 for r in rows),

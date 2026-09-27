@@ -40,6 +40,8 @@ def main():
             proj = os.path.join(rdir, "project")
             for i, row in enumerate(run["phases"]):
                 ph = row["phase"]
+                if not row.get("scored", True):
+                    continue
                 tree, source = phase_tree(rdir, proj, ph)
                 s = json.loads(subprocess.run([sys.executable, os.path.join(HERE, "score.py"), tdir, tree, ph + ".md"],
                                               capture_output=True, text=True).stdout)
@@ -52,7 +54,8 @@ def main():
                 run["phases"][i] = row
                 print("%-24s %-7s %-7s %3d/%-3d  (%s)%s" % (run["task"], run["arm"], ph, s["passed"], s["total"], source,
                       "  failed: %s" % row["failed"] if row["failed"] else ""))
-            run["quality"] = round(sum(p["rate"] for p in run["phases"]) / len(run["phases"]), 4)
+            sc = [p for p in run["phases"] if p.get("scored", True)]
+            run["quality"] = round(sum(p["rate"] for p in sc) / len(sc), 4)
             json.dump(run, open(rj, "w"), indent=2)
 
 

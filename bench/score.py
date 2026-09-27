@@ -46,6 +46,9 @@ def count_tests(path):
 def main():
     task_dir, project, phase = sys.argv[1:4]
     task = json.load(open(os.path.join(task_dir, "task.json")))
+    if phase not in task["hidden"]:  # e.g. a deliberately interrupted phase
+        print(json.dumps({"phase": phase, "passed": 0, "total": 0, "rate": None, "suites": {}, "error": None, "scored": False}))
+        return
     suites = task["hidden"][phase]
     scratch = tempfile.mkdtemp(prefix="bench-score-")
     app = os.path.join(scratch, "app")

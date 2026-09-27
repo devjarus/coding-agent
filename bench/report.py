@@ -113,20 +113,43 @@ def main():
                 "tr": sum(p["plugin"]["w"] for p in pairs) / max(1e-9, sum(p["native"]["w"] for p in pairs)),
                 "n": min(min(p["plugin"]["n"], p["native"]["n"]) for p in pairs), "tasks": len(pairs)}
 
-    lines += ["", "| Scope | Quality Δ (target) | Cost ratio (target) | Time ratio (target) | Min reps |",
-              "|---|---|---|---|---|"]
-    all_ok = True
-    scopes = [(tier, [t for t in agg if agg[t][next(iter(agg[t]))]["tier"] == tier], goal["tiers"][tier]) for tier in ("small", "medium", "complex")]
-    scopes.append(("suite", list(agg), goal["suite"]))
-    for name, ts, g in scopes:
-        cmp = compare(ts)
+    lines += ["", "| Pillar | Tasks | Quality Δ | Cost ratio | Time ratio | Target | Met |",
+              "|---|---|---|---|---|---|---|"]
+    by_pillar = {}
+    for t in agg:
+        pil = next(r["pillar"] for r in runs if r["task"] == t and r.get("pillar")) if any(r.get("pillar") for r in runs if r["task"] == t) else "correctness"
+        by_pillar.setdefault(pil, []).append(t)
+    results = {}
+    for pil in ("continuity", "standards", "correctness"):
+        cmp = compare(by_pillar.get(pil, []))
         if not cmp:
             continue
-        okq, okc, okt = cmp["dq"] >= g["quality_delta_min"], cmp["cr"] <= g["cost_ratio_max"], cmp["tr"] <= g["time_ratio_max"]
-        all_ok &= okq and okc and okt
-        lines.append("| %s | %+.0f pts %s (≥ %+.0f) | %s %s (≤ %.1f) | %s %s (≤ %.1f) | %d |" % (
-            name, 100 * cmp["dq"], verdict(okq), 100 * g["quality_delta_min"], fmt_ratio(cmp["cr"]), verdict(okc),
-            g["cost_ratio_max"], fmt_ratio(cmp["tr"]), verdict(okt), g["time_ratio_max"], cmp["n"]))
+        g = goal["pillars"].get(pil) or goal["floors"].get(pil)
+        ok = cmp["dq"] >= g["quality_delta_min"]
+        results[pil] = ok
+        lines.append("| %s | %d | %+.0f pts | %s | %s | Δ ≥ %+.0f pts | %s |" % (
+            pil, cmp["tasks"], 100 * cmp["dq"], fmt_ratio(cmp["cr"]), fmt_ratio(cmp["tr"]),
+            100 * g["quality_delta_min"], verdict(ok)))
+    suite = compare(list(agg))
+    all_ok = True
+    if suite:
+        sp = suite["tr"] <= goal["pillars"]["speed"]["time_ratio_max"]
+        co = suite["cr"] <= goal["floors"]["cost"]["cost_ratio_max"]
+        results["speed"] = sp
+        lines.append("| speed (suite) | %d | %+.0f pts | %s | %s | time ≤ %.1f× | %s |" % (
+            suite["tasks"], 100 * suite["dq"], fmt_ratio(suite["cr"]), fmt_ratio(suite["tr"]),
+            goal["pillars"]["speed"]["time_ratio_max"], verdict(sp)))
+        lines.append("| cost floor (suite) | %d | | %s | | cost ≤ %.1f× | %s |" % (
+            suite["tasks"], fmt_ratio(suite["cr"]), goal["floors"]["cost"]["cost_ratio_max"], verdict(co)))
+        missing = [p for p in ("continuity", "standards") if p not in results]
+        wins = [p for p in ("continuity", "standards") if results.get(p)]
+        floor = results.get("correctness", True)
+        worth = bool(wins) and floor
+        lines += ["", "**Verdict: %s** — pillars won: %s; correctness floor %s; speed %s." % (
+            ("incomplete (not measured: %s)" % ", ".join(missing)) if missing else
+            "worth running" if worth else ("retire" if not wins and not sp else "not yet worth running"),
+            ", ".join(wins) or "none", "held" if floor else "broken", "won" if sp else "lost")]
+        all_ok = worth
     ungated = sum(a["plugin"]["ungated"] for a in agg.values() if "plugin" in a)
     ok_int = ungated <= goal["integrity"]["plugin_unproven_commits_max"]
     all_ok &= ok_int

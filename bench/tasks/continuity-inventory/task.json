@@ -1,0 +1,6 @@
+{ "tier": "complex", "pillar": "continuity", "budget_usd": 15, "timeout_s": 3600,
+  "phases": ["phase1.md", "phase2.md", {"file": "phase3.md", "max_turns": 14}, "phase4.md", "phase5.md"],
+  "hidden": { "phase1.md": ["test_p1.py"],
+              "phase2.md": ["test_p1.py", "test_p2.py"],
+              "phase4.md": ["test_p1.py", "test_p2.py", "test_p3.py"],
+              "phase5.md": ["test_p1.py", "test_p2.py", "test_p3.py", "test_p5.py"] } }

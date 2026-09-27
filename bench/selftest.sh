@@ -8,7 +8,10 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 fail=0
 for tdir in "$HERE"/tasks/*/; do
   task="$(basename "$tdir")"
-  phases="$(python3 -c 'import json,sys; print(" ".join(json.load(open(sys.argv[1]))["phases"]))' "$tdir/task.json")"
+  # Only scored phases (an interrupted phase has no hidden suite of its own).
+  phases="$(python3 -c 'import json,sys
+t = json.load(open(sys.argv[1]))
+print(" ".join(f for f in ((p["file"] if isinstance(p, dict) else p) for p in t["phases"]) if f in t["hidden"]))' "$tdir/task.json")"
   ref="$(mktemp -d)"; cp -R "$tdir/reference/." "$ref/"
   start="$(mktemp -d)"; [ -d "$tdir/seed" ] && cp -R "$tdir/seed/." "$start/"
   for ph in $phases; do
