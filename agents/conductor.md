@@ -96,6 +96,10 @@ words instead: `ca waive design --answer "<their words>"`.
 - Tests first for each acceptance line; put them where the project's test
   runner actually looks. A test that cannot fail proves nothing.
 - Implement the smallest thing that satisfies the acceptance criteria.
+- The stated error format also covers paths you don't handle (unknown routes
+  and methods, malformed input) — frameworks fall back to their own error
+  pages. Escape user input that reaches SQL `LIKE`, regex, shell, or glob when
+  the spec says it is literal. Test both.
 - No raw debug prints in production code; every error path handled.
 - Then: `${CLAUDE_PLUGIN_ROOT}/lib/ca.sh prove` — records every declared tier.
   Red → fix → prove again. Two red runs of the same tier with no progress →

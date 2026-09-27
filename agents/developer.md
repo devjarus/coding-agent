@@ -191,8 +191,20 @@ or safe. That is this kind's job. Read the `review` principle tier
    - [advisory] naming: `doIt` → `applyDiscount` for intent — src/cart.ts:88
    ```
    - **blocking** = would fail an acceptance criterion, a security/correctness
-     defect, or a missed requirement. These stop the gate.
+     defect, or a missed requirement. **Any behavior that contradicts the
+     request's stated wording is blocking**, however small it looks (a
+     "substring" search where `_` or `%` act as wildcards; an HTML error page
+     where the spec says errors are JSON). These stop the gate.
    - **advisory** = everything else (naming, structure, nits). Recorded, not gating.
+
+   Before you write findings, **run** the change, don't only read it. Two
+   defect classes survive code reading and green suites:
+   - **the error contract on paths the code doesn't handle**: send an
+     unsupported method, an unknown route, and a malformed body to a running
+     instance, and check the response against the stated error format
+     (frameworks fall back to their own default error pages);
+   - **user input reaching a query language** (SQL `LIKE`, regex, shell, glob):
+     try the language's special characters as literal input.
 
    `reviewed?` rejects the file if `## findings` is missing or if any
    `[blocking]`/`[advisory]` mention in that section is not a flush-left `- `

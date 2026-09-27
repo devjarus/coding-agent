@@ -50,6 +50,13 @@ The causes were structural, so this release changes the runtime's shape.
 - **Verdicts over unreviewed code.** `ca verdict` refuses when any non-doc file
   changed after `review.md` was written, so a post-review code change needs a
   (delta) re-review; docs-only follow-ups don't.
+- **Principles referenced but never read.** Transcripts showed neither the
+  conductor nor the reviewer ever opened `principles.md`; the reviewer even
+  found the `LIKE` defect and filed it as advisory. The two defect classes and
+  the rule "a behavior contradicting the request's wording is blocking" now
+  live in the prompts the agents actually load (conductor build steps,
+  developer review section), and the reviewer runs the change before writing
+  findings.
 - **Review misses by luck.** Two v7 runs of the same task differed only in
   whether the reviewer happened to check the error contract on unhandled
   methods and SQL `LIKE` escaping. `principles.md` now names both defect classes
