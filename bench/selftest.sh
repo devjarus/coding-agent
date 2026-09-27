@@ -20,6 +20,7 @@ for tdir in "$HERE"/tasks/*/; do
     sok="$(echo "$s" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(int(d["passed"] < d["total"]))')"
     mark="✓"; { [ "$rok" = 1 ] && [ "$sok" = 1 ]; } || { mark="✗"; fail=1; }
     printf '  %s %-26s %-10s reference %-7s start %s\n' "$mark" "$task" "${ph%.md}" "$rp" "$sp"
+    [ "$rok" = 1 ] || echo "$r" | python3 -c 'import json,sys; d=json.load(sys.stdin); print("      failing:", [f for s in d["suites"].values() for f in (s.get("failed") or [])], d.get("error") or "")'
   done
   rm -rf "$ref" "$start"
 done
