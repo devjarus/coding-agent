@@ -1,3 +1,34 @@
+# Pillar results — continuity, standards, speed (same pinned model: claude-sonnet-5)
+
+| Pillar | Task | Native | Plugin v7 `5e4dfe8` | Δ quality | Cost | Time |
+|---|---|---|---|---|---|---|
+| **Continuity** | continuity-inventory (5 fresh sessions) | 86% · $2.40 · 824 s (n=2) | **100%** · $6.54 · 2996 s (n=2) | **+14 pts ✅** | 2.7× | 3.6× |
+| Standards | standards-orders (AGENTS.md rules) | 100% · $0.27 · 73 s (n=2) | 100% · $0.78 · 352 s (n=2) | +0 pts ❌ | 2.9× | 4.8× |
+| Speed | suite | — | — | — | — | ❌ 2.5–4.8× slower everywhere |
+| Correctness floor | five single-session tasks | see below | parity (−1 pt, one run) | held (within noise) | 3.0× | 2.5× |
+
+**Verdict under the goal's rule: worth running for multi-session work** (it wins
+continuity by 14 points on every run) — **not** for one-session work, where it
+matches native's quality at ~3× the cost and 2.5–5× the time.
+
+What made the difference: native kept the phase-1 API conventions in the code
+of phase 1 only; by session 2 (both runs) it shipped `{"warehouses": [...]}`
+instead of the agreed paginated `{"items", "next_cursor"}`, and repeated that for
+movements and alerts. Resuming the interrupted session and the deferred request
+both worked for native too. The plugin carried the conventions and the deferred
+spec in `.coding-agent/product.md` (learnings, backlog) and committed docs.
+
+That mechanism is cheap; the expensive parts (independent review, gates,
+framing) are not what produced the win. The next experiment is a third arm:
+the memory layer alone (session-start injection of product memory + a rule to
+record conventions, decisions and deferrals) on native, to see whether it keeps
+the +14 pts at near-native cost.
+
+Two invalid runs caused by an account usage limit (sessions returning at $0)
+were discarded and re-run; they are not in these numbers.
+
+---
+
 # Bench results — 2026-09-27
 
 Native = Claude Code with no plugin (Sonnet 5, effort high). Plugin arms load the
