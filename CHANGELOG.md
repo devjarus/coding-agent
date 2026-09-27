@@ -36,7 +36,9 @@ The causes were structural, so this release changes the runtime's shape.
 - **Cheaper review.** The conductor updates docs before review (a later change
   re-opens `proven?`), dispatches the reviewer in the foreground instead of
   polling, and asks for a delta re-review of the fixed findings only.
-  `ca next` lists uncommitted paths when it says to commit.
+  `ca next` lists uncommitted paths when it says to commit. Advisory findings
+  are logged for follow-up instead of fixed mid-feature, since any code change
+  after review costs a re-review.
 
 ### Fixed
 

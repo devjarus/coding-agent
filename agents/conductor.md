@@ -121,6 +121,8 @@ from `${CLAUDE_PLUGIN_ROOT}/templates/review.template.md` and returns findings.
 Then: `ca verdict`. For large deep-lane diffs you may fan out read-only
 `aggregate: false` dimension reviewers (correctness · security · simplicity) and
 send one final aggregate dispatch; concurrent workers never write the same file.
+`- [advisory]` findings don't gate: log them for a follow-up rather than fixing
+them now — any code change after review costs a re-review.
 Fix every `- [blocking]` finding yourself (or via a scoped developer in deep),
 `ca prove`, then a **delta re-review**: brief the reviewer to verify only the
 listed findings and the lines you changed for them, not to re-audit the whole
