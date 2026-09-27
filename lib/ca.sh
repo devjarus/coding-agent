@@ -4,8 +4,9 @@
 # ledger.sh, record.sh, and the gates; none of them loosens a gate.
 #
 #   ca next                                   run the gates in order; print status + the next action
-#   ca start <slug> [--lane quick|standard|deep] [--interrupting "<why>"]
-#                                             open a feature (product ledger too), record lane + base commit
+#   ca start <slug> [--lane quick|standard|deep] [--interrupting "<why>"] [--answer "<user's words>" < frame.md]
+#                                             open a feature (product ledger too), record lane + base commit;
+#                                             with --answer, also frame + freeze from stdin in the same call
 #   ca frame --answer "<user's words>" < frame.md
 #                                             replace ## intent and ## plan from stdin, then freeze
 #   ca prove                                  record every declared tier's frozen test command
@@ -54,17 +55,15 @@ route() { # gate reason lane -> one line of advice
   esac
 }
 
-cmd="${1:-help}"; shift || true
-case "$cmd" in
-  next)
+show_next() { # [--brief] — the gate table (unless --brief) and the NEXT action
+    local brief="${1:-}" slug lane first="" first_reason="" out st why
     slug="$(ca_current)"
-    [ -n "$slug" ] && [ -f "$(ca_ledger)" ] || { echo "no active feature — for a change, run: ca start <slug> --lane quick|standard|deep"; exit 0; }
+    [ -n "$slug" ] && [ -f "$(ca_ledger)" ] || { echo "no active feature — for a change, run: ca start <slug> --lane quick|standard|deep"; return 0; }
     lane="$(intent_value lane)"; lane="${lane:-standard}"
-    echo "feature: $slug   lane: $lane"
-    first=""; first_reason=""
+    [ "$brief" = --brief ] || echo "feature: $slug   lane: $lane"
     for g in $GATES; do
       out="$(gate_line "$g")"; st="$(field "$out" status)"; why="$(field "$out" reason)"
-      printf '  %-12s %-6s %s\n' "$g?" "${st:-error}" "$why"
+      [ "$brief" = --brief ] || printf '  %-12s %-6s %s\n' "$g?" "${st:-error}" "$why"
       if [ -z "$first" ] && [ "$st" != pass ] && [ "$st" != "n/a" ]; then
         # clean? is n/a until something is staged; it is not the next step on its own.
         first="$g"; first_reason="$why"
@@ -76,15 +75,22 @@ case "$cmd" in
       echo "NEXT: commit — ca commit -m \"<message>\" -- <the changed paths you verified>"
     else
       echo "NEXT: close — ca close --summary \"<what shipped>\" --learnings \"<what the next feature should know>\""
-    fi ;;
+    fi
+}
+
+cmd="${1:-help}"; shift || true
+case "$cmd" in
+  next)
+    show_next ;;
 
   start)
     slug="${1:?usage: ca start <slug> [--lane quick|standard|deep]}"; shift || true
-    lane=standard; extra=()
+    lane=standard; extra=(); answer=""
     while [ $# -gt 0 ]; do
       case "$1" in
         --lane) lane="${2:-}"; shift 2 ;;
         --interrupting) extra+=(--interrupting "${2:-}"); shift 2 ;;
+        --answer) answer="${2:-}"; shift 2 ;;
         *) die "unknown option: $1" ;;
       esac
     done
@@ -94,7 +100,13 @@ case "$cmd" in
     base="$(git rev-parse HEAD 2>/dev/null || echo none)"
     l="$(ca_ledger)"; tmp="$(mktemp)"
     awk -v lane="$lane" -v base="$base" '/^## intent/ { print; print "lane: " lane; print "base: " base; next } { print }' "$l" > "$tmp" && mv "$tmp" "$l"
-    echo "lane: $lane   base: ${base:0:12}" ;;
+    echo "lane: $lane   base: ${base:0:12}"
+    # With --answer and the frame on stdin, start + frame + freeze in one call.
+    if [ -n "$answer" ]; then
+      "$0" frame --answer "$answer"
+    else
+      show_next --brief
+    fi ;;
 
   frame)
     answer=""
@@ -118,7 +130,7 @@ open(path, "w").write(ledger)
 PY
     rm -f "$bodyf"
     bash "$L" freeze intent --answer "$answer"
-    gate_line framed ;;
+    show_next --brief ;;
 
   prove)
     [ -n "$(ca_current)" ] || die "no active feature"
@@ -131,7 +143,7 @@ PY
       if [ "$e" -eq 0 ]; then echo "✓ $t  ($(echo "$out" | head -1 | sed 's/^▶ //'))"
       else rc=1; echo "✗ $t exit=$e"; echo "$out" | tail -25 | sed 's/^/    /'; fi
     done <<< "$tiers"
-    gate_line proven
+    [ "$rc" -eq 0 ] && show_next --brief || gate_line proven
     exit "$rc" ;;
 
   verdict)
@@ -139,7 +151,8 @@ PY
     rv=".coding-agent/$(ca_current)/review.md"
     [ -f "$(ca_feature_dir)/review.md" ] || die "no review.md — dispatch a reviewer first"
     bash "$R" "test \$(grep -c '^- \\[blocking\\]' $rv) -eq 0" review >/dev/null
-    gate_line reviewed ;;
+    gate_line reviewed
+    show_next --brief ;;
 
   waive)
     what="${1:-}"; shift || true
@@ -148,7 +161,7 @@ PY
     while [ $# -gt 0 ]; do case "$1" in --answer) answer="${2:-}"; shift 2 ;; *) die "unknown option: $1" ;; esac; done
     [ -n "$answer" ] || die "waive needs --answer \"<the user's words declining visual review>\""
     bash "$L" waive design --answer "$answer"
-    gate_line designed ;;
+    show_next --brief ;;
 
   commit)
     msg=""
@@ -165,8 +178,9 @@ PY
     [ "$(field "$out" status)" != block ] || { echo "$out"; die "clean? blocks — fix, re-stage, retry"; }
     git commit -q -m "$msg" || { echo "ca: commit refused (the pre-commit gate names the gate that blocks)" >&2; exit 1; }
     sha="$(git rev-parse --short HEAD)"
-    bash "$L" log "commit $sha — $msg" >/dev/null
-    echo "committed $sha" ;;
+    bash "$L" log "commit $sha — $(printf '%s' "$msg" | head -1)" >/dev/null
+    echo "committed $sha"
+    show_next --brief ;;
 
   close)
     args=("$@"); has_dep=0

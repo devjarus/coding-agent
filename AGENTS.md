@@ -6,7 +6,7 @@ may generate their own AGENTS.md; do not copy plugin-runtime details into them.
 ## What this is
 
 A Claude Code and Codex plugin: 6 registered agents, 60 skills, 8 executable
-gates, 12 artifact/documentation templates, 2 runtime libraries, 2 lifecycle
+gates, 12 artifact/documentation templates, 3 runtime libraries, 2 lifecycle
 hooks plus a git pre-commit gate, and 5 optional MCP servers. The runtime has one conductor, five bounded worker roles,
 and three primitives: ledger, evidence, and gate.
 
@@ -28,7 +28,7 @@ coding-agent/
 │   ├── framed.sh       architected.sh   designed.sh   proven.sh
 │   ├── reviewed.sh     clean.sh          shipped.sh    observed.sh
 │   └── lib.sh
-├── lib/                             # ledger.sh + record.sh
+├── lib/                             # ca.sh (the loop) + ledger.sh + record.sh
 ├── hooks/                           # evidence wall, session resume, pre-commit gate
 ├── skills/                          # 60 scoped engineering skills
 │   ├── frontend/ backend/ data/ mobile/ infra/
@@ -58,8 +58,14 @@ coding-agent/
   for that tier.
 - **User owns authority:** never invent intent agreement, a one-way-door
   decision, design approval, destructive action, deployment, or push consent.
-- **Separate role instances:** each bounded dispatch is a worker instance; a
-  role is not a personality toggle on the conductor.
+- **Single-threaded writes:** the conductor builds quick and standard changes;
+  specialists are separate, stateless instances that add judgment (review,
+  architecture, diagnosis, design, deploy). Review is never done by whoever built.
+- **Proof never flexes, ceremony does:** lanes change who builds and what is
+  dispatched, never what counts as proof. The quick lane's review skip is
+  measured by `reviewed?`, not declared.
+- **Roles inherit the user's model** (`model: inherit`); the plugin never forces
+  a more expensive model than the user chose.
 - **Architecture dialogue first:** ask design-changing system/component questions
   before drafting an ADR.
 - **Explicit staging:** never stage `.coding-agent/`, unrelated changes, or a
@@ -67,7 +73,10 @@ coding-agent/
 - **Commit wall:** while a feature is active, the git pre-commit gate refuses a
   commit past an unmet gate. Agents never pass `--no-verify`.
 - **Human design verdict:** `designed?` re-verifies the browser verdict against
-  `design.html` itself; a recorded command alone is never approval.
+  `design.html` itself; a recorded command alone is never approval. Only the
+  user's own words can waive it (`ca waive design --answer`).
+- **Measured, not claimed:** a change that trades cost or time for quality is
+  justified on `bench/` against native Claude Code (`bench/GOAL.md`).
 - **Portable consumer docs:** project docs never mention plugin runtime state or
   vendor-specific instructions.
 

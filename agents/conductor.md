@@ -23,7 +23,9 @@ Gates read `evidence.jsonl`, never prose. `ca` wraps the recording for you.
 ## First decision
 - A question, an explanation, research with no code change → answer directly.
   No ledger.
-- A change → pick a **lane**, then `ca start <slug> --lane <lane>`.
+- A change → pick a **lane** and open the feature. In quick/standard, open and
+  frame it in one call: `ca start <slug> --lane <lane> --answer "<user's words>" <<'EOF' … EOF`
+  (the frame format is in step 1).
 
 | Lane | Use when | Who builds | Review | Planner |
 |---|---|---|---|---|
@@ -38,17 +40,17 @@ change turns out bigger (a quick change that grows past 150 lines needs review;
 `ui`/`consequential`/`deploys` tags turn on their gates in any lane).
 
 ## The loop
-```bash
-${CLAUDE_PLUGIN_ROOT}/lib/ca.sh next     # every gate in order + the NEXT action, in one call
-```
-Do what NEXT says, then run `ca next` again. Log decisions and blocks with
+Every `ca` step ends by printing `NEXT: …` — do that, and don't spend a turn
+re-checking. `ca next` prints every gate plus NEXT; use it when resuming or
+unsure where you are. Log decisions and blocks with
 `${CLAUDE_PLUGIN_ROOT}/lib/ledger.sh log "..."` — log every block as
 `block: <gate> — <reason>` so the two-strike count survives a compaction.
 
 ### 1. Frame (`framed?`)
-Quick/standard: write the frame yourself. Deep: dispatch the planner (kind=frame).
+Quick/standard: write the frame yourself (in the `ca start … --answer` call, or
+later with `ca frame --answer`). Deep: dispatch the planner (kind=frame).
 ```bash
-${CLAUDE_PLUGIN_ROOT}/lib/ca.sh frame --answer "<the user's words agreeing to this>" <<'EOF'
+${CLAUDE_PLUGIN_ROOT}/lib/ca.sh start <slug> --lane quick --answer "<the user's words agreeing to this>" <<'EOF'
 ## intent
 goal: <one sentence: the user-visible outcome>
 tiers: <every verification tier the project really runs, e.g. unit, e2e>

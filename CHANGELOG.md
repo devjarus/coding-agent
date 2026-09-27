@@ -5,17 +5,42 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — Benchmark against native Claude Code
+## [7.0.0] — 2026-09-27 — Goal-driven runtime: measured against native Claude Code
+
+The plugin now has a measured goal: beat native Claude Code on quality without
+losing on cost or time (`bench/GOAL.md`). The first baseline showed v6.1 at the
+same hidden-test quality as native for **7.2× the cost and 3.5× the wall time**.
+The causes were structural, so this release changes the runtime's shape.
+
+### Changed (breaking)
+
+- **The conductor builds.** In the quick and standard lanes the main loop
+  writes the code itself; specialists are dispatched only where a separate agent
+  adds judgment (independent review, architecture, diagnosis, design surface,
+  deployment). Deep-lane builds still go to developer workers. Delegating every
+  build meant each worker re-read the code from scratch.
+- **Lanes: quick, standard, deep.** Lanes change ceremony, never proof. The
+  quick lane skips review only while `reviewed?` measures the diff since the
+  recorded base at ≤ 150 lines with no `ui`/`consequential`/`deploys` tag;
+  beyond that it blocks.
+- **Every role uses `model: inherit`.** v6.1 forced Opus on every role even
+  when the user's session ran a cheaper model.
 
 ### Added
 
+- **`lib/ca.sh`**: the loop's bookkeeping as one command each (`next`,
+  `start [--answer … < frame]`, `frame`, `prove`, `verdict`, `waive design`,
+  `commit`, `close`). Every step prints the next action.
+- **Design-review waiver.** `designed?` passes when the user declined visual
+  review in their own words (`ca waive design --answer`).
 - **`bench/`**: a two-arm benchmark. The same tasks run under native Claude
   Code and under the plugin (loaded via `--plugin-dir`, as users install it),
   scored by hidden acceptance tests the agents never see. Tasks: a small
   maintenance fix, a medium REST service, and two complex apps (an issue
   tracker with auth and a state machine; a booking engine with expiring holds
   and a FIFO waitlist), each with a later change-request phase that is also
-  regression-tested. `bench/GOAL.md` + `goal.json` set the targets: quality at
+  regression-tested, plus a multi-process job queue (leases, retries with
+  backoff, dead-lettering, 8 concurrent worker processes in the hidden tests). `bench/GOAL.md` + `goal.json` set the targets: quality at
   least native (and +10 points on complex work), cost and time no worse
   suite-wide. `bench/selftest.sh` proves every hidden suite passes on a
   reference implementation and fails on the starting state.

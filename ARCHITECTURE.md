@@ -64,7 +64,7 @@ run first applicable unmet gate
        │
        ├── pass/n-a ───────────────► next gate
        │
-       └── block ─► dispatch owner ─► verify return ─► record log ─► rerun gate
+       └── block ─► do the work or dispatch the owner ─► verify ─► record log ─► rerun gate
                                                                   │
                                                                   └─ two same blocks → user
 ```
@@ -76,25 +76,34 @@ framed → architected → designed → proven → reviewed → clean → shippe
 ```
 
 Applicability is data-driven. Intent tags turn architecture, design, and deploy
-stages on or off; they do not create alternate pipelines.
+stages on or off; they do not create alternate pipelines. The **lane**
+(`quick`, `standard`, `deep`) sets who builds and whether a planner or reviewer
+is dispatched; it never changes what counts as proof. `lib/ca.sh next` runs the
+whole sequence in one call and prints the next action.
 
 ## 3. Role architecture
 
-The six files under `agents/` are six registered roles. A dispatch creates a
-separate worker instance; roles are not mode switches on one shared worker.
+The six files under `agents/` are six registered roles. The conductor is the
+main loop; a dispatch creates a separate, stateless specialist instance.
+
+Writes stay single-threaded: the conductor builds quick and standard changes
+itself, and specialists contribute judgment (review, architecture, diagnosis,
+design, deployment). Deep-lane builds are delegated to developer workers with
+disjoint scopes. The bench measured why: delegating every build made the plugin
+7–12× native cost with no quality gain, because each worker re-reads the code.
 
 | Role | Kinds | Writes | Must not write |
 |---|---|---|---|
-| **Conductor** | coordination | ledger, product memory, user-approved state, explicit git staging | product code, direct evidence |
+| **Conductor** | coordination; build + prove in quick/standard | ledger, product memory, user-approved state, source/tests (quick/standard), explicit git staging | direct evidence, approvals on the user's behalf |
 | **Planner** | `frame`, `architect` | returned intent/plan/ADR artifact | ledger, source, user answers |
-| **Developer** | `build`, `prove`, `review` | scoped source/tests; one aggregate `review.md` | ledger, product memory |
+| **Developer** | `review` (any lane); `build`, `prove` (deep) | one aggregate `review.md`; scoped source/tests in deep | ledger, product memory |
 | **Diagnostician** | `diagnose` | scoped fix and tests | ledger, speculative fixes without repro |
 | **Designer** | `design` | look-contract and design-review artifacts | approval verdict on the user’s behalf |
 | **Deployer** | `ship`, `rollback` | external deployment state via declared commands | source, deployment authority decisions |
 
-Different `developer` dispatches can implement, prove, and review. Review stays
-independent by dispatch contract: read-only dimension reviewers cannot modify
-the implementation, and only one aggregate reviewer writes `review.md`.
+Review is always a separate agent from whoever built. Read-only dimension
+reviewers cannot modify the implementation, and only one aggregate reviewer
+writes `review.md`.
 
 ## 4. State model
 
@@ -185,7 +194,16 @@ anchor. Superseded ADRs remain readable but stop satisfying the gate.
 - **Invariant:** stateless between dispatches; no nested delegation; no ledger or
   product-memory writes.
 
-### 7.3 `lib/ledger.sh`
+### 7.3 `lib/ca.sh`
+
+- The loop's mechanics as one command each: `next`, `start` (with lane, base
+  commit, and optionally frame + freeze), `frame`, `prove` (every declared tier),
+  `verdict`, `waive design`, `commit` (explicit paths → `clean?` → commit),
+  `close`.
+- Composes `ledger.sh`, `record.sh`, and the gates; loosens none of them.
+- Every step prints the next action, so the model spends turns on judgment.
+
+### 7.3a `lib/ledger.sh`
 
 - Initializes product and feature records from templates.
 - Implements feature interruption as a stack in `CURRENT`.
@@ -212,7 +230,11 @@ anchor. Superseded ADRs remain readable but stop satisfying the gate.
 - Most gates bind evidence to the current tree. `designed?` is the exception by
   design: it re-verifies the human's verdict against `design.html` on every run,
   so approval survives the build that implements it but not an edit to the
-  look-contract.
+  look-contract. It also passes on a waiver that quotes the user declining
+  visual review.
+- `reviewed?` lets the quick lane skip review only while the diff since the
+  recorded `base` is ≤ 150 lines and the intent has no `ui`, `consequential`, or
+  `deploys` tag. The lane is measured, not trusted.
 
 ### 7.6 `hooks/`
 
@@ -279,7 +301,7 @@ model.
 coding-agent/
 ├── agents/                 conductor + five worker roles
 ├── gates/                  eight executable predicates + shared library
-├── lib/                    ledger and evidence recorder
+├── lib/                    ca (the loop), ledger, evidence recorder
 ├── hooks/                  evidence wall, resume preflight, git pre-commit gate
 ├── skills/                 60 scoped knowledge packages
 ├── templates/              runtime + portable project-doc templates

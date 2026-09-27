@@ -7,7 +7,7 @@ intent, resolve consequential architecture with the user, build, prove, review,
 ship, and observe. Claims advance only when executable gates can find current
 evidence.
 
-[![Version](https://img.shields.io/badge/version-6.1.0-blue)]()
+[![Version](https://img.shields.io/badge/version-7.0.0-blue)]()
 [![Agents](https://img.shields.io/badge/agents-6-green)]()
 [![Skills](https://img.shields.io/badge/skills-60-green)]()
 [![Gates](https://img.shields.io/badge/gates-8-green)]()
@@ -19,9 +19,17 @@ evidence.
 
 - **One durable control loop.** A conductor reads the ledger, runs the next gate,
   and dispatches the smallest worker move that can clear it.
-- **Real role separation.** Planner, developer, diagnostician, designer, and
-  deployer are separate agent instances with bounded prompts—not personalities
-  switched inside one long-running worker.
+- **Ceremony that scales with risk, proof that doesn't.** A quick lane for small
+  fixes, a standard lane for features, and a deep lane for one-way doors. Every
+  lane needs the same proof; the quick lane can't be used to dodge review,
+  because `reviewed?` measures the diff.
+- **One writer, specialist judgment.** The conductor builds quick and standard
+  changes itself (no hand-off re-reading the code). Separate agents contribute
+  what a second mind is for: independent review, architecture options,
+  diagnosis, the design surface, deployment.
+- **Measured against native Claude Code.** `bench/` runs identical tasks
+  through both and scores them with hidden acceptance tests
+  ([bench/GOAL.md](bench/GOAL.md)).
 - **Architecture as dialogue.** Before a consequential ADR is written, the
   planner can pause and return one to three system- or component-level questions.
   The conductor asks you, records your answers, and then resumes planning.
@@ -48,14 +56,14 @@ evidence.
                                │
                                ▼
                         ┌─────────────┐
-                        │  Conductor  │  sole ledger/product writer
-                        └──────┬──────┘
-                               │ first unmet gate
+                        │  Conductor  │  sole writer: ledger, product memory,
+                        └──────┬──────┘  and code in quick/standard lanes
+                               │ ca next → first unmet gate
           ┌────────────┬───────┼─────────┬────────────┐
           ▼            ▼       ▼         ▼            ▼
       Planner      Developer  Designer  Diagnostician  Deployer
-   frame/architect build/prove  design      diagnose   ship/observe
-                    /review
+   frame/architect  review     design      diagnose   ship/observe
+     (deep, ADRs) (+build deep)
           └────────────┴───────┼─────────┴────────────┘
                                │
                                ▼
@@ -85,13 +93,19 @@ Brackets mark conditional stages. A documentation-only change does not need a UI
 design; a routine reversible change does not need an ADR; a local change does not
 need deployment gates. The gate sequence stays fixed while applicability flexes.
 
+| Lane | Use when | Builds | Review |
+|---|---|---|---|
+| quick | small fix, no UI / architecture / deploy | conductor | skipped only while the measured diff stays ≤ 150 lines |
+| standard | features, services, multi-file changes | conductor | one read-only reviewer |
+| deep | user asks, or a one-way door | developer workers | reviewer (+ dimension fan-out) |
+
 | Gate | What it requires |
 |---|---|
 | `framed?` | A non-empty intent carrying the user’s recorded agreement |
 | `architected?` | A live ADR for consequential work; explicit agreement for a one-way door |
-| `designed?` | The human's browser verdict still matches `design.html` byte-for-byte (re-checked on every run) |
+| `designed?` | The human's browser verdict still matches `design.html` byte-for-byte (re-checked on every run), or the user declined visual review in their own words |
 | `proven?` | Every declared verification tier green at the current tree |
-| `reviewed?` | A current qualitative review with zero blocking findings |
+| `reviewed?` | A current qualitative review with zero blocking findings (quick lane: a measured small, low-risk diff) |
 | `clean?` | No coordinator state, obvious secrets, or raw debug output in the staged diff |
 | `shipped?` | Successful deployment evidence when deployment is in scope |
 | `observed?` | Successful post-deploy health evidence at the same tree |
@@ -174,11 +188,11 @@ when using Exa.
 ```text
 You: Build a notes API with Node and SQLite. Add POST /notes and GET /notes?tag.
 
-Conductor  → initializes the feature ledger and asks you to confirm the frame
+Conductor  → picks the standard lane and asks you to confirm the frame
 Planner    → asks one data-ownership question, then records the chosen ADR
-Developer  → writes tests and implementation, recording each declared tier
-Developer  → runs a separate review dispatch and writes review.md
-Conductor  → stages only attributable paths, runs clean?, and commits
+Conductor  → writes tests and implementation; `ca prove` records each tier
+Developer  → reviews the diff read-only and writes review.md; `ca verdict`
+Conductor  → `ca commit` stages only attributable paths, runs clean?, commits
              (the pre-commit gate re-checks every gate before the commit lands)
 Conductor  → refreshes affected project docs and asks before push/deployment
 ```

@@ -1,6 +1,6 @@
 {
   "name": "coding-agent",
-  "version": "6.1.0+codex.20260925013146",
+  "version": "7.0.0+codex.20260927023514",
   "description": "Evidence-gated multi-agent software delivery for Codex, with architecture dialogue, two-level technical docs, 60 engineering skills, and five MCP servers.",
   "author": {
     "name": "Suraj",
