@@ -82,6 +82,10 @@ run_one() { # task arm rep
         > "$rdir/$n.claude.json" 2> "$rdir/$n.stderr.log" )
     rc=$?
     t1=$(date +%s)
+    # Keep exactly what this phase delivered, so a later rescore (when hidden
+    # suites grow) measures the same state instead of guessing from commits.
+    mkdir -p "$rdir/$n.snapshot"
+    tar -C "$proj" --exclude=./.git --exclude=./.coding-agent --exclude='__pycache__' -cf - . | tar -C "$rdir/$n.snapshot" -xf -
     python3 "$HERE/score.py" "$tdir" "$proj" "$ph" > "$rdir/$n.score.json"
     python3 - "$rdir" "$n" "$rc" "$((t1 - t0))" <<'PY'
 import json, sys, os
