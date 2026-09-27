@@ -198,6 +198,25 @@ Headless scenarios require an authenticated `claude` CLI running as a non-root
 user (`bypassPermissions` is refused under root). Manual scenarios are for
 interactive human gates.
 
+## Benchmark vs native Claude Code
+
+`bench/` measures whether the plugin is worth running: identical tasks (a small
+maintenance fix, a new service, two complex apps with a change request) run by
+native Claude Code and by the plugin, scored by hidden acceptance tests the
+agents never see. `bench/GOAL.md` and `bench/goal.json` define the targets:
+better quality, no worse cost or time. Architecture changes are justified by a
+scoreboard delta.
+
+```bash
+bench/selftest.sh                                   # zero cost: hidden tests are sound
+bench/run.sh <task|all> --arm both [--reps N]       # paid: real headless sessions
+bench/report.py <work-dir>...                       # scoreboard vs goal.json
+```
+
+Runs happen outside the repository and the plugin arm loads a snapshot without
+`bench/`, so hidden tests are unreachable. When you add a task, add a reference
+implementation and keep `bench/selftest.sh` green.
+
 ## Commit convention
 
 - Use `type(scope): subject`, or `release: vX.Y.Z — summary` for a release bump.

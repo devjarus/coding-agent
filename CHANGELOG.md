@@ -5,6 +5,21 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — Benchmark against native Claude Code
+
+### Added
+
+- **`bench/`**: a two-arm benchmark. The same tasks run under native Claude
+  Code and under the plugin (loaded via `--plugin-dir`, as users install it),
+  scored by hidden acceptance tests the agents never see. Tasks: a small
+  maintenance fix, a medium REST service, and two complex apps (an issue
+  tracker with auth and a state machine; a booking engine with expiring holds
+  and a FIFO waitlist), each with a later change-request phase that is also
+  regression-tested. `bench/GOAL.md` + `goal.json` set the targets: quality at
+  least native (and +10 points on complex work), cost and time no worse
+  suite-wide. `bench/selftest.sh` proves every hidden suite passes on a
+  reference implementation and fails on the starting state.
+
 ## [6.1.0] — 2026-09-25 — Close the design, commit, and staging holes
 
 An end-to-end and adversarial review of 6.0.0 against 4.3.0 found that the

@@ -203,7 +203,11 @@ templates, or docs:
 ./scripts/validate.sh
 evals/run.sh 00-smoke
 evals/run.sh 08-wall-integrity
+bench/selftest.sh
 ```
+
+Whether the plugin beats native Claude Code is measured, not claimed: see
+[bench/GOAL.md](bench/GOAL.md).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) before making a
 release-affecting change.

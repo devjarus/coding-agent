@@ -141,7 +141,7 @@ while IFS= read -r file; do
   [ -x "$file" ] || { error "$rel is not executable"; shell_ok=0; }
   bash -n "$file" 2>/dev/null || { error "$rel has a Bash syntax error"; shell_ok=0; }
 done < <(find "$PLUGIN_ROOT/gates" "$PLUGIN_ROOT/lib" "$PLUGIN_ROOT/hooks" \
-  "$PLUGIN_ROOT/scripts" "$PLUGIN_ROOT/evals" \
+  "$PLUGIN_ROOT/scripts" "$PLUGIN_ROOT/evals" "$PLUGIN_ROOT/bench" \
   -path "$PLUGIN_ROOT/evals/results" -prune -o -name '*.sh' -print | sort)
 [ "$shell_ok" -eq 1 ] && pass "shell scripts executable and syntax-clean"
 

@@ -1,0 +1,17 @@
+{
+  "_doc": "Targets the plugin must hit against native Claude Code on identical tasks. Ratios are plugin/native. Quality is the hidden-test pass rate (0-1). See bench/GOAL.md.",
+  "min_reps_to_claim": 3,
+  "suite": {
+    "quality_delta_min": 0.0,
+    "cost_ratio_max": 1.0,
+    "time_ratio_max": 1.0
+  },
+  "tiers": {
+    "small":   { "quality_delta_min": 0.0,  "cost_ratio_max": 1.5, "time_ratio_max": 1.5 },
+    "medium":  { "quality_delta_min": 0.0,  "cost_ratio_max": 1.2, "time_ratio_max": 1.2 },
+    "complex": { "quality_delta_min": 0.10, "cost_ratio_max": 1.0, "time_ratio_max": 1.0 }
+  },
+  "integrity": {
+    "plugin_unproven_commits_max": 0
+  }
+}
