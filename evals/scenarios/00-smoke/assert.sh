@@ -249,6 +249,11 @@ rm -f big.txt
 bash "$CA" prove >/dev/null
 if bash "$CA" commit -m "x" -- . >/dev/null 2>&1; then c=0; else c=$?; fi
 ev_assert "ca commit refuses a repo-wide pathspec" test "$c" -ne 0
+mkdir -p gen/__pycache__ && echo x > gen/__pycache__/m.pyc && echo y > gen/m.py
+if bash "$CA" commit -m "x" -- gen >/dev/null 2>&1; then c=0; else c=$?; fi
+ev_assert "ca commit refuses generated files"    test "$c" -ne 0
+ev_assert "nothing stays staged after the refusal" test -z "$(git diff --cached --name-only)"
+rm -rf gen
 ev_assert "ca next names the next step"          sh -c "bash '$CA' next | grep -q '^NEXT: close'"
 # a verdict vouches only for code the reviewer saw
 printf '# review\n\n## findings\n\n' > .coding-agent/smoke-quick/review.md

@@ -182,6 +182,11 @@ PY
       case "$p" in .|./|*'*'*|-A|--all) die "refusing repo-wide pathspec '$p' — list the attributable paths" ;; .coding-agent*) die "never stage .coding-agent/" ;; esac
     done
     git add -- "$@" || die "git add failed"
+    junk="$(git diff --cached --name-only | grep -E '(^|/)(__pycache__|node_modules|\.pytest_cache|\.mypy_cache|\.venv|dist|build)/|\.pyc$|(^|/)\.DS_Store$' | head -5)"
+    if [ -n "$junk" ]; then
+      git reset -q -- "$@" 2>/dev/null
+      die "generated files would be committed ($(echo $junk | tr '\n' ' ')) — add them to the project's .gitignore, then retry"
+    fi
     out="$(gate_line clean)"
     [ "$(field "$out" status)" != block ] || { echo "$out"; die "clean? blocks — fix, re-stage, retry"; }
     git commit -q -m "$msg" || { echo "ca: commit refused (the pre-commit gate names the gate that blocks)" >&2; exit 1; }

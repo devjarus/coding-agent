@@ -48,6 +48,8 @@ The causes were structural, so this release changes the runtime's shape.
 - **Verdicts over unreviewed code.** `ca verdict` refuses when any non-doc file
   changed after `review.md` was written, so a post-review code change needs a
   (delta) re-review; docs-only follow-ups don't.
+- **Generated files in commits.** `ca commit` refuses `__pycache__`, `*.pyc`,
+  `node_modules`, build output and `.DS_Store`, and says to ignore them.
 - **`bench/`**: a two-arm benchmark. The same tasks run under native Claude
   Code and under the plugin (loaded via `--plugin-dir`, as users install it),
   scored by hidden acceptance tests the agents never see. Tasks: a small
