@@ -73,6 +73,8 @@ show_next() { # [--brief] — the gate table (unless --brief) and the NEXT actio
       echo "NEXT: $first? — $(route "$first" "$first_reason" "$lane")"
     elif [ -n "$(attributable_changes)" ]; then
       echo "NEXT: commit — ca commit -m \"<message>\" -- <the changed paths you verified>"
+      echo "      uncommitted: $(attributable_changes | awk '{print $2}' | head -8 | tr '\n' ' ')"
+      echo "      (generated files such as caches belong in the project's .gitignore, not in a commit)"
     else
       echo "NEXT: close — ca close --summary \"<what shipped>\" --learnings \"<what the next feature should know>\""
     fi

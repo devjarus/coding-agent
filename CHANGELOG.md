@@ -33,6 +33,10 @@ The causes were structural, so this release changes the runtime's shape.
   `commit`, `close`). Every step prints the next action.
 - **Design-review waiver.** `designed?` passes when the user declined visual
   review in their own words (`ca waive design --answer`).
+- **Cheaper review.** The conductor updates docs before review (a later change
+  re-opens `proven?`), dispatches the reviewer in the foreground instead of
+  polling, and asks for a delta re-review of the fixed findings only.
+  `ca next` lists uncommitted paths when it says to commit.
 - **`bench/`**: a two-arm benchmark. The same tasks run under native Claude
   Code and under the plugin (loaded via `--plugin-dir`, as users install it),
   scored by hidden acceptance tests the agents never see. Tasks: a small

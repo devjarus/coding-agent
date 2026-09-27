@@ -44,6 +44,9 @@ class H(BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass
 
+    def send_error(self, code, message=None, explain=None):
+        self.out(code, {"error": message or "error"})
+
     def out(self, code, obj=None, ctype="application/json"):
         body = obj if isinstance(obj, bytes) else (b"" if obj is None else json.dumps(obj).encode())
         self.send_response(code)

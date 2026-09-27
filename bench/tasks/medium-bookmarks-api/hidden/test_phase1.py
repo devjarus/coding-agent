@@ -92,6 +92,23 @@ class Mutate(ServerTest):
         self.assertEqual(self.req("PATCH", "/bookmarks/99999", {"title": "x"})[0], 404)
 
 
+class SpecEdges(ServerTest):
+    """Stated rules that a first draft commonly misses (added in bench v2)."""
+    ENTRY = "server.py"
+
+    def test_errors_are_json_for_unsupported_methods(self):
+        s, b, _ = self.req("PUT", "/bookmarks/1", {"title": "x"})
+        self.assertGreaterEqual(s, 400)
+        self.assertIsInstance(b, dict)
+        self.assertIn("error", b)
+
+    def test_q_is_a_literal_substring(self):
+        for t in ("foo_bar", "fooXbar", "100% done", "1000 done"):
+            self.req("POST", "/bookmarks", {"url": "https://lit-%s.example" % t.replace(" ", "-").replace("%", "pct"), "title": t})
+        self.assertEqual(self.req("GET", "/bookmarks?q=foo_bar")[1]["total"], 1)
+        self.assertEqual(self.req("GET", "/bookmarks?q=100%25")[1]["total"], 1)
+
+
 class Persistence(unittest.TestCase):
     def test_survives_restart(self):
         srv = Server("server.py").start()

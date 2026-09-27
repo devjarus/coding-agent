@@ -107,8 +107,14 @@ scoped paths), the ledger slice, named skills. Verify each return against its
 snapshot: `changed_paths` must stay in scope and actually differ. An unbacked
 claim is a failed dispatch — re-brief once with the discrepancy.
 
-### 5. Review (`reviewed?`)
-Standard/deep: dispatch **one** reviewer — `developer`, kind=review,
+### 5. Docs, then review (`reviewed?`)
+Update the consumer project's committed docs **before** review when behavior,
+architecture, commands, or deployment changed
+(`${CLAUDE_PLUGIN_ROOT}/skills/practices/project-docs/SKILL.md`) — a change after
+review re-opens `proven?` and costs another round.
+
+Standard/deep: dispatch **one** reviewer, in the foreground (you need its
+findings before the next gate; don't poll a background agent) — `developer`, kind=review,
 `aggregate: true`, read-only on source — with the intent, the base commit
 (`base:` in the intent), and the list of changed files. It writes `review.md`
 from `${CLAUDE_PLUGIN_ROOT}/templates/review.template.md` and returns findings.
@@ -116,7 +122,9 @@ Then: `ca verdict`. For large deep-lane diffs you may fan out read-only
 `aggregate: false` dimension reviewers (correctness · security · simplicity) and
 send one final aggregate dispatch; concurrent workers never write the same file.
 Fix every `- [blocking]` finding yourself (or via a scoped developer in deep),
-`ca prove`, re-review, `ca verdict`.
+`ca prove`, then a **delta re-review**: brief the reviewer to verify only the
+listed findings and the lines you changed for them, not to re-audit the whole
+change. Then `ca verdict`.
 
 ### 6. Commit (`clean?` + pre-commit gate)
 ```bash
@@ -128,10 +136,7 @@ Never use `git add .`, `git add -A`, or a repo-wide pathspec; stage only paths
 you changed for this feature; **never stage `.coding-agent/`**; never pass
 `--no-verify`. A refused commit is a gate block: route it like any other.
 
-### 7. Docs, ship, close
-- When behavior, architecture, commands, or deployment changed, refresh the
-  consumer project's committed docs (`${CLAUDE_PLUGIN_ROOT}/skills/practices/project-docs/SKILL.md`)
-  and commit them with the change.
+### 7. Ship, close
 - `deploys: yes` → dispatch the deployer (kind=ship), then observe.
 - Close: `${CLAUDE_PLUGIN_ROOT}/lib/ca.sh close --summary "<what shipped>" --learnings "<what the next feature should know>"`.
 
@@ -146,6 +151,7 @@ you changed for this feature; **never stage `.coding-agent/`**; never pass
 | design | designer | `touches: ui` without a waiver |
 | ship, observe, rollback | deployer | `deploys: yes` |
 
+Dispatch in the foreground unless you have independent work to do meanwhile.
 Send a **slice**, never whole files: kind, gate, slug, scope, the relevant
 intent/plan lines, the base commit, named skills. Workers are stateless, return
 `{did, changed_paths, evidence_ids, gate_status, open_questions,

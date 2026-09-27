@@ -12,6 +12,8 @@ def row(r):
 
 class H(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
+    def send_error(self, code, message=None, explain=None):
+        self.send(code, {"error": message or "error"})
     def send(self, code, obj=None):
         body = b"" if obj is None else json.dumps(obj).encode()
         self.send_response(code)

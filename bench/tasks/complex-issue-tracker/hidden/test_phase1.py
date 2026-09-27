@@ -185,6 +185,15 @@ class Search(Base):
         self.assertEqual(self.get("?status=in_progress&assignee=helper")["total"], 5)
 
 
+class Errors(Base):
+    def test_unsupported_method_is_json(self):
+        t = self.user("errs")
+        s, b, _ = self.req("PUT", "/api/projects", {"key": "PUT"}, token=t)
+        self.assertGreaterEqual(s, 400)
+        self.assertIsInstance(b, dict)
+        self.assertIn("error", b)
+
+
 class Ui(Base):
     def test_login_page(self):
         s, body, h = self.req("GET", "/")
