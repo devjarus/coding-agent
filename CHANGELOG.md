@@ -11,6 +11,8 @@ The plugin now has a measured goal: beat native Claude Code on quality without
 losing on cost or time (`bench/GOAL.md`). The first baseline showed v6.1 at the
 same hidden-test quality as native for **7.2× the cost and 3.5× the wall time**.
 The causes were structural, so this release changes the runtime's shape.
+Result so far (`bench/RESULTS.md`): suite cost 7.2× → 3.0× native and time
+3.5× → 2.5×, at quality parity; the goal is not yet met.
 
 ### Changed (breaking)
 

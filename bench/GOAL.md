@@ -44,6 +44,8 @@ Why these shapes:
    `bench/rescore.py` so both arms are measured by the same suite, and record
    where the new check came from.
 
+Latest numbers and what they mean: [RESULTS.md](RESULTS.md).
+
 ## How to use it
 
 ```bash
