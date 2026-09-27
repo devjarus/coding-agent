@@ -48,6 +48,11 @@ The causes were structural, so this release changes the runtime's shape.
 - **Verdicts over unreviewed code.** `ca verdict` refuses when any non-doc file
   changed after `review.md` was written, so a post-review code change needs a
   (delta) re-review; docs-only follow-ups don't.
+- **Review misses by luck.** Two v7 runs of the same task differed only in
+  whether the reviewer happened to check the error contract on unhandled
+  methods and SQL `LIKE` escaping. `principles.md` now names both defect classes
+  in the review tier, and the build tier asks for a test per stated rule
+  (including error formats and literal inputs).
 - **Generated files in commits.** `ca commit` refuses `__pycache__`, `*.pyc`,
   `node_modules`, build output and `.DS_Store`, and says to ignore them.
 - **`bench/`**: a two-arm benchmark. The same tasks run under native Claude

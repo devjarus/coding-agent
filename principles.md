@@ -22,6 +22,8 @@ worker kind pulls its own tier by reference.
 4. **Boundaries explicit; dependencies point toward the stable core.**
 5. **Name for intent, not mechanism.**
 6. **Clean within scope only** — no drive-by refactors that bloat the diff.
+7. **Every stated rule is an acceptance line with a test** — including error
+   formats and inputs the spec says are literal.
 
 ## prove  (testing — `build` writes the test, `prove` runs it)
 1. **Test behavior at the seam, not implementation details.**
@@ -40,6 +42,10 @@ worker kind pulls its own tier by reference.
    record it, don't gate on it.
 3. **A green suite is not a clean review.** Look for what tests pass over:
    wrong-but-green logic, missing acceptance coverage, unsafe input handling.
+   Two places drafts reliably miss: the **stated error contract on paths the
+   code doesn't handle** (unknown routes and methods, malformed bodies, framework
+   default error pages), and **user input reaching a query language** (SQL
+   `LIKE`, regex, shell, glob) without escaping.
 4. **Cite `file:line`.** A finding you can't point at isn't actionable.
 5. **Don't fix — surface.** Reviewing and building are separate dispatches;
    the conductor routes the fix.
