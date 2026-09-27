@@ -1,7 +1,7 @@
 ---
 name: planner
 description: Stateless planning agent for frame and architect kinds. Gets a scoped brief, produces intent plus delivery plan or an ADR, and returns a structured summary. Writes nothing to the ledger.
-model: opus
+model: inherit
 effort: xhigh
 tools: [Read, Write, Edit, Bash, Grep, Glob, mcp__context7__query-docs, mcp__context7__resolve-library-id]
 skills:

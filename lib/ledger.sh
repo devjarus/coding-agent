@@ -7,6 +7,7 @@
 #   ledger.sh log "<msg>"          append a timestamped line under ## log
 #   ledger.sh freeze intent        stamp the agreed frame with the user's reply
 #   ledger.sh revise <section> "why"  re-open a frozen section (append a revision marker)
+#   ledger.sh waive design --answer "<user's words>"  record the user declining visual review
 #   ledger.sh close [--abandoned|--superseded]  roll up into product.md, clear CURRENT
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -72,6 +73,23 @@ case "$cmd" in
       END { if(inhdr) print "> frozen: agreed @" ts " — user said: \"" a "\"" }
     ' "$l" > "$tmp" && mv "$tmp" "$l"
     echo "frozen: $sec (agreement recorded)" ;;
+  waive)
+    # Record the user's explicit decision to skip a human review step. Only the
+    # visual design review can be waived, and only with the user's own words:
+    # the waiver is the same kind of evidence as a freeze.
+    what="${1:?usage: ledger.sh waive design --answer \"<what the user said>\"}"; shift || true
+    [ "$what" = design ] || { echo "ledger.sh waive: only 'design' can be waived" >&2; exit 64; }
+    answer=""
+    while [ $# -gt 0 ]; do case "$1" in --answer) answer="${2:-}"; shift 2 ;; *) shift ;; esac; done
+    [ -n "$answer" ] || { echo "ledger.sh waive: --answer \"<what the user said>\" is required" >&2; exit 64; }
+    answer="$(printf '%s' "$answer" | tr '\n' ' ' | cut -c1-200)"
+    l="$(ca_ledger)"; ts="$(date -u +%FT%TZ)"; tmp="$(mktemp)"
+    awk -v ts="$ts" -v a="$answer" '
+      /^## / { if(inhdr){ print "> waived: design @" ts " — user said: \"" a "\""; inhdr=0 } if($0 ~ "^## intent"){ inhdr=1 } }
+      { print }
+      END { if(inhdr) print "> waived: design @" ts " — user said: \"" a "\"" }
+    ' "$l" > "$tmp" && mv "$tmp" "$l"
+    echo "waived: design (user's words recorded)" ;;
   revise)
     # Re-open a frozen section: append a revision marker at its end. framed? (and
     # any freeze gate) checks the LAST marker — a revision after a freeze re-opens

@@ -199,3 +199,21 @@ SHIM
   chmod +x "$hook"
   echo "installed"
 }
+
+# A value from the intent section, e.g. `intent_value lane`.
+intent_value() { # key
+  ledger_section "$(ca_ledger)" intent | strip_comments \
+    | sed -n "s/^[[:space:]]*$1:[[:space:]]*//Ip" | head -1 | tr -d '[:space:]'
+}
+
+# Lines changed since <base> (committed + uncommitted + untracked), excluding
+# coordinator state. The quick lane uses this to prove a change is actually small.
+ca_change_size() { # base
+  local base="$1" tracked untracked
+  tracked="$(git diff --numstat "$base" -- . ':(exclude).coding-agent' 2>/dev/null \
+    | awk '$1 ~ /^[0-9]+$/ {s += $1 + $2} END {print s + 0}')"
+  untracked="$(git ls-files -o --exclude-standard -z -- ':(exclude).coding-agent' 2>/dev/null \
+    | xargs -0 -r cat 2>/dev/null | wc -l | tr -d ' ')"
+  echo $(( ${tracked:-0} + ${untracked:-0} ))
+}
+QUICK_LANE_MAX_LINES=150

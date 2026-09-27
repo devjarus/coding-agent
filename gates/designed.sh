@@ -21,6 +21,10 @@ intent="$(ledger_section "$(ca_ledger)" intent | strip_comments)"
 # the first value — anchored to the touches line so prose can't trip it.
 echo "$intent" | grep -qiE '^[[:space:]]*touches:.*\bui\b' || gate_result n/a "no ui"
 
+# The user may decline visual review in their own words (ledger.sh waive design).
+waiver="$(echo "$intent" | grep -E '^> waived: design @.*user said: ".+"' | tail -1)"
+[ -z "$waiver" ] || gate_result pass "user waived visual review: ${waiver#*user said: }"
+
 dir="$(ca_feature_dir)"
 [ -f "$dir/design.html" ] \
   || gate_result block "no design.html look-contract — dispatch design to write it and drive the surface"

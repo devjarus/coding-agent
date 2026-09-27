@@ -221,6 +221,49 @@ if git commit -qm "wip" >/dev/null 2>&1; then walled=0; else walled=1; fi
 ev_assert "the commit wall blocks an unmet gate" test "$walled" -eq 1
 git restore --staged index.html && rm -f index.html
 
+# ── ca: the loop in one command; lanes are measured, not declared ──────────
+CA="$EV_PLUGIN_ROOT/lib/ca.sh"
+bash "$L" close --summary "ui smoke" --learnings "design binds to the look" --deployment "n/a" >/dev/null
+bash "$CA" start smoke-quick --lane quick >/dev/null
+ev_assert "ca start records lane + base"         sh -c 'grep -q "^lane: quick" .coding-agent/smoke-quick/ledger.md && grep -q "^base: [0-9a-f]\{40\}" .coding-agent/smoke-quick/ledger.md'
+frame='## intent
+goal: quick smoke
+tiers: unit
+test-command-unit: bash thing.test.sh
+touches: api
+acceptance:
+- [ ] thing works
+## plan
+1. keep thing working'
+if printf '%s\n' "$frame" | bash "$CA" frame >/dev/null 2>&1; then f=0; else f=$?; fi
+ev_assert "ca frame refuses without --answer"    test "$f" -eq 64
+printf '%s\n' "$frame" | bash "$CA" frame --answer "yes, small fix" >/dev/null
+ev_assert "ca frame writes + freezes"            test "$(ev_gate framed)" = pass
+ev_assert "ca frame keeps lane + base"           grep -q "^lane: quick" .coding-agent/smoke-quick/ledger.md
+ev_assert "ca prove records every tier"          bash "$CA" prove
+ev_assert "quick lane: small change needs no reviewer" test "$(ev_gate reviewed)" = pass
+seq 1 200 > big.txt
+bash "$CA" prove >/dev/null
+ev_assert "quick lane: a big change must be reviewed" test "$(ev_gate reviewed)" = block
+rm -f big.txt
+bash "$CA" prove >/dev/null
+if bash "$CA" commit -m "x" -- . >/dev/null 2>&1; then c=0; else c=$?; fi
+ev_assert "ca commit refuses a repo-wide pathspec" test "$c" -ne 0
+ev_assert "ca next names the next step"          sh -c "bash '$CA' next | grep -q '^NEXT: close'"
+bash "$CA" close --summary "quick" --learnings "lanes are measured" >/dev/null
+ev_assert "ca close defaults the deployment line" grep -q "deployment: not deployed" "$(ev_product)"
+
+# ── design waiver: only the user's words skip visual review ───────────────
+bash "$CA" start smoke-waive --lane standard >/dev/null
+printf '## intent\ngoal: page\ntiers: e2e\ntest-command-e2e: true\ntouches: ui\nacceptance:\n- [ ] renders\n## plan\n1. page\n' \
+  | bash "$CA" frame --answer "yes" >/dev/null
+ev_assert "designed? blocks without approval or waiver" test "$(ev_gate designed)" = block
+if bash "$CA" waive design >/dev/null 2>&1; then w=0; else w=$?; fi
+ev_assert "a waiver needs the user's words"      test "$w" -eq 64
+bash "$CA" waive design --answer "I don't need a design review" >/dev/null
+ev_assert "designed? honours the user's waiver"  test "$(ev_gate designed)" = pass
+bash "$CA" close --abandoned --summary "waiver smoke" --learnings "waivers quote the user" >/dev/null
+
 # ── the evidence wall denies hand-writes, allows reads ──────────────────────
 W="$EV_PLUGIN_ROOT/hooks/evidence-wall.sh"
 wall() { python3 -c 'import json,sys; print(json.dumps({"tool_name":"Bash","tool_input":{"command":sys.argv[1]}}))' "$1" | bash "$W"; }

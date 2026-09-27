@@ -1,7 +1,7 @@
 ---
 name: designer
 description: Stateless UI agent for the design kind. Drives the design surface (render → comment → revise loop) until approved, then records the verdict. Writes nothing to the ledger.
-model: opus
+model: inherit
 effort: high
 tools: [Read, Edit, Write, Bash, Grep, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_verify_text_visible]
 ---

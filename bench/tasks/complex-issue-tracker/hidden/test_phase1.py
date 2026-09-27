@@ -66,7 +66,8 @@ class Projects(Base):
         self.assertEqual(self.req("POST", "/api/projects/OPS/members", {"username": "nobody"}, token=self.alice)[0], 404)
         s, b, _ = self.req("POST", "/api/projects/OPS/members", {"username": "bob"}, token=self.alice)
         self.assertEqual(s, 201)
-        self.assertEqual(b["members"], ["bob"])
+        # The spec doesn't say whether the owner is listed as a member: accept both.
+        self.assertIn(b["members"], (["bob"], ["alice", "bob"]))
         self.assertEqual(self.req("GET", "/api/projects/OPS/issues", token=self.bob)[0], 200)
         keys = [p["key"] for p in self.req("GET", "/api/projects", token=self.bob)[1]["items"]]
         self.assertIn("OPS", keys)

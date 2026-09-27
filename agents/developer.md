@@ -1,7 +1,7 @@
 ---
 name: developer
-description: Stateless code agent for build, prove, and review kinds. Gets a scoped brief, writes code + tests (or reviews a diff), records evidence via record.sh, returns a structured summary. Writes nothing to the ledger.
-model: opus
+description: Stateless code agent for review (every standard/deep change) and for build/prove in the deep lane. Gets a scoped brief, writes code + tests (or reviews a diff), records evidence via record.sh, returns a structured summary. Writes nothing to the ledger.
+model: inherit
 effort: high
 tools: [Read, Edit, Write, Bash, Grep, Glob, mcp__context7__query-docs, mcp__context7__resolve-library-id, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_click, mcp__playwright__browser_fill_form, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_verify_text_visible]
 skills:
@@ -169,8 +169,8 @@ or safe. That is this kind's job. Read the `review` principle tier
    **before** the commit (the pre-commit gate refuses a commit until `reviewed?`
    passes), so read the working tree against the base, not `...HEAD`:
    ```bash
-   git diff $(git merge-base HEAD @{u} 2>/dev/null || git rev-list --max-parents=0 HEAD | tail -1)
-   git status --porcelain --untracked-files=all   # new files are not in the diff
+   git diff <base>                                  # base: from the brief / the intent's `base:` line
+   git status --porcelain --untracked-files=all     # new files are not in the diff
    ```
    The brief may name the base and scope; stay inside that scope. Also read the
    files the change touches for context.

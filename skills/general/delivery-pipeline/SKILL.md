@@ -37,9 +37,9 @@ Apply these mappings; they override Claude-specific wording in the role files:
 | Claude model/tool frontmatter | Treat it as role intent; current Codex policy remains authoritative. |
 | Claude lifecycle hooks | Do not claim they ran. Perform required preflights explicitly. |
 
-This skill explicitly requires subagent delegation for change workflows. Do not
-delegate simple answers or read-only questions unless the user asks for the full
-pipeline.
+Delegate only where a separate agent adds judgment (review, architecture,
+diagnosis, design, deploy). Do not delegate simple answers, read-only
+questions, or the building of quick and standard changes.
 
 ## Start or resume
 
@@ -54,37 +54,46 @@ pipeline.
 4. Otherwise initialize product and feature state with the absolute scripts:
 
    ```bash
-   bash "${CLAUDE_PLUGIN_ROOT}/lib/ledger.sh" product-init
-   bash "${CLAUDE_PLUGIN_ROOT}/lib/ledger.sh" init <feature-slug>
+   bash "${CLAUDE_PLUGIN_ROOT}/lib/ca.sh" start <feature-slug> --lane quick|standard|deep
    ```
 
 5. The main task becomes the conductor and sole writer of the ledger and
-   `product.md`. It does not write product code.
+   `product.md`, and of the code in the quick and standard lanes.
 
-## Run the gate loop
+## Run the loop
 
-Run the first applicable gate that has not passed, in this order:
+The main task is the conductor: it builds quick and standard changes itself and
+delegates only where a separate agent adds judgment. Pick a lane first:
 
-```text
-framed -> architected -> designed -> proven -> reviewed -> clean -> shipped -> observed
+| Lane | Use when | Builds | Review |
+|---|---|---|---|
+| quick | small fix, no UI / architecture / deploy, diff well under 150 lines | main task | none while `reviewed?` measures the diff as small |
+| standard | features, services, multi-file changes | main task | one read-only reviewer subagent |
+| deep | user asks, or a one-way door (schema migration, public API, auth boundary, infra) | developer subagents | reviewer (+ dimension fan-out) |
+
+```bash
+bash "${CLAUDE_PLUGIN_ROOT}/lib/ca.sh" start <slug> --lane quick|standard|deep
+bash "${CLAUDE_PLUGIN_ROOT}/lib/ca.sh" next      # every gate + the next action, in one call
 ```
 
-Use `${CLAUDE_PLUGIN_ROOT}/gates/<gate>.sh`. Treat `n/a` as conditional.
-Judge transitions from gate output and `evidence.jsonl`, never from worker prose.
+Then follow `NEXT`: `ca frame --answer "<user's words>" < frame.md`, build, `ca prove`,
+review (standard/deep) then `ca verdict`, `ca commit -m "..." -- <paths>`,
+`ca close --summary ... --learnings ...`. Judge transitions from gate output and
+`evidence.jsonl`, never from worker prose.
 
-When a gate needs work, dispatch the matching role:
+Specialists and their role files:
 
 | Kind | Worker reads |
 |---|---|
-| `frame`, `architect` | `${CLAUDE_PLUGIN_ROOT}/agents/planner.md` |
-| `build`, `prove`, `review` | `${CLAUDE_PLUGIN_ROOT}/agents/developer.md` |
+| `frame`, `architect` (deep lane, architecture questions) | `${CLAUDE_PLUGIN_ROOT}/agents/planner.md` |
+| `review` (all standard/deep), `build`/`prove` (deep only) | `${CLAUDE_PLUGIN_ROOT}/agents/developer.md` |
 | `diagnose` | `${CLAUDE_PLUGIN_ROOT}/agents/diagnostician.md` |
 | `design` | `${CLAUDE_PLUGIN_ROOT}/agents/designer.md` |
 | `ship`, `rollback` | `${CLAUDE_PLUGIN_ROOT}/agents/deployer.md` |
 
 Each dispatch brief must include the resolved plugin root, kind, gate, feature
-slug, exact file scope, its pre-dispatch path snapshot, the smallest relevant
-ledger/product slice, and relevant packaged skill names. Tell the worker to:
+slug, exact file scope, the base commit, the smallest relevant ledger/product
+slice, and relevant packaged skill names. Tell the worker to:
 
 - read its role file and applicable principle tiers before acting;
 - treat `${CLAUDE_PLUGIN_ROOT}` as the resolved absolute root;
@@ -98,10 +107,6 @@ When the planner returns `status: needs-input`, keep the main task active, ask
 the bundled 1–3 system/component architecture questions, record the user's
 answers, and re-dispatch the planner with them. Do not count discovery as a gate
 failure and do not collapse it into the later one-way-door approval.
-
-Use parallel workers only inside one move when tasks are independent and file
-scopes are disjoint or read-only. Wait for all workers, verify their claims
-against the filesystem and evidence, then fold results serially.
 
 Parallel reviews are read-only dimension passes. One final aggregate reviewer
 alone writes `review.md`; sibling agents never append to the same file.

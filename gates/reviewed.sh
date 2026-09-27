@@ -19,6 +19,22 @@ GATE_NAME=reviewed
 cur="$(ca_tree_sha)"
 evidence_match test "$cur" >/dev/null || gate_result n/a "no proven code to review"
 
+# Quick lane: a small, low-risk change is carried by proof + clean? + the commit
+# wall alone. "Small" is measured, not declared, so the lane can't be used to
+# dodge review on a large or risky change.
+if [ "$(intent_value lane)" = quick ] && [ ! -f "$(ca_feature_dir)/review.md" ]; then
+  intent_touches ui && gate_result block "quick lane cannot skip review for a ui change — dispatch a reviewer"
+  ledger_section "$(ca_ledger)" intent | strip_comments | grep -qiE '^[[:space:]]*(consequential|deploys):[[:space:]]*yes' \
+    && gate_result block "quick lane cannot skip review for a consequential or deployed change — dispatch a reviewer"
+  base="$(intent_value base)"
+  git rev-parse -q --verify "${base:-none}^{commit}" >/dev/null \
+    || gate_result block "quick lane has no recorded base commit — dispatch a reviewer"
+  n="$(ca_change_size "$base")"
+  [ "$n" -le "$QUICK_LANE_MAX_LINES" ] \
+    && gate_result pass "quick lane: small change ($n lines since ${base:0:8}), carried by proof + clean? + commit wall" \
+    || gate_result block "change is $n lines — beyond the quick lane ($QUICK_LANE_MAX_LINES); dispatch a reviewer"
+fi
+
 review="$(ca_feature_dir)/review.md"
 [ -f "$review" ] || gate_result block "no review.md — dispatch review (kind=review)"
 
