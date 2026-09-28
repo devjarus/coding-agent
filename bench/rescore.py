@@ -47,7 +47,7 @@ def main():
                                               capture_output=True, text=True).stdout)
                 if (s["passed"], s["total"]) != (row["passed"], row["total"]):
                     row.setdefault("previous", {"passed": row["passed"], "total": row["total"]})
-                row.update(passed=s["passed"], total=s["total"], rate=s["rate"], scored_from=source,
+                row.update(passed=s["passed"], total=s["total"], rate=s["rate"], scored_from=source, by_tag=s.get("by_tag"),
                            failed=[f for v in s["suites"].values() for f in (v.get("failed") or [])])
                 json.dump(row, open(os.path.join(rdir, ph + ".row.json"), "w"))
                 json.dump(s, open(os.path.join(rdir, ph + ".score.json"), "w"))
@@ -56,6 +56,7 @@ def main():
                       "  failed: %s" % row["failed"] if row["failed"] else ""))
             sc = [p for p in run["phases"] if p.get("scored", True)]
             run["quality"] = round(sum(p["rate"] for p in sc) / len(sc), 4)
+            run["by_tag_final"] = sc[-1].get("by_tag") if sc else None
             json.dump(run, open(rj, "w"), indent=2)
 
 
