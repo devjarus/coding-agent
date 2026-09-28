@@ -1,3 +1,39 @@
+# Long-horizon results — `longrun-library`, 11 sessions (same pinned model: claude-sonnet-5, n=1)
+
+Behaviour scores pooled over every scored session; targets from `goal.json`.
+
+| Arm | conv | dec | defer | resume | feat | Quality | Cost | Time | Memory it maintains | Ctx/turn s1 → s11 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| native | 88% ❌ | 76% ❌ | 100% ✅ | 100% ✅ | 100% ✅ | 92% | $6.77 | 54 min | none | 45k → 49k |
+| plugin v7 | 90% ❌ | 76% ❌ | 100% ✅ | 100% ✅ | 100% ✅ | 95% | $13.62 | 159 min | `product.md` 3.2 → 28.8 KB | 56k → 80k |
+| *target* | ≥ 95% | ≥ 90% | ≥ 90% | ≥ 90% | ≥ 95% | | | | | |
+
+**Both arms fail the same way, on one convention.** Every lost point is list
+pagination: reviews, branches and holds (sessions 7, 8, 10) shipped without a
+working `limit`/cursor in both arms. Native also missed members and member loans
+in sessions 2-3 (repaired by session 4's "existing ones too"); the plugin did
+not — that is its whole +3 pts. Deferred work, the killed session, error shapes,
+IDs, timestamps and every feature held in both.
+
+**The plugin's memory recorded the rule and then argued itself out of it.** In
+session 8 it filed a learning: "Not every list endpoint needs cursor pagination
+— GET /branches … unpaginated (like the reviews list)". Session 7's slip became
+the precedent for session 8's. Prose memory carried the drift forward.
+
+**Memory grows linearly.** `product.md` gains ~2.6 KB per feature (every learning
+is stored twice: in the rollup and in `## learnings`). It is not auto-loaded, but
+the conductor reads it; context per turn grew 42% over 11 sessions (native: 9%).
+Native keeps nothing and forgets one rule; the plugin keeps everything and still
+forgets it.
+
+Two plugin sessions (10, 11) hit an account usage limit and were re-run from
+the session-9 state with `run.sh --resume-from`; the aborted state is not scored.
+Hidden tests were corrected three times during the run (timestamp input format,
+list-envelope conv checks, page-size checks only under conv/dec); both arms were
+re-scored against the final suite.
+
+---
+
 # Pillar results — continuity, standards, speed (same pinned model: claude-sonnet-5)
 
 | Pillar | Task | Native | Plugin v7 `5e4dfe8` | Δ quality | Cost | Time |
