@@ -28,6 +28,10 @@ convention costs `conv` points without also failing the feature built on it.
 bare lists): each mutation fails only its own behaviour, plus the tests that
 cannot exist without the missing feature.
 
+Behaviour scores are pooled over every scored session, not read at the end: a
+later session can repair earlier drift (a retroactive decision did exactly that
+in the first native run), but the sessions in between still shipped it.
+
 `longrun-library` is 11 sessions. `feat`/`conv`/`dec`/`defer`/`resume` floors
 and the memory cap are absolute targets in `goal.json` — the plugin must meet
 them whatever native scores; native's row shows whether a plugin is needed at all.

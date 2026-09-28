@@ -74,24 +74,32 @@ def behaviours_goal(goal):
     return b, m.get("always_loaded_bytes_max")
 
 
+def pooled(run, tag):
+    """(passed, total) for one tag summed over every scored session of a run."""
+    ps = [p["by_tag"][tag] for p in run["phases"] if p.get("scored", True) and (p.get("by_tag") or {}).get(tag)]
+    return (sum(a for a, _ in ps), sum(b for _, b in ps)) if ps else None
+
+
 def behaviours(by, goal=None):
     """Per-behaviour pass rates at the last session, plus memory footprint, for
     tasks whose hidden tests are tagged (conv/dec/defer/resume/feat)."""
     tags = ("conv", "dec", "defer", "resume", "feat")
     out = []
     for (task, arm), rs in sorted(by.items()):
-        rs = [r for r in rs if r.get("by_tag_final")]
+        rs = [r for r in rs if any(p.get("by_tag") for p in r["phases"])]
         if not rs:
             continue
         if not out:
-            out = ["", "Behaviours at the last session (tagged tasks). Memory: bytes auto-loaded every session"
+            out = ["", "Behaviours, pooled over every scored session (a convention broken in session 2 and repaired"
+                   " in session 4 still counts against sessions 2-3). Memory: bytes auto-loaded every session"
                    " (CLAUDE.md + imports), first → last session; maintained memory at the end; context tokens per turn.",
                    "", "| Task | Arm | Reps | %s | Quality | Cost | Wall | Auto-loaded | Maintained | Ctx/turn |" % " | ".join(tags),
                    "|---|---|---|%s---|---|---|---|---|---|" % ("---|" * len(tags))]
         floors, cap = behaviours_goal(goal or {})
         cells = []
         for t in tags:
-            got = [r["by_tag_final"].get(t) for r in rs if r["by_tag_final"].get(t)]
+            got = [pooled(r, t) for r in rs]
+            got = [g for g in got if g]
             v = mean(p / n for p, n in got) if got else None
             mark = "" if v is None or t not in floors else (" ✅" if v >= floors[t]["min"] else " ❌")
             cells.append("—" if v is None else "%.0f%%%s" % (100 * v, mark))
