@@ -45,6 +45,10 @@ class BranchLists(Lib):
     def test_feat_branches_ordered_by_code(self):
         self.assertEqual([b["code"] for b in self.collect("/branches", limit=20)], self.codes)
 
+    def test_conv_list_envelopes(self):
+        self.assertEqual(len(self.collect("/branches", limit=20)), 55)
+        self.assertEqual(self.collect("/branches/%s/books" % self.br["id"], limit=20)[-1]["id"], self.books[-1])
+
     def test_dec_branches_page_policy(self):
         self.assertPagePolicy("/branches", 55)
 

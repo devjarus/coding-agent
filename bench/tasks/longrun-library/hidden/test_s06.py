@@ -67,6 +67,9 @@ class ReviewList(Lib):
     def test_resume_newest_first_paginated(self):
         self.assertEqual([r["id"] for r in self.collect("/books/%s/reviews" % self.b["id"], limit=20)], self.ids[::-1])
 
+    def test_conv_list_envelope(self):
+        self.assertEqual(len(self.collect("/books/%s/reviews" % self.b["id"], limit=20)), 55)
+
     def test_dec_page_policy(self):
         self.assertPagePolicy("/books/%s/reviews" % self.b["id"], 55)
 

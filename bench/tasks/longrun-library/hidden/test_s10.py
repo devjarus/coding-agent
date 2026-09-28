@@ -67,6 +67,9 @@ class HoldList(Lib):
         for _ in range(55):
             t.ok("POST", "/holds", {"book_id": cls.b["id"], "member_id": t.member()["id"]}, 201)
 
+    def test_conv_list_envelope(self):
+        self.assertEqual(len(self.collect("/books/%s/holds" % self.b["id"], limit=20)), 55)
+
     def test_dec_page_policy(self):
         self.assertPagePolicy("/books/%s/holds" % self.b["id"], 55)
 

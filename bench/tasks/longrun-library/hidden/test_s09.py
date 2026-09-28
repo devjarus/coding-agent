@@ -32,6 +32,9 @@ class SearchPaging(Lib):
             t.book(title="Common Title")
         t.book(title="Other")
 
+    def test_conv_list_envelope(self):
+        self.assertEqual(len(self.collect("/books/search?q=common", limit=20)), 55)
+
     def test_dec_page_policy(self):
         self.assertPagePolicy("/books/search?q=common", 55)
 

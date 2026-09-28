@@ -37,6 +37,9 @@ class OverduePaging(Lib):
         for i in range(55):
             t.loan(t.book()["id"], members[i // 3], loaned_at=t.ago(days=30 + i))
 
+    def test_conv_list_envelope(self):
+        self.assertEqual(len(self.collect("/reports/overdue", limit=20)), 55)
+
     def test_dec_page_policy(self):
         self.assertPagePolicy("/reports/overdue", 55)
 
