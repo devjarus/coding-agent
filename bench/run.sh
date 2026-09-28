@@ -96,9 +96,34 @@ for p in json.load(open(sys.argv[1]))["phases"]:
     mkdir -p "$rdir/$n.snapshot"
     tar -C "$proj" --exclude=./.git --exclude=./.coding-agent --exclude='__pycache__' -cf - . | tar -C "$rdir/$n.snapshot" -xf -
     python3 "$HERE/score.py" "$tdir" "$proj" "$ph" > "$rdir/$n.score.json"
-    python3 - "$rdir" "$n" "$rc" "$((t1 - t0))" <<'PY'
-import json, sys, os
-rdir, n, rc, wall = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4])
+    python3 - "$rdir" "$n" "$rc" "$((t1 - t0))" "$proj" <<'PY'
+import glob, json, re, sys, os
+rdir, n, rc, wall, proj = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4]), sys.argv[5]
+
+def size(p):
+    return os.path.getsize(p) if os.path.isfile(p) else 0
+
+def always_loaded(root):
+    """Bytes Claude Code puts in context every session: project CLAUDE.md files
+    plus the files they @import (one level), deduplicated."""
+    seen, total = set(), 0
+    for f in ("CLAUDE.md", "CLAUDE.local.md", ".claude/CLAUDE.md"):
+        p = os.path.join(root, f)
+        if not os.path.isfile(p):
+            continue
+        for q in [p] + [os.path.join(root, m) for m in re.findall(r"(?m)^\s*@(\S+)", open(p, errors="replace").read())]:
+            q = os.path.normpath(q)
+            if q not in seen and os.path.isfile(q):
+                seen.add(q)
+                total += size(q)
+    return total
+
+def maintained(root):
+    """Project memory an agent maintains and may read: instruction files, docs,
+    and the plugin's product memory (read by the conductor, not auto-loaded)."""
+    files = ["CLAUDE.md", "AGENTS.md", ".coding-agent/product.md"] + [
+        os.path.relpath(p, root) for p in glob.glob(os.path.join(root, "docs", "**", "*.md"), recursive=True)]
+    return {f: size(os.path.join(root, f)) for f in files if size(os.path.join(root, f))}
 try:
     c = json.load(open(os.path.join(rdir, n + ".claude.json")))
 except Exception:
@@ -109,7 +134,11 @@ row = {"phase": n, "exit": rc, "timed_out": rc == 124, "wall_s": wall,
        "is_error": c.get("is_error"), "subtype": c.get("subtype"),
        "models": {m: round(v.get("costUSD", 0), 4) for m, v in (c.get("modelUsage") or {}).items()},
        "passed": s["passed"], "total": s["total"], "rate": s["rate"], "score_error": s.get("error"),
-       "scored": s.get("scored", True)}
+       "scored": s.get("scored", True), "by_tag": s.get("by_tag"),
+       "always_loaded_bytes": always_loaded(proj), "maintained_bytes": maintained(proj)}
+u = c.get("usage") or {}
+ctx = sum(u.get(k) or 0 for k in ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens"))
+row["ctx_tokens_per_turn"] = round(ctx / row["turns"]) if row["turns"] else None
 with open(os.path.join(rdir, n + ".row.json"), "w") as f:
     json.dump(row, f)
 print("   %-7s %3d/%-3d hidden  $%-6s %4ss  turns=%s%s" % (
@@ -145,6 +174,7 @@ run = {"task": task, "tier": meta["tier"], "pillar": meta.get("pillar", "correct
        "wall_s": sum(r["wall_s"] for r in rows),
        "turns": sum(r["turns"] or 0 for r in rows),
        "commits": len(commits), "gated_commits": gated, "uncommitted_files": len(dirty),
+       "by_tag_final": scored[-1].get("by_tag") if scored else None,
        "plugin_source": open(os.path.join(os.path.dirname(os.path.dirname(rdir)), "plugin", ".bench-source-head")).read().split() if arm == "plugin" else None}
 json.dump(run, open(os.path.join(rdir, "run.json"), "w"), indent=2)
 print("   ⇒ quality %.0f%%  cost $%.2f  wall %ss  commits %d%s" % (

@@ -2,14 +2,58 @@
   "_doc": "The plugin must earn its keep on the pillars native Claude Code cannot supply by itself. Ratios are plugin/native on the same model; deltas are plugin minus native hidden-test pass rate (0-1). See bench/GOAL.md.",
   "min_reps_to_claim": 3,
   "pillars": {
-    "continuity":  { "quality_delta_min": 0.05, "why": "work spread over fresh sessions, an interrupted session, and a deferred request" },
-    "standards":   { "quality_delta_min": 0.05, "why": "a repo's written engineering rules followed without being restated" },
-    "speed":       { "time_ratio_max": 1.0,     "why": "suite-wide wall time" }
+    "continuity": {
+      "quality_delta_min": 0.05,
+      "why": "work spread over fresh sessions, an interrupted session, and a deferred request"
+    },
+    "standards": {
+      "quality_delta_min": 0.05,
+      "why": "a repo's written engineering rules followed without being restated"
+    },
+    "speed": {
+      "time_ratio_max": 1.0,
+      "why": "suite-wide wall time"
+    }
   },
   "floors": {
-    "correctness": { "quality_delta_min": 0.0, "why": "single-session tasks: never worse than native" },
-    "cost":        { "cost_ratio_max": 1.5,    "why": "suite-wide spend" }
+    "correctness": {
+      "quality_delta_min": 0.0,
+      "why": "single-session tasks: never worse than native"
+    },
+    "cost": {
+      "cost_ratio_max": 1.5,
+      "why": "suite-wide spend"
+    }
   },
   "verdict": "Worth running if it wins at least one of continuity or standards while holding the correctness floor. Wins neither and is slower: retire it.",
-  "integrity": { "plugin_unproven_commits_max": 0 }
+  "integrity": {
+    "plugin_unproven_commits_max": 0
+  },
+  "behaviours": {
+    "_doc": "Absolute floors for the plugin arm on tagged long-horizon tasks, at the last session. The plugin must meet them whatever native scores; native's numbers show whether the plugin is needed to meet them.",
+    "conv": {
+      "min": 0.95,
+      "why": "a convention stated once still holds in every later feature"
+    },
+    "dec": {
+      "min": 0.9,
+      "why": "a changed decision replaces the old one, everywhere, from then on"
+    },
+    "defer": {
+      "min": 0.9,
+      "why": "work parked for later is built correctly when asked for by reference only"
+    },
+    "resume": {
+      "min": 0.9,
+      "why": "a killed session is finished from the repo alone"
+    },
+    "feat": {
+      "min": 0.95,
+      "why": "each feature does what was asked, and keeps doing it"
+    }
+  },
+  "memory": {
+    "always_loaded_bytes_max": 16000,
+    "why": "what every session pays for up front stays bounded (≈4k tokens) however many features ship; detail lives in files read on demand"
+  }
 }

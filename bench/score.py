@@ -32,15 +32,28 @@ for m in mods:
     R.ok = []
     res = unittest.TextTestRunner(stream=open("/dev/null", "w"), resultclass=R).run(suite)
     fails = [t.id() for t, _ in res.failures + res.errors]
-    out[m] = {"passed": len(R.ok), "total": total, "failed": fails[:40]}
+    out[m] = {"passed": len(R.ok), "total": total, "failed": fails[:40], "ok": R.ok}
 print("@@RESULT@@" + json.dumps(out))
 '''
 
 
-def count_tests(path):
+TAGS = ("conv", "dec", "defer", "resume", "feat")
+
+
+def test_names(path):
     import ast
     tree = ast.parse(open(path).read())
-    return sum(1 for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name.startswith("test"))
+    return [n.name for n in ast.walk(tree) if isinstance(n, ast.FunctionDef) and n.name.startswith("test")]
+
+
+def count_tests(path):
+    return len(test_names(path))
+
+
+def tag_of(name):
+    """test_<tag>_... names the behaviour a test measures (see a task's hidden/*test.py)."""
+    t = name.split("_")[1] if name.count("_") >= 2 else ""
+    return t if t in TAGS else None
 
 
 def main():
@@ -72,6 +85,7 @@ def main():
     except subprocess.TimeoutExpired:
         detail, err = {}, "scoring timed out"
     passed = total = 0
+    by_tag = {}
     for s in suites:
         m = s[:-3]
         d = detail.get(m) or {"passed": 0, "total": None}
@@ -80,12 +94,22 @@ def main():
         n = count_tests(os.path.join(task_dir, "hidden", s))
         d["total"] = n
         d["passed"] = min(d["passed"], n)
+        ok_names = [i.rsplit(".", 1)[-1] for i in d.pop("ok", None) or []]
+        for name in test_names(os.path.join(task_dir, "hidden", s)):
+            t = tag_of(name)
+            if t:
+                by_tag.setdefault(t, [0, 0])[1] += 1
+        for name in ok_names:
+            t = tag_of(name)
+            if t:
+                by_tag[t][0] += 1
         detail[m] = d
         passed += d["passed"]
         total += n
     shutil.rmtree(scratch, ignore_errors=True)
     print(json.dumps({"phase": phase, "passed": passed, "total": total,
-                      "rate": round(passed / total, 4) if total else 0.0, "suites": detail, "error": err}))
+                      "rate": round(passed / total, 4) if total else 0.0, "suites": detail, "error": err,
+                      "by_tag": by_tag}))
 
 
 if __name__ == "__main__":

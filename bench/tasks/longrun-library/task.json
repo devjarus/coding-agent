@@ -1,0 +1,15 @@
+{ "tier": "complex", "pillar": "continuity", "budget_usd": 12, "timeout_s": 3000,
+  "_doc": "Long-horizon: 11 sessions on one codebase. Conventions stated once (s1), one of them superseded (s4), two deferrals (s3, s8) redeemed together much later (s10), one killed session (s6) resumed blind (s7). Test names carry the behaviour they measure: conv, dec, defer, resume, feat.",
+  "phases": ["phase01.md", "phase02.md", "phase03.md", "phase04.md", "phase05.md",
+             {"file": "phase06.md", "max_turns": 12}, "phase07.md", "phase08.md", "phase09.md", "phase10.md", "phase11.md"],
+  "hidden": {
+    "phase01.md": ["test_s01.py"],
+    "phase02.md": ["test_s01.py", "test_s02.py"],
+    "phase03.md": ["test_s01.py", "test_s02.py", "test_s03.py"],
+    "phase04.md": ["test_s01.py", "test_s02.py", "test_s03.py", "test_s04.py"],
+    "phase05.md": ["test_s01.py", "test_s02.py", "test_s03.py", "test_s04.py", "test_s05.py"],
+    "phase07.md": ["test_s01.py", "test_s02.py", "test_s03.py", "test_s04.py", "test_s05.py", "test_s06.py"],
+    "phase08.md": ["test_s01.py", "test_s02.py", "test_s03.py", "test_s04.py", "test_s05.py", "test_s06.py", "test_s08.py"],
+    "phase09.md": ["test_s01.py", "test_s02.py", "test_s03.py", "test_s04.py", "test_s05.py", "test_s06.py", "test_s08.py", "test_s09.py"],
+    "phase10.md": ["test_s01.py", "test_s02.py", "test_s03.py", "test_s04.py", "test_s05.py", "test_s06.py", "test_s08.py", "test_s09.py", "test_s10.py"],
+    "phase11.md": ["test_s01.py", "test_s02.py", "test_s03.py", "test_s04.py", "test_s05.py", "test_s06.py", "test_s08.py", "test_s09.py", "test_s10.py", "test_s11.py"] } }

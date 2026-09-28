@@ -69,6 +69,55 @@ def verdict(ok):
     return "—" if ok is None else ("✅" if ok else "❌")
 
 
+def behaviours_goal(goal):
+    b, m = goal.get("behaviours") or {}, goal.get("memory") or {}
+    return b, m.get("always_loaded_bytes_max")
+
+
+def behaviours(by, goal=None):
+    """Per-behaviour pass rates at the last session, plus memory footprint, for
+    tasks whose hidden tests are tagged (conv/dec/defer/resume/feat)."""
+    tags = ("conv", "dec", "defer", "resume", "feat")
+    out = []
+    for (task, arm), rs in sorted(by.items()):
+        rs = [r for r in rs if r.get("by_tag_final")]
+        if not rs:
+            continue
+        if not out:
+            out = ["", "Behaviours at the last session (tagged tasks). Memory: bytes auto-loaded every session"
+                   " (CLAUDE.md + imports), first → last session; maintained memory at the end; context tokens per turn.",
+                   "", "| Task | Arm | Reps | %s | Quality | Cost | Wall | Auto-loaded | Maintained | Ctx/turn |" % " | ".join(tags),
+                   "|---|---|---|%s---|---|---|---|---|---|" % ("---|" * len(tags))]
+        floors, cap = behaviours_goal(goal or {})
+        cells = []
+        for t in tags:
+            got = [r["by_tag_final"].get(t) for r in rs if r["by_tag_final"].get(t)]
+            v = mean(p / n for p, n in got) if got else None
+            mark = "" if v is None or t not in floors else (" ✅" if v >= floors[t]["min"] else " ❌")
+            cells.append("—" if v is None else "%.0f%%%s" % (100 * v, mark))
+        sc = lambda r: [p for p in r["phases"] if p.get("scored", True)]
+        first = lambda r, k: (sc(r) or [{}])[0].get(k)
+        last = lambda r, k: (sc(r) or [{}])[-1].get(k)
+        maint = mean(sum((last(r, "maintained_bytes") or {}).values()) for r in rs)
+        auto_last = mean(last(r, "always_loaded_bytes") for r in rs)
+        out.append("| %s | %s | %d | %s | %.0f%% | $%.2f | %.0fs | %s → %s | %s B | %s → %s |" % (
+            task, arm, len(rs), " | ".join(cells), 100 * mean(r["quality"] for r in rs), mean(r["cost_usd"] for r in rs),
+            mean(r["wall_s"] for r in rs),
+            fmt_num(mean(first(r, "always_loaded_bytes") for r in rs)),
+            fmt_num(auto_last) + " B" + ("" if cap is None or auto_last is None else (" ✅" if auto_last <= cap else " ❌")),
+            fmt_num(maint), fmt_num(mean(first(r, "ctx_tokens_per_turn") for r in rs)),
+            fmt_num(mean(last(r, "ctx_tokens_per_turn") for r in rs))))
+    if out and goal:
+        floors, cap = behaviours_goal(goal)
+        out.append("| *target* | | | %s | | | | ≤ %s B | | |" % (
+            " | ".join("≥ %.0f%%" % (100 * floors[t]["min"]) if t in floors else "" for t in tags), fmt_num(cap)))
+    return out
+
+
+def fmt_num(x):
+    return "—" if x is None else "{:,.0f}".format(x)
+
+
 def main():
     args = sys.argv[1:]
     md_out = None
@@ -90,14 +139,14 @@ def main():
              "|---|---|---|---|---|---|---|---|---|"]
     agg = {}
     for t in tasks:
-        for arm in ("native", "plugin"):
+        for arm in ("native", "memory", "plugin"):
             rs = by.get((t, arm))
             if not rs:
                 continue
             tier = rs[0]["tier"]
             q, c, w = mean(r["quality"] for r in rs), mean(r["cost_usd"] for r in rs), mean(r["wall_s"] for r in rs)
             turns = mean(r["turns"] for r in rs)
-            gated = "" if arm == "native" else " (%s)" % "/".join(
+            gated = "" if arm != "plugin" else " (%s)" % "/".join(
                 "%d ungated%s" % (r["ungated_inside"], ", %d after close" % r["after_close"] if r["after_close"] else "") for r in rs)
             lines.append("| %s | %s | %s | %d | %.0f%% | $%.2f | %.0fs | %.0f | %s%s |" % (
                 t, tier, arm, len(rs), 100 * q, c, w, turns, "/".join(str(r["commits"]) for r in rs), gated))
@@ -112,6 +161,8 @@ def main():
                 "cr": sum(p["plugin"]["c"] for p in pairs) / max(1e-9, sum(p["native"]["c"] for p in pairs)),
                 "tr": sum(p["plugin"]["w"] for p in pairs) / max(1e-9, sum(p["native"]["w"] for p in pairs)),
                 "n": min(min(p["plugin"]["n"], p["native"]["n"]) for p in pairs), "tasks": len(pairs)}
+
+    lines += behaviours(by, goal)
 
     lines += ["", "| Pillar | Tasks | Quality Δ | Cost ratio | Time ratio | Target | Met |",
               "|---|---|---|---|---|---|---|"]
@@ -131,7 +182,7 @@ def main():
             pil, cmp["tasks"], 100 * cmp["dq"], fmt_ratio(cmp["cr"]), fmt_ratio(cmp["tr"]),
             100 * g["quality_delta_min"], verdict(ok)))
     suite = compare(list(agg))
-    all_ok = True
+    all_ok = bool(suite)
     if suite:
         sp = suite["tr"] <= goal["pillars"]["speed"]["time_ratio_max"]
         co = suite["cr"] <= goal["floors"]["cost"]["cost_ratio_max"]
@@ -155,7 +206,7 @@ def main():
     all_ok &= ok_int
     reps = min((a[arm]["n"] for a in agg.values() for arm in a), default=0)
     lines += ["", "Integrity: plugin commits made inside a feature without passing the gate: %d %s" % (ungated, verdict(ok_int)),
-              "", "**Goal %s**%s" % ("met" if all_ok else "not met",
+              "", "**Goal %s**%s" % ("met" if all_ok else ("not met" if suite else "not evaluated (no native/plugin pair)"),
                                       "" if reps >= goal["min_reps_to_claim"] else
                                       " — directional only: %d rep(s), claims need %d." % (reps, goal["min_reps_to_claim"]))]
     text = "\n".join(lines)

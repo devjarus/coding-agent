@@ -20,6 +20,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `standards-orders`: an existing repo whose `AGENTS.md` rules are checked
   mechanically (migration discipline, logger, error type, docs, changelog, tests).
 - Runner support for deliberately interrupted phases (`max_turns`).
+- `longrun-library`: 11 sessions on one codebase, scored per behaviour: `conv`
+  (conventions stated once), `dec` (a superseded decision), `defer` (two parked
+  features requested together much later), `resume` (a killed session), `feat`.
+  Mutation-checked so each failure mode costs only its own behaviour.
+- The runner records per-session memory footprint (bytes auto-loaded via
+  CLAUDE.md and its imports, maintained memory files, context tokens per turn);
+  `goal.json` adds absolute behaviour floors and a 16 KB auto-loaded cap, and
+  `report.py` shows both, plus the memory arm.
+
+### Fixed
+- `report.py` no longer prints "Goal met" when there is no native/plugin pair.
 
 ## [7.0.0] — 2026-09-27 — Goal-driven runtime: measured against native Claude Code
 
