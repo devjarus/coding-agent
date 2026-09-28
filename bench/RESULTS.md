@@ -24,6 +24,14 @@ the memory layer alone (session-start injection of product memory + a rule to
 record conventions, decisions and deferrals) on native, to see whether it keeps
 the +14 pts at near-native cost.
 
+**Built-in auto-memory does not close the gap here.** A third arm ran native
+Claude Code with `--settings '{"autoMemoryEnabled": true}'` (n=2): 86% on both
+runs, the same tests failed as plain native, $1.90 and ~16 min per run — and no
+memory file was ever written. In this environment (headless `claude -p`
+inside a remote cloud session) auto-memory never produced a note, so this
+shows it is not sufficient *as observed here*, not that it cannot work in an
+interactive local session.
+
 Two invalid runs caused by an account usage limit (sessions returning at $0)
 were discarded and re-run; they are not in these numbers.
 
