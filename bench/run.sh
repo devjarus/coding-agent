@@ -33,7 +33,7 @@ while [ $# -gt 0 ]; do
     *) echo "unknown option: $1"; exit 64 ;;
   esac
 done
-case "$ARM" in native|plugin|both) ;; *) echo "bad --arm"; exit 64 ;; esac
+case "$ARM" in native|memory|plugin|both) ;; *) echo "bad --arm"; exit 64 ;; esac
 command -v claude >/dev/null || { echo "claude CLI not found"; exit 1; }
 
 WORK="${WORK:-${BENCH_WORK:-/tmp/ca-bench}/$(date -u +%Y%m%dT%H%M%SZ)-$LABEL}"
@@ -41,7 +41,7 @@ mkdir -p "$WORK"
 
 # Plugin snapshot: what a user would install, minus the benchmark itself.
 SNAP="$WORK/plugin"
-if [ "$ARM" != native ] && [ ! -d "$SNAP" ]; then
+if [ "$ARM" = plugin ] || [ "$ARM" = both ] && [ ! -d "$SNAP" ]; then
   mkdir -p "$SNAP"
   tar -C "$ROOT" --exclude=./bench --exclude=./evals/results --exclude=./.git -cf - . | tar -C "$SNAP" -xf -
   git -C "$ROOT" rev-parse --short HEAD > "$SNAP/.bench-source-head" 2>/dev/null || true
@@ -76,6 +76,8 @@ for p in json.load(open(sys.argv[1]))["phases"]:
   # Both arms run the same pinned model (subagents inherit it).
   local margs=(--model "$MODEL")
   [ "$arm" = plugin ] && margs+=(--plugin-dir "$SNAP")
+  # memory = native Claude Code with its built-in auto-memory explicitly on.
+  [ "$arm" = memory ] && margs+=(--settings '{"autoMemoryEnabled": true}')
 
   echo "▶ $task · $arm · rep $rep  ($rdir)"
   for spec in $phases; do
