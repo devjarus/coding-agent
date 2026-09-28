@@ -81,17 +81,13 @@ class BorrowingLimits(Lib):
 
     def test_defer_balance_blocks_borrowing(self):
         m = self.member()
-        ln = self.loan(self.book()["id"], m["id"], loaned_at=self.days_ago(20))
+        ln = self.loan(self.book()["id"], m["id"], loaned_at=self.ago(days=20))
         self.ok("POST", "/loans/%s/return" % ln["id"], None, 200)
         owed = self.ok("GET", "/members/" + m["id"], status=200)["balance_cents"]
         self.assertGreater(owed, 0)
         self.assertErr(self.req("POST", "/loans", {"book_id": self.book()["id"], "member_id": m["id"]}), 409, "conflict")
         self.ok("POST", "/members/%s/payments" % m["id"], {"amount_cents": owed}, 201)
         self.loan(self.book()["id"], m["id"])
-
-    def days_ago(self, d):
-        from libtest import ago
-        return ago(days=d)
 
 
 if __name__ == "__main__":

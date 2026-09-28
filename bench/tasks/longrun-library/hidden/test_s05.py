@@ -1,7 +1,7 @@
 """Session 5 — fines and payments."""
 import unittest
 import datetime
-from libtest import Lib, TS, ago, iso, parse
+from libtest import Lib, TS, parse
 
 
 class Fines(Lib):
@@ -10,9 +10,9 @@ class Fines(Lib):
         base = datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0) - datetime.timedelta(days=40)
         due = base + datetime.timedelta(days=14)
         b, m = self.book(), self.member()
-        ln = self.loan(b["id"], m["id"], loaned_at=iso(base))
+        ln = self.loan(b["id"], m["id"], loaned_at=self.ts(base))
         ret = self.ok("POST", "/loans/%s/return" % ln["id"],
-                      {"returned_at": iso(due + datetime.timedelta(days=days_late, seconds=seconds))}, 200)
+                      {"returned_at": self.ts(due + datetime.timedelta(days=days_late, seconds=seconds))}, 200)
         return m, ret
 
     def test_feat_fines(self):
@@ -24,13 +24,13 @@ class Fines(Lib):
 
     def test_feat_backdating_rules(self):
         b, m = self.book(), self.member()
-        ln = self.loan(b["id"], m["id"], loaned_at=ago(days=20))
+        ln = self.loan(b["id"], m["id"], loaned_at=self.ago(days=20))
         want = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=20)
         self.assertLess(abs((parse(ln["loaned_at"]) - want).total_seconds()), 120)
         self.assertLess(abs((parse(ln["due_at"]) - want - datetime.timedelta(days=14)).total_seconds()), 120)
-        self.assertErr(self.req("POST", "/loans/%s/return" % ln["id"], {"returned_at": ago(days=21)}), 400, "validation_error")
-        self.assertErr(self.req("POST", "/loans/%s/return" % ln["id"], {"returned_at": ago(days=-1)}), 400, "validation_error")
-        self.assertErr(self.req("POST", "/loans", {"book_id": self.book()["id"], "member_id": m["id"], "loaned_at": ago(days=-1)}), 400, "validation_error")
+        self.assertErr(self.req("POST", "/loans/%s/return" % ln["id"], {"returned_at": self.ago(days=21)}), 400, "validation_error")
+        self.assertErr(self.req("POST", "/loans/%s/return" % ln["id"], {"returned_at": self.ago(days=-1)}), 400, "validation_error")
+        self.assertErr(self.req("POST", "/loans", {"book_id": self.book()["id"], "member_id": m["id"], "loaned_at": self.ago(days=-1)}), 400, "validation_error")
         self.assertErr(self.req("POST", "/loans", {"book_id": self.book()["id"], "member_id": m["id"], "loaned_at": "yesterday"}), 400, "validation_error")
 
     def test_feat_balance_and_payments(self):
@@ -59,8 +59,8 @@ class PaymentList(Lib):
         t = cls("run")
         b = t.book()
         cls.m = t.member()
-        ln = t.loan(b["id"], cls.m["id"], loaned_at=ago(days=200))
-        t.ok("POST", "/loans/%s/return" % ln["id"], {"returned_at": ago(days=1)}, 200)
+        ln = t.loan(b["id"], cls.m["id"], loaned_at=t.ago(days=200))
+        t.ok("POST", "/loans/%s/return" % ln["id"], {"returned_at": t.ago(days=1)}, 200)
         cls.ids = [t.ok("POST", "/members/%s/payments" % cls.m["id"], {"amount_cents": 1}, 201)["id"] for _ in range(55)]
 
     def test_conv_payments_paginated_oldest_first(self):

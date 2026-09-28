@@ -1,13 +1,13 @@
 """Session 11 — overdue report."""
 import datetime
 import unittest
-from libtest import Lib, iso, ago
+from libtest import Lib
 
 
 class Overdue(Lib):
     def test_feat_report(self):
         now = datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0)
-        mk = lambda days: self.loan(self.book()["id"], self.member()["id"], loaned_at=iso(now - datetime.timedelta(days=days)))
+        mk = lambda days: self.loan(self.book()["id"], self.member()["id"], loaned_at=self.ts(now - datetime.timedelta(days=days)))
         a, b = mk(20), mk(30)  # due 6 and 16 days ago
         mk(5)  # not due yet
         c = mk(25)
@@ -19,11 +19,11 @@ class Overdue(Lib):
 
     def test_feat_as_of(self):
         now = datetime.datetime.now(datetime.timezone.utc).replace(microsecond=0)
-        ln = self.loan(self.book()["id"], self.member()["id"], loaned_at=iso(now - datetime.timedelta(days=10)))
+        ln = self.loan(self.book()["id"], self.member()["id"], loaned_at=self.ts(now - datetime.timedelta(days=10)))
         due = now + datetime.timedelta(days=4)
         ids = lambda q: [r["loan_id"] for r in self.collect("/reports/overdue?as_of=" + q)]
-        self.assertNotIn(ln["id"], ids(iso(due - datetime.timedelta(hours=1))))
-        rows = [r for r in self.collect("/reports/overdue?as_of=" + iso(due + datetime.timedelta(days=2, hours=23))) if r["loan_id"] == ln["id"]]
+        self.assertNotIn(ln["id"], ids(self.ts(due - datetime.timedelta(hours=1))))
+        rows = [r for r in self.collect("/reports/overdue?as_of=" + self.ts(due + datetime.timedelta(days=2, hours=23))) if r["loan_id"] == ln["id"]]
         self.assertEqual([r["days_overdue"] for r in rows], [2])
         self.assertErr(self.req("GET", "/reports/overdue?as_of=tomorrow"), 400, "validation_error")
 
@@ -35,7 +35,7 @@ class OverduePaging(Lib):
         t = cls("run")
         members = [t.member()["id"] for _ in range(19)]
         for i in range(55):
-            t.loan(t.book()["id"], members[i // 3], loaned_at=ago(days=30 + i))
+            t.loan(t.book()["id"], members[i // 3], loaned_at=t.ago(days=30 + i))
 
     def test_dec_page_policy(self):
         self.assertPagePolicy("/reports/overdue", 55)

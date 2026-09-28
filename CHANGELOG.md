@@ -31,6 +31,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - `report.py` no longer prints "Goal met" when there is no native/plugin pair.
+- `longrun-library` hidden tests send timestamp inputs in the service's own
+  output precision ("our usual format"). Whole-second inputs failed a native
+  run that strictly parsed its own millisecond format — a test ambiguity, not
+  a defect. Runs are re-scored with `rescore.py`.
 
 ## [7.0.0] — 2026-09-27 — Goal-driven runtime: measured against native Claude Code
 

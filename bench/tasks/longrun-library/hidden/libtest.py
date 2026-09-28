@@ -43,6 +43,20 @@ class Lib(ServerTest):
     does not also fail the feature built on top of it."""
     ENTRY = "app.py"
 
+    def ts(self, dt):
+        """A timestamp input in the service's own format ("our usual format"):
+        same fractional-second precision as the timestamps it emits."""
+        cls = type(self)
+        if getattr(cls, "_ts_frac", None) is None:
+            s, b, _ = self.req("POST", "/books", {"title": "timestamp probe", "author": "probe"})
+            m = re.search(r"\.(\d+)Z$", (b or {}).get("created_at", "") if isinstance(b, dict) else "")
+            cls._ts_frac = len(m.group(1)) if m else 0
+        base = dt.strftime("%Y-%m-%dT%H:%M:%S")
+        return base + ("." + "%06d" % dt.microsecond)[:cls._ts_frac + 1] + "Z" if cls._ts_frac else base + "Z"
+
+    def ago(self, days=0, seconds=0):
+        return self.ts(datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=days, seconds=seconds))
+
     def tag(self):
         parts = self._testMethodName.split("_")
         return parts[1] if len(parts) > 1 else ""
