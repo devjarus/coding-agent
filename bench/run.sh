@@ -3,7 +3,11 @@
 # then score each phase against hidden acceptance tests.
 #
 #   bench/run.sh <task|all> [--arm native|plugin|both] [--reps N] [--model M]
-#                           [--label L] [--work DIR]
+#                           [--label L] [--work DIR] [--resume-from PHASE]
+#
+# --resume-from phaseNN.md continues existing runs in --work from that phase
+# (earlier phases' rows are kept). Use it when sessions were invalidated, e.g.
+# by an account usage limit; restore the project to the last valid phase first.
 #
 # Each run gets a fresh git repo OUTSIDE this repository (default
 # /tmp/ca-bench/<timestamp>-<label>), seeded from tasks/<task>/seed if present.
@@ -22,7 +26,7 @@ ROOT="$(cd "$HERE/.." && pwd)"
 
 TARGET="${1:-}"; shift || true
 [ -n "$TARGET" ] || { echo "usage: run.sh <task|all> [--arm native|plugin|both] [--reps N] [--model M] [--label L] [--work DIR]"; exit 64; }
-ARM=both; REPS=1; MODEL="${BENCH_MODEL:-claude-sonnet-5}"; LABEL="run"; WORK=""
+ARM=both; REPS=1; MODEL="${BENCH_MODEL:-claude-sonnet-5}"; LABEL="run"; WORK=""; RESUME_FROM=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --arm) ARM="$2"; shift 2 ;;
@@ -30,6 +34,7 @@ while [ $# -gt 0 ]; do
     --model) MODEL="$2"; shift 2 ;;
     --label) LABEL="$2"; shift 2 ;;
     --work) WORK="$2"; shift 2 ;;
+    --resume-from) RESUME_FROM="$2"; shift 2 ;;
     *) echo "unknown option: $1"; exit 64 ;;
   esac
 done
@@ -57,11 +62,15 @@ run_one() { # task arm rep
   local task="$1" arm="$2" rep="$3"
   local tdir="$HERE/tasks/$task" rdir="$WORK/$task/$arm-r$rep" proj
   proj="$rdir/project"
+  if [ -n "$RESUME_FROM" ]; then
+    [ -d "$proj/.git" ] || { echo "nothing to resume at $proj"; return 1; }
+  else
   mkdir -p "$proj"
   ( cd "$proj" && git init -q && git config user.email bench@local && git config user.name bench
     [ -d "$tdir/seed" ] && cp -R "$tdir/seed/." .
     [ -n "$(ls -A . | grep -v '^.git$')" ] || echo "# $task" > README.md
     git add -A && git commit -qm init )
+  fi
 
   local budget timeout phases
   budget="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["budget_usd"])' "$tdir/task.json")"
@@ -79,9 +88,12 @@ for p in json.load(open(sys.argv[1]))["phases"]:
   # memory = native Claude Code with its built-in auto-memory explicitly on.
   [ "$arm" = memory ] && margs+=(--settings '{"autoMemoryEnabled": true}')
 
-  echo "▶ $task · $arm · rep $rep  ($rdir)"
+  echo "▶ $task · $arm · rep $rep  ($rdir)${RESUME_FROM:+  resuming from $RESUME_FROM}"
+  local skipping="$RESUME_FROM"
   for spec in $phases; do
     local ph="${spec%%:*}" mt="${spec##*:}"
+    [ "$ph" = "$skipping" ] && skipping=""
+    [ -n "$skipping" ] && continue
     local n="${ph%.md}" t0 t1 rc pargs=()
     [ "$mt" != 0 ] && pargs+=(--max-turns "$mt")
     t0=$(date +%s)
@@ -147,7 +159,7 @@ print("   %-7s %3d/%-3d hidden  $%-6s %4ss  turns=%s%s" % (
 PY
   done
 
-  BENCH_RUN_MODEL="$MODEL" python3 - "$rdir" "$task" "$arm" "$rep" "$tdir/task.json" "$proj" <<'PY'
+  BENCH_RUN_MODEL="$MODEL" BENCH_RESUMED="$RESUME_FROM" python3 - "$rdir" "$task" "$arm" "$rep" "$tdir/task.json" "$proj" <<'PY'
 import glob, json, os, subprocess, sys
 rdir, task, arm, rep, tj, proj = sys.argv[1:7]
 meta = json.load(open(tj))
@@ -175,6 +187,7 @@ run = {"task": task, "tier": meta["tier"], "pillar": meta.get("pillar", "correct
        "turns": sum(r["turns"] or 0 for r in rows),
        "commits": len(commits), "gated_commits": gated, "uncommitted_files": len(dirty),
        "by_tag_final": scored[-1].get("by_tag") if scored else None,
+       "resumed_from": os.environ.get("BENCH_RESUMED") or None,
        "plugin_source": open(os.path.join(os.path.dirname(os.path.dirname(rdir)), "plugin", ".bench-source-head")).read().split() if arm == "plugin" else None}
 json.dump(run, open(os.path.join(rdir, "run.json"), "w"), indent=2)
 print("   ⇒ quality %.0f%%  cost $%.2f  wall %ss  commits %d%s" % (
