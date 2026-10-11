@@ -12,6 +12,10 @@ L="$EV_PLUGIN_ROOT/lib/ledger.sh"
 R="$EV_PLUGIN_ROOT/lib/record.sh"
 H="$EV_PLUGIN_ROOT/hooks/session-start.sh"
 
+ledger_count() { # <section> — bullets in product.md's section
+  awk -v h="## $1" '$0 ~ "^"h {f=1; next} /^## /{f=0} f && /^- /{n++} END{print n+0}' "$(ev_product)"
+}
+
 setintent() { # <slug> <body>
   python3 - "$1" "$2" <<'PY'
 import sys, re
@@ -87,9 +91,32 @@ touches: api
 '
 bash "$L" freeze intent --answer "yes" >/dev/null
 ev_assert "one green tier is not proof of two"  test "$(ev_gate proven)" = block
-ev_assert "the missing tier is named"           bash "$EV_PLUGIN_ROOT/gates/proven.sh" 2>&1 | grep -q 'e2e'
+ev_assert "the missing tier is named"           sh -c "bash '$EV_PLUGIN_ROOT/gates/proven.sh' 2>&1 | grep -q e2e"
 bash "$R" "bash thing.e2e.sh" test e2e >/dev/null
 ev_assert "proven? passes with every tier"      test "$(ev_gate proven)" = pass
+
+# ── an agreed convention must be enforced by a test, not held as prose ──────
+setconv() { # <lines>  — replace product.md ## conventions with these lines
+  python3 - "$(ev_product)" "$EV_PLUGIN_ROOT/templates/product.template.md" "$1" <<'PY'
+import os, re, sys
+p, tpl, lines = sys.argv[1:4]
+s = open(p).read() if os.path.exists(p) else open(tpl).read()
+if "\n## conventions" not in s:
+    s = s.replace("\n## decisions", "\n## conventions\n\n## decisions", 1)
+s = re.sub(r"(?ms)^## conventions\n.*?(?=^## )", "## conventions\n" + lines + "\n\n", s)
+open(p, "w").write(s)
+PY
+}
+setconv "- every thing prints its name"
+ev_assert "proven? blocks a convention with no test" test "$(ev_gate proven)" = block
+ev_assert "the untested convention is named"    sh -c "bash '$EV_PLUGIN_ROOT/gates/proven.sh' 2>&1 | grep -q 'every thing prints its name'"
+setconv "- every thing prints its name — test: no_such_test.sh"
+ev_assert "a missing test file does not count"  test "$(ev_gate proven)" = block
+setconv "- every thing prints its name — test: thing.test.sh
+- tone is friendly — test: none (a judgment, not checkable)"
+ev_assert "proven? passes once each is enforced" test "$(ev_gate proven)" = pass
+ev_assert "session start injects conventions"   sh -c "bash '$H' </dev/null | grep -q 'every thing prints its name'"
+setconv ""
 
 # ── TA5 — the review artifact has a schema the gate can actually read ───────
 printf '# review\n\n## findings\n\n* [blocking] wrong bullet — a.sh:1\n' > .coding-agent/smoke-feature/review.md
@@ -156,7 +183,7 @@ if git commit -qm "bad release" >/dev/null 2>&1; then walled=0; else walled=1; f
 ev_assert "the commit wall refuses an unproven tree" test "$walled" -eq 1
 git commit -q --no-verify -m "bad release"      # a human shipping past the loop
 bash "$R" "true" deploy >/dev/null; bash "$R" "false" observe >/dev/null 2>&1
-ev_assert "rollback targets the healthy head"   bash "$L" rollback | grep -q "$good_head"
+ev_assert "rollback targets the healthy head"   sh -c "bash '$L' rollback | grep -q '$good_head'"
 
 # ── TA15 + TA17 — an incident interrupts, then pops back ────────────────────
 red_id="$(python3 -c "
@@ -187,6 +214,7 @@ ev_assert "close refuses a partial rollup"      test "$stub" -eq 64
 bash "$L" close --summary "smoked the arc" --learnings "the gates hold" --deployment "n/a" >/dev/null
 ev_assert "close clears CURRENT"                test -z "$(ev_current)"
 ev_assert "close rolls into product.md"         grep -q "smoke-feature — shipped" "$(ev_product)"
+ev_assert "the full rollup lands in history.md" grep -q "^- summary: smoked the arc" .coding-agent/history.md
 ev_assert "learnings land where workers read"   grep -q 'the gates hold' "$(ev_product)"
 ev_assert "evidence is well-formed"             ev_evidence_wellformed
 
@@ -265,7 +293,7 @@ touch .coding-agent/smoke-quick/review.md; sleep 1; echo "notes" >> NOTES.md
 ev_assert "ca verdict allows a docs-only follow-up" bash "$CA" verdict
 rm -f NOTES.md .coding-agent/smoke-quick/review.md
 bash "$CA" close --summary "quick" --learnings "lanes are measured" >/dev/null
-ev_assert "ca close defaults the deployment line" grep -q "deployment: not deployed" "$(ev_product)"
+ev_assert "ca close defaults the deployment line" grep -q "deployment: not deployed" .coding-agent/history.md
 
 # ── design waiver: only the user's words skip visual review ───────────────
 bash "$CA" start smoke-waive --lane standard >/dev/null
@@ -277,6 +305,19 @@ ev_assert "a waiver needs the user's words"      test "$w" -eq 64
 bash "$CA" waive design --answer "I don't need a design review" >/dev/null
 ev_assert "designed? honours the user's waiver"  test "$(ev_gate designed)" = pass
 bash "$CA" close --abandoned --summary "waiver smoke" --learnings "waivers quote the user" >/dev/null
+
+# ── product memory stays bounded however many features ship ────────────────
+for i in $(seq 1 14); do
+  bash "$L" init "mem-$i" >/dev/null
+  bash "$L" close --summary "shipped $i" --learnings "lesson $i $(printf 'x%.0s' $(seq 1 400))" --deployment "n/a" >/dev/null 2>&1
+done
+P="$(ev_product)"
+ev_assert "product.md keeps the newest 10 learnings" test "$(ledger_count learnings)" -eq 10
+ev_assert "product.md keeps the newest 12 shipped"   test "$(ledger_count shipped)" -eq 12
+ev_assert "newest learning comes first"         sh -c "awk '/^## learnings/{f=1;next} f&&/^- /{print;exit}' '$P' | grep -q 'mem-14'"
+ev_assert "long learnings are clipped in product.md" sh -c "! grep -q 'x\{350\}' '$P'"
+ev_assert "history.md keeps every rollup"       test "$(grep -c '^### mem-' .coding-agent/history.md)" -eq 14
+ev_assert "product.md stays under its budget"   test "$(wc -c < "$P")" -le 12000
 
 # ── the evidence wall denies hand-writes, allows reads ──────────────────────
 W="$EV_PLUGIN_ROOT/hooks/evidence-wall.sh"

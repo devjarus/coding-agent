@@ -161,9 +161,11 @@ The product ledger survives across features:
 | Section | Growth rule |
 |---|---|
 | Vision/current state | conductor-owned current snapshot |
-| Decisions | append decisions; mark supersession, never erase history |
-| Learnings | append concise knowledge future workers can act on |
-| Shipped | append feature rollups with outcome and deployment context |
+| Conventions | one line per agreed rule, naming its contract test; only the user's words change one |
+| Decisions | append decisions; mark supersession; superseded ADRs may move to `history.md` |
+| Backlog | deferred work with its spec; delete an item when it ships |
+| Shipped | newest 12, one line each; full rollups in `history.md` |
+| Learnings | newest 10, one line each; a rule for all future work belongs in Conventions |
 
 Workers receive only the smallest relevant slice. This keeps long-lived history
 durable without flooding each dispatch with every past feature.

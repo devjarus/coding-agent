@@ -5,16 +5,47 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased] — Bench measures what the plugin is for
+## [7.1.0] — 2026-10-11 — Agreed conventions are enforced by tests; product memory stays bounded
+
+The new 11-session bench (`longrun-library`) found native Claude Code and v7
+failing the same way: a convention stated once (list pagination) was dropped on
+new endpoints. v7 had the rule in `product.md` and still dropped it, then filed
+the exception as a learning that the next session followed; `product.md` grew
+~2.6 KB per feature and context per turn rose 42% over the run.
+
+### Added
+- **`proven?` blocks an unenforced convention.** Each `product.md ## conventions`
+  line must end `test: <path>` naming an existing contract test (or
+  `test: none (<why>)`). The conductor writes the rule as a test that discovers
+  every instance from the code, so the next endpoint is checked automatically.
+- **Session start injects the agreed conventions** every session (capped at 3 KB),
+  with or without an active feature.
+- **`.coding-agent/history.md`:** every closed feature's full rollup, append-only,
+  read only on demand.
 
 ### Changed
+- **Close keeps `product.md` bounded:** newest 12 shipped and 10 learnings, one
+  line each (long text clipped, full text in `history.md`); warns past 12 KB.
+- **Conductor:** a rule for all future work becomes a contract test, not a note;
+  a learning, a reviewer's advice, or a precedent in the code never relaxes a
+  convention — only the user's words change one.
+- `product.md` template gains `## conventions`, `## shipped`, and backlog/ADR
+  pruning guidance.
+
+### Fixed
+- Two smoke assertions (`the missing tier is named`, `rollback targets the
+  healthy head`) piped their own result into `grep` and were never counted; they
+  now run and pass. Smoke: 78 → 92 checks (12 new for conventions and memory).
+
+### Bench (not shipped in the plugin)
+#### Changed
 - **The goal is now three pillars:** continuity, standards, speed (`bench/GOAL.md`).
   Worth running only if it wins continuity or standards without falling below
   native on correctness; wins neither and is slower → retire.
 - **Both arms run the same pinned model** (`--model`, default `claude-sonnet-5`),
   recorded per run.
 
-### Added
+#### Added
 - `continuity-inventory`: five fresh sessions on one codebase, with conventions
   stated only once, a session killed mid-change, and a deferred request.
 - `standards-orders`: an existing repo whose `AGENTS.md` rules are checked
@@ -29,7 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `goal.json` adds absolute behaviour floors and a 16 KB auto-loaded cap, and
   `report.py` shows both, plus the memory arm.
 
-### Fixed
+#### Fixed
 - `report.py` no longer prints "Goal met" when there is no native/plugin pair.
 - `longrun-library` hidden tests send timestamp inputs in the service's own
   output precision ("our usual format"). Whole-second inputs failed a native

@@ -110,11 +110,14 @@ writes `review.md`.
 ```text
 .coding-agent/
 ├── CURRENT                     stack; last non-empty line is active
-├── product.md                  product-wide memory
+├── product.md                  product-wide memory, read every session (≤ 12 KB)
 │   ├── vision/current state
-│   ├── decisions               append-only live/superseded ADRs
-│   ├── learnings               accumulated operational knowledge
-│   └── shipped                 closed-feature rollups
+│   ├── conventions             agreed rules, each naming its contract test
+│   ├── decisions               live/superseded ADRs
+│   ├── backlog                 deferred work with its spec
+│   ├── shipped                 newest 12 features, one line each
+│   └── learnings               newest 10 learnings, one line each
+├── history.md                  every closed feature's full rollup, append-only
 └── <feature>/
     ├── ledger.md               single-writer feature record
     ├── evidence.jsonl          append-only measured evidence
@@ -153,7 +156,10 @@ green result from an older tree.
 For `kind=test`, `record.sh` accepts only the exact command declared as
 `test-command-<tier>` in the frozen intent. The `proven?` gate requires a current
 green entry for every declared tier, preventing a convenient unit command from
-standing in for integration or end-to-end coverage.
+standing in for integration or end-to-end coverage. It also blocks while any
+`product.md ## conventions` line names no existing test: an agreed rule is
+enforced by a contract test that discovers every instance from the code, so the
+next endpoint is checked without anyone remembering the rule.
 
 ## 6. Architecture decisions
 
@@ -209,7 +215,8 @@ anchor. Superseded ADRs remain readable but stop satisfying the gate.
 - Implements feature interruption as a stack in `CURRENT`.
 - Freezes intent only when given the user’s recorded answer.
 - Supports revision markers, incident framing, rollback lookup, block history,
-  and feature rollup/close.
+  and feature rollup/close. Close appends the full rollup to `history.md` and
+  keeps `product.md` bounded (newest 12 shipped and 10 learnings, one line each).
 - On `init`, installs the git pre-commit gate (see 7.6).
 
 ### 7.4 `lib/record.sh`
@@ -240,7 +247,8 @@ anchor. Superseded ADRs remain readable but stop satisfying the gate.
 
 - `session-start.sh` ensures `.coding-agent/` is ignored before state is written,
   refreshes the pre-commit gate in projects already using the runtime, then
-  injects the active ledger tail on resume.
+  injects the agreed conventions (every session, capped at 3 KB) and, on resume,
+  the active ledger tail.
 - `evidence-wall.sh` (PreToolUse) denies Edit/Write to `evidence.jsonl` and Bash
   commands that name it alongside a write mechanism (redirection, `tee`, in-place
   editors, file-moving tools, interpreter writes). It catches accidents, not a

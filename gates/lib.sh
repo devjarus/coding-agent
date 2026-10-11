@@ -201,6 +201,31 @@ SHIM
 }
 
 # A value from the intent section, e.g. `intent_value lane`.
+# product.md `## conventions` lines whose `test:` names no existing file.
+# Prints " <rule>;" per offender (rule clipped), nothing when all are enforced.
+conventions_without_tests() {
+  local prod root
+  prod="$(ca_product)"; root="$(ca_root)"
+  [ -f "$prod" ] || return 0
+  ledger_section "$prod" conventions | strip_comments | python3 -c '
+import os, re, sys
+root, bad = sys.argv[1], []
+for line in sys.stdin:
+    line = line.strip()
+    if not line.startswith("- "):
+        continue
+    m = re.search(r"test:\s*(.+?)\s*$", line)
+    ref = m.group(1) if m else ""
+    if re.match(r"none\s*\(.+\)", ref):
+        continue
+    paths = [p.strip(chr(96) + chr(34) + chr(39)).rstrip(").;").split("::")[0] for p in re.split(r"[,\s]+", ref)]
+    paths = [p for p in paths if p]
+    if not paths or not all(os.path.exists(os.path.join(root, p)) for p in paths):
+        rule = line[2:].split(" — test:")[0].split(" test:")[0]
+        bad.append(" %s;" % (rule[:80] + ("…" if len(rule) > 80 else "")))
+print("".join(bad))' "$root"
+}
+
 intent_value() { # key
   ledger_section "$(ca_ledger)" intent | strip_comments \
     | sed -n "s/^[[:space:]]*$1:[[:space:]]*//Ip" | head -1 | tr -d '[:space:]'

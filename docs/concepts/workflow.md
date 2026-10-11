@@ -192,9 +192,11 @@ subsequently observed healthy, then to diagnosis.
 
 ## 10. Close and resume
 
-The conductor rolls summary, learnings, and deployment outcome into
-`product.md`, closes the feature, and pops `CURRENT`. If the feature interrupted
-another one, that earlier ledger becomes active again.
+The conductor closes the feature with a summary, learnings, and deployment
+outcome: the full rollup is appended to `history.md`, `product.md` keeps one-line
+views of the newest features and learnings, and `CURRENT` pops. If the feature
+interrupted another one, that earlier ledger becomes active again.
 
-On any new session, the resume hook injects the active ledger tail. Running the
+On any new session, the start hook injects the agreed conventions and, when a
+feature is active, its ledger tail. Running the
 ordered gates reconstructs the exact next action.

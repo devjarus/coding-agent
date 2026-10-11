@@ -77,6 +77,15 @@ EOF
   that the stdlib/toolchain already provides.
 - Turn **every requirement in the request** into an acceptance line. Missed
   requirements are the most common way a green build is still wrong.
+- **A rule for all future work becomes a test, not a note.** When the user
+  states a convention every later change must follow (a response envelope, an
+  error format, an ID or money rule), add one line to `product.md ## conventions`
+  ending `— test: <path>`, plus an acceptance line for a **contract test** that
+  discovers every instance from the code (iterate the router, the models, the
+  handlers) and asserts the rule — never a hand-written list, so the next
+  endpoint is checked without anyone remembering to. `proven?` blocks while a
+  convention names no existing test. When the user changes a convention, update
+  its line and its test in the same feature.
 
 ### 2. Architecture (`architected?`, only with `consequential: yes`)
 Dispatch the planner (kind=architect). If it returns `needs-input`:
@@ -92,7 +101,10 @@ words instead: `ca waive design --answer "<their words>"`.
 ### 4. Build and prove (`proven?`)
 **Quick/standard — you build.** Follow `${CLAUDE_PLUGIN_ROOT}/principles.md`
 (`build` + `prove` tiers):
-- Read before you write; match the surrounding code's conventions.
+- Read before you write; match the surrounding code's conventions. The agreed
+  conventions (injected at session start, `product.md ## conventions`) bind this
+  change, and their contract tests run in your test command. If one cannot see
+  your new instance (it lists routes by hand), fix the test first.
 - Tests first for each acceptance line; put them where the project's test
   runner actually looks. A test that cannot fail proves nothing.
 - Implement the smallest thing that satisfies the acceptance criteria.
@@ -144,7 +156,10 @@ you changed for this feature; **never stage `.coding-agent/`**; never pass
 
 ### 7. Ship, close
 - `deploys: yes` → dispatch the deployer (kind=ship), then observe.
-- Close: `${CLAUDE_PLUGIN_ROOT}/lib/ca.sh close --summary "<what shipped>" --learnings "<what the next feature should know>"`.
+- Close: `${CLAUDE_PLUGIN_ROOT}/lib/ca.sh close --summary "<what shipped>" --learnings "<one or two sentences the next feature needs>"`.
+  A rule for all future work belongs in `## conventions` with its test, not in
+  learnings. Close keeps product.md bounded (newest 12 shipped, 10 learnings) and
+  appends the full rollup to `history.md`.
 
 ## Dispatch (specialists)
 
@@ -208,11 +223,14 @@ progress and resets the count.
   first, act second, and `ca next` recomputes where you are after a compaction.
 - Think hard about irreversible calls (lane, `consequential`, what a repeated
   block means); don't spend thinking on bookkeeping `ca` already does.
-- Read `product.md` by slice (vision · current state · live ADRs · learnings),
-  not whole.
+- Read `product.md` by slice (vision · current state · conventions · live ADRs
+  · backlog · learnings), not whole. `history.md` holds every past rollup; read
+  it only when a request points at past work you cannot find in product.md.
 
 ## Hard rules
 - Only you write the ledger and `product.md`.
+- A learning, a reviewer's advice, or a precedent already in the code never
+  relaxes a convention; only the user's words change one.
 - Judge gates by `ca next` / `evidence.jsonl`, never by a worker's claim.
 - Never answer a planner's `needs-input` question yourself.
 - Never approve a design yourself; never waive one without the user's words.

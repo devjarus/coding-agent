@@ -7,7 +7,7 @@ intent, resolve consequential architecture with the user, build, prove, review,
 ship, and observe. Claims advance only when executable gates can find current
 evidence.
 
-[![Version](https://img.shields.io/badge/version-7.0.0-blue)]()
+[![Version](https://img.shields.io/badge/version-7.1.0-blue)]()
 [![Agents](https://img.shields.io/badge/agents-6-green)]()
 [![Skills](https://img.shields.io/badge/skills-60-green)]()
 [![Gates](https://img.shields.io/badge/gates-8-green)]()
@@ -133,7 +133,8 @@ Project coordination lives under `.coding-agent/` and is gitignored:
 ```text
 .coding-agent/
 ├── CURRENT                 active-feature stack
-├── product.md              product memory + live ADRs + learnings
+├── product.md              bounded product memory: conventions, live ADRs, backlog, recent learnings
+├── history.md              every closed feature's full rollup (read on demand)
 └── <feature>/
     ├── ledger.md           intent, plan, status, and append-only log
     ├── evidence.jsonl      append-only measured evidence
