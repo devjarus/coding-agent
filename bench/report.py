@@ -27,9 +27,11 @@ def gating(rdir):
                 if e.get("kind") == "run" and e.get("tier") == "commit" and e.get("exit") == 0:
                     heads.add(e.get("head"))
     closes = []
-    prod = os.path.join(proj, ".coding-agent", "product.md")
-    if os.path.exists(prod):
-        closes = re.findall(r"^### .+ — \w+ @(\S+)", open(prod).read(), re.M)
+    # v7.1+ writes full rollups to history.md; earlier versions to product.md.
+    for name in ("history.md", "product.md"):
+        f = os.path.join(proj, ".coding-agent", name)
+        if os.path.exists(f):
+            closes += re.findall(r"^### .+ — \w+ @(\S+)", open(f).read(), re.M)
     import datetime
     last_close = max((datetime.datetime.strptime(c, "%Y-%m-%dT%H:%M:%SZ").timestamp() for c in closes), default=None)
     root = git("rev-list", "--max-parents=0", "HEAD").split()[-1]
@@ -147,7 +149,7 @@ def main():
              "|---|---|---|---|---|---|---|---|---|"]
     agg = {}
     for t in tasks:
-        for arm in ("native", "memory", "plugin"):
+        for arm in ("native", "memory", "rules", "plugin"):
             rs = by.get((t, arm))
             if not rs:
                 continue

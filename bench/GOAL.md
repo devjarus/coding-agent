@@ -52,6 +52,15 @@ the correctness floor. Wins neither and is slower → retire it.
 Hidden acceptance tests score everything: the agent never sees them, and they
 run after each phase including earlier phases' tests.
 
+## Arms
+
+| Arm | What runs |
+|---|---|
+| `native` | Claude Code, no plugin |
+| `memory` | native with built-in auto-memory switched on |
+| `rules` | native plus a two-line `CLAUDE.md` asking for conventions as discovered-instance tests (`bench/arms/rules/`) — the control for whether the plugin is needed for that |
+| `plugin` | the plugin snapshot, loaded with `--plugin-dir` |
+
 ## Rules of the comparison
 
 1. Same prompt, same seed repo, same machine, and the same pinned model

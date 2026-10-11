@@ -38,6 +38,10 @@ the exception as a learning that the next session followed; `product.md` grew
   now run and pass. Smoke: 78 → 92 checks (12 new for conventions and memory).
 
 ### Bench (not shipped in the plugin)
+- A `rules` arm: native plus a two-line `CLAUDE.md` asking for conventions as
+  discovered-instance tests — the control for whether the plugin is needed.
+- Auto-loaded memory now counts the conventions the plugin injects at session
+  start; `report.py` reads feature closes from `history.md` too.
 #### Changed
 - **The goal is now three pillars:** continuity, standards, speed (`bench/GOAL.md`).
   Worth running only if it wins continuity or standards without falling below
