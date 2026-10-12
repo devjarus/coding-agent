@@ -1,3 +1,40 @@
+# Long-horizon round 2 — v7.1 and a native control (`longrun-library`, 11 sessions, claude-sonnet-5, n=1)
+
+| Arm | conv | dec | defer | resume | feat | Quality | Cost | Time | `product.md` s1 → s11 |
+|---|---|---|---|---|---|---|---|---|---|
+| native (round 1) | 88% | 76% | 100% | 100% | 100% | 92% | $6.77 | 54 min | — |
+| plugin v7 (round 1) | 90% | 76% | 100% | 100% | 100% | 95% | $13.62 | 159 min | 3.2 → 28.8 KB |
+| **rules** — native + 2-line `CLAUDE.md` | 96% | 96% | **33%** | 100% | 100% | 97% | **$8.10** | **37 min** | (CLAUDE.md 2.0 KB, flat) |
+| **plugin v7.1** | **100%** | **100%** | **100%** | 100% | 100% | **100%** | $22.38 | 124 min | 4.0 → 9.7 KB |
+| *target* | ≥ 95% | ≥ 90% | ≥ 90% | ≥ 90% | ≥ 95% | | | | ≤ 12 KB |
+
+**Conventions as discovered-instance tests fixed `conv` and `dec` — and the
+plugin is not needed for that.** The `rules` arm (native plus two lines asking
+for exactly this) wrote a contract test walking its route registry in session 1
+and missed no convention or the page-size decision on anything it built. v7.1's
+`proven?` check and injected conventions did the same at 100%.
+
+**Deferred work is where the plugin still earns something.** The `rules` arm
+remembered *that* holds were deferred but not the spec, and rebuilt them with a
+different API in session 10 (all 7 of its failures). Plain native's 100% in
+round 1 was luck: it happened to copy the spec into its README. v7.1 wrote the
+spec verbatim into `## backlog` in session 3 and built it exactly in session 10.
+
+**Memory is bounded.** v7.1's `product.md` grew 0.6 KB per feature after the
+first few (v7: 2.6 KB) and ended at 9.7 KB, under the 12 KB budget; full
+rollups went to `history.md`. Injected conventions stayed at 823 B.
+
+**Cost is the problem.** v7.1 cost 2.8× the `rules` arm and 3.3× native, for
++3 pts over `rules` (all from deferred work). Context per turn is ~100k tokens
+throughout (the conductor prompt and dispatched reviewers), against ~50k for native.
+
+Usage limits invalidated plugin sessions 10-11 in both rounds; each time they
+were re-run with `run.sh --resume-from` from the session-9 state (code reset to
+the session-9 commit, memory files restored to their recorded session-9 sizes
+byte for byte). Aborted-attempt spend (~$1 each) is not in the totals.
+
+---
+
 # Long-horizon results — `longrun-library`, 11 sessions (same pinned model: claude-sonnet-5, n=1)
 
 Behaviour scores pooled over every scored session; targets from `goal.json`.
