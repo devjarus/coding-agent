@@ -2,7 +2,7 @@
 # bench/run.sh — run benchmark tasks with native Claude Code and/or the plugin,
 # then score each phase against hidden acceptance tests.
 #
-#   bench/run.sh <task|all> [--arm native|memory|rules|plugin|both] [--reps N] [--model M]
+#   bench/run.sh <task|all> [--arm native|memory|plugin|both|<seed arm>] [--reps N] [--model M]
 #                           [--label L] [--work DIR] [--resume-from PHASE]
 #
 # --resume-from phaseNN.md continues existing runs in --work from that phase
@@ -38,7 +38,9 @@ while [ $# -gt 0 ]; do
     *) echo "unknown option: $1"; exit 64 ;;
   esac
 done
-case "$ARM" in native|memory|rules|plugin|both) ;; *) echo "bad --arm"; exit 64 ;; esac
+case "$ARM" in native|memory|plugin|both) ;;
+  *) [ -d "$HERE/arms/$ARM" ] || { echo "bad --arm: $ARM (native|memory|plugin|both, or a seed arm in bench/arms/)"; exit 64; } ;;
+esac
 command -v claude >/dev/null || { echo "claude CLI not found"; exit 1; }
 
 WORK="${WORK:-${BENCH_WORK:-/tmp/ca-bench}/$(date -u +%Y%m%dT%H%M%SZ)-$LABEL}"
@@ -68,9 +70,10 @@ run_one() { # task arm rep
   mkdir -p "$proj"
   ( cd "$proj" && git init -q && git config user.email bench@local && git config user.name bench
     [ -d "$tdir/seed" ] && cp -R "$tdir/seed/." .
-    # rules = native Claude Code plus a two-line CLAUDE.md asking for what the
-    # plugin does with conventions (a control: is the plugin needed for it?).
-    [ "$arm" = rules ] && cp "$HERE/arms/rules/CLAUDE.md" ./CLAUDE.md
+    # A seed arm is native Claude Code plus the files in bench/arms/<arm>/,
+    # committed before session 1 (rules, rules3: a short CLAUDE.md) — the
+    # controls for whether the plugin is needed for what they ask for.
+    [ -d "$HERE/arms/$arm" ] && cp -R "$HERE/arms/$arm/." .
     [ -n "$(ls -A . | grep -v '^.git$')" ] || echo "# $task" > README.md
     git add -A && git commit -qm init )
   fi

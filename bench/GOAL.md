@@ -59,6 +59,12 @@ run after each phase including earlier phases' tests.
 | `native` | Claude Code, no plugin |
 | `memory` | native with built-in auto-memory switched on |
 | `rules` | native plus a two-line `CLAUDE.md` asking for conventions as discovered-instance tests (`bench/arms/rules/`) — the control for whether the plugin is needed for that |
+| `rules3` | `rules` plus a third line: write deferred work's full spec to `BACKLOG.md` and build from it (`bench/arms/rules3/`) |
+
+Any directory under `bench/arms/<name>/` is a seed arm: native Claude Code with
+its files committed into the repo before session 1. External benchmarks
+(Terminal-Bench, SlopCodeBench, SWE-EVO) and their Harbor adapter are in
+[external/README.md](external/README.md).
 | `plugin` | the plugin snapshot, loaded with `--plugin-dir` |
 
 ## Rules of the comparison

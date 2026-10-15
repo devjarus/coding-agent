@@ -221,8 +221,10 @@ see:
   (11 sessions, scored per behaviour: `conv`, `dec`, `defer`, `resume`, `feat`,
   plus memory footprint).
 
-Arms: `native`, `memory` (auto-memory on), `rules` (native plus a two-line
-`CLAUDE.md`), `plugin`. `bench/GOAL.md` and `bench/goal.json` define the targets;
+Arms: `native`, `memory` (auto-memory on), `plugin`, and seed arms — native
+plus the files in `bench/arms/<name>/` (`rules`: a two-line `CLAUDE.md`;
+`rules3`: plus a backlog rule). External benchmarks run through the Harbor
+adapter in `bench/external/`. `bench/GOAL.md` and `bench/goal.json` define the targets;
 `bench/RESULTS.md` holds the numbers and the open experiments. Architecture
 changes are justified by a scoreboard delta, and a change must beat the `rules`
 control, not just native.

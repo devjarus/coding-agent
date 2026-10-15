@@ -9,13 +9,15 @@ yet measures what its review and gates add beyond the hidden tests.
 
 **Next experiments, in order:**
 
-1. **3-line `rules` control** (≈ $8): add "when I defer work, write its full spec
-   to `BACKLOG.md` and build from it when asked". If it meets every floor, the
-   plugin's default should become that light layer (template + session hook +
-   convention check) with the full loop opt-in.
+1. **3-line control** (≈ $8): `bench/run.sh longrun-library --arm rules3` —
+   `rules` plus "when I defer work, write its full spec to `BACKLOG.md` and build
+   from it". If it meets every floor, the plugin's default should become that
+   light layer (template + session hook + convention check) with the full loop
+   opt-in.
 2. **Reps** (≈ $50): 3 runs each of `native`, `rules`, `plugin` on
    `longrun-library` — `goal.json` requires 3 before any claim.
-3. **External benchmarks** (needs Docker):
+3. **External benchmarks** (needs Docker; commands and the Harbor adapter in
+   [external/README.md](external/README.md)):
    - [SlopCodeBench](https://neurips.cc/virtual/2026/poster/138903) — agents
      extend their own code over many checkpoints; scores pass rate plus code
      erosion and verbosity. The best test of whether review/gates keep a

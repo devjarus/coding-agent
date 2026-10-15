@@ -51,8 +51,13 @@ native 92%, v7 95%, native + two-line `CLAUDE.md` 97% at $8, v7.1 100% at $22.
   in `AGENTS.md`), and `longrun-library` (11 sessions, scored per behaviour:
   `conv`, `dec`, `defer`, `resume`, `feat`; mutation-checked so each failure
   mode costs only its own behaviour).
-- **Arms:** `memory` (native with auto-memory on) and `rules` (native plus a
-  two-line `CLAUDE.md` asking for conventions as discovered-instance tests).
+- **Arms:** `memory` (native with auto-memory on) and seed arms — any
+  `bench/arms/<name>/` is native plus those files: `rules` (a two-line
+  `CLAUDE.md` asking for conventions as discovered-instance tests) and `rules3`
+  (plus a backlog rule for deferred work).
+- **External benchmarks:** `bench/external/harbor_agents.py`, Harbor agents for
+  native, the rules control and the plugin (Terminal-Bench 2.0 and any Harbor
+  dataset), with run instructions in `bench/external/README.md`.
 - **Runner:** one pinned model for every arm; deliberately interrupted phases
   (`max_turns`); per-session memory footprint (auto-loaded bytes including
   injected conventions, maintained memory files, context tokens per turn);

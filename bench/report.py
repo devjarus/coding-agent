@@ -149,7 +149,8 @@ def main():
              "|---|---|---|---|---|---|---|---|---|"]
     agg = {}
     for t in tasks:
-        for arm in ("native", "memory", "rules", "plugin"):
+        seeded = sorted({a for _, a in by} - {"native", "memory", "plugin"})
+        for arm in ["native", "memory"] + seeded + ["plugin"]:
             rs = by.get((t, arm))
             if not rs:
                 continue
