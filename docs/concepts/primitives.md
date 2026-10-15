@@ -10,7 +10,8 @@ A ledger is the durable account of what a feature means and what happened to it.
 
 ```text
 .coding-agent/
-├── product.md          product-wide decisions, learnings, and shipped rollups
+├── product.md          bounded memory: conventions, decisions, backlog, recent shipped/learnings
+├── history.md          every closed feature's full rollup, read on demand
 ├── CURRENT             active-feature stack
 └── <feature>/
     └── ledger.md       intent, plan, status, and chronological log
@@ -25,8 +26,11 @@ Properties:
   the user agrees again.
 - **Interruptions are stacked:** an incident can become active without losing
   the feature it interrupted.
-- **Closure rolls knowledge forward:** summary and learnings move into
-  `product.md` so the next worker receives durable context.
+- **Closure rolls knowledge forward, bounded:** the full rollup goes to
+  `history.md`; `product.md` keeps one-line views of the newest features and
+  learnings, so what every session reads stays short as the product grows.
+- **Conventions are enforced, not remembered:** each agreed rule names the
+  contract test that checks every instance; `proven?` blocks while one doesn't.
 
 The ledger records decisions and transitions. It does not prove that a command
 ran successfully.
@@ -52,8 +56,11 @@ Every entry carries:
 | `head` / `at` | Git commit and UTC timestamp at execution |
 
 Test evidence is accepted only when its command exactly matches the frozen
-intent’s `test-command-<tier>` contract. Direct writes are rejected by the
-evidence-wall hook, and concurrent recorders serialize their append.
+intent’s `test-command-<tier>` contract. The evidence-wall hook rejects direct
+edits and obvious shell or interpreter writes, and concurrent recorders
+serialize their append. The wall guards against accidents; it is not a hard
+security boundary, so gates still check every line against the current tree
+and frozen command.
 
 Evidence proves execution. It does not decide whether the result is sufficient
 to advance.
@@ -93,7 +100,8 @@ equation:
 
 - A **role** is a bounded actor contract.
 - A **skill** is reusable knowledge loaded when relevant.
-- A **hook** protects an invariant at the tool boundary.
+- A **hook** protects an invariant at a tool or git boundary: the evidence wall
+  at tool calls, the pre-commit gate at `git commit`.
 - A **workflow** is the conductor repeatedly running ordered gates and routing
   blocked work.
 

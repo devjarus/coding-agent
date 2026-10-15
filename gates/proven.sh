@@ -40,6 +40,15 @@ done <<< "$tiers"
 [ -z "$missing_commands" ] \
   || gate_result block "intent has no test-command-<tier> contract for tier(s):$missing_commands — revise and re-freeze"
 
+# A convention the user agreed must be enforced by a test, or it erodes one
+# plausible exception at a time: in the long-horizon bench, a stated rule held
+# in memory as prose was dropped on new endpoints, and the memory then recorded
+# the exception as precedent. Each `## conventions` line must name a test file
+# that exists (or say `test: none (<why>)`).
+untested="$(conventions_without_tests)"
+[ -z "$untested" ] \
+  || gate_result block "convention(s) in product.md with no enforcing test:$untested — write a contract test that discovers every instance from the code (all routes, all models) and asserts the rule, then end the line with \`test: <path>\`"
+
 [ -z "$missing" ] \
   && gate_result pass "all declared tiers green at current tree (${cur:0:8}): $(echo "$tiers" | tr '\n' ' ')" \
   || gate_result block "no passing test at current tree (${cur:0:8}) for tier(s):$missing"

@@ -21,6 +21,11 @@ ev_assert "at least one feature commit"       sh -c 'test "$(git rev-list --coun
 ev_assert "green test bound to final tree"    ev_evidence_has test 0 "$(ev_tree_sha)"
 ev_assert "review bound to final tree"        ev_evidence_has review 0 "$(ev_tree_sha)"
 
+# the commit wall: installed, intact, and nothing slipped past it
+ev_assert "commit gate intact"                ev_commit_gate_intact
+ev_assert "every commit passed the gate"      ev_every_commit_gated
+ev_assert "coordinator state never committed" ev_state_never_committed
+
 # closed out
 ev_assert "feature closed (CURRENT empty)"    test -z "$(ev_current)"
 ev_assert "rolled up into product.md"         grep -qE '^### .+ — (shipped|closed) @' "$(ev_product)"

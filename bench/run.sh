@@ -1,0 +1,224 @@
+#!/usr/bin/env bash
+# bench/run.sh — run benchmark tasks with native Claude Code and/or the plugin,
+# then score each phase against hidden acceptance tests.
+#
+#   bench/run.sh <task|all> [--arm native|memory|rules|plugin|both] [--reps N] [--model M]
+#                           [--label L] [--work DIR] [--resume-from PHASE]
+#
+# --resume-from phaseNN.md continues existing runs in --work from that phase
+# (earlier phases' rows are kept). Use it when sessions were invalidated, e.g.
+# by an account usage limit; restore the project to the last valid phase first.
+#
+# Each run gets a fresh git repo OUTSIDE this repository (default
+# /tmp/ca-bench/<timestamp>-<label>), seeded from tasks/<task>/seed if present.
+# Phases run as separate headless sessions (a change request arrives later, like
+# real maintenance). The plugin arm loads a snapshot of the plugin that excludes
+# bench/, via --plugin-dir, exactly as a user install would.
+#
+# Output: <work>/<task>/<arm>-r<rep>/run.json (+ raw claude JSON per phase).
+# Aggregate with bench/report.py <work>.
+#
+# Headless sessions use --permission-mode bypassPermissions inside the scratch
+# repo only. As root, the Claude CLI additionally requires IS_SANDBOX=1.
+set -uo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="$(cd "$HERE/.." && pwd)"
+
+TARGET="${1:-}"; shift || true
+[ -n "$TARGET" ] || { echo "usage: run.sh <task|all> [--arm native|plugin|both] [--reps N] [--model M] [--label L] [--work DIR]"; exit 64; }
+ARM=both; REPS=1; MODEL="${BENCH_MODEL:-claude-sonnet-5}"; LABEL="run"; WORK=""; RESUME_FROM=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --arm) ARM="$2"; shift 2 ;;
+    --reps) REPS="$2"; shift 2 ;;
+    --model) MODEL="$2"; shift 2 ;;
+    --label) LABEL="$2"; shift 2 ;;
+    --work) WORK="$2"; shift 2 ;;
+    --resume-from) RESUME_FROM="$2"; shift 2 ;;
+    *) echo "unknown option: $1"; exit 64 ;;
+  esac
+done
+case "$ARM" in native|memory|rules|plugin|both) ;; *) echo "bad --arm"; exit 64 ;; esac
+command -v claude >/dev/null || { echo "claude CLI not found"; exit 1; }
+
+WORK="${WORK:-${BENCH_WORK:-/tmp/ca-bench}/$(date -u +%Y%m%dT%H%M%SZ)-$LABEL}"
+mkdir -p "$WORK"
+
+# Plugin snapshot: what a user would install, minus the benchmark itself.
+SNAP="$WORK/plugin"
+if [ "$ARM" = plugin ] || [ "$ARM" = both ] && [ ! -d "$SNAP" ]; then
+  mkdir -p "$SNAP"
+  tar -C "$ROOT" --exclude=./bench --exclude=./evals/results --exclude=./.git -cf - . | tar -C "$SNAP" -xf -
+  git -C "$ROOT" rev-parse --short HEAD > "$SNAP/.bench-source-head" 2>/dev/null || true
+  git -C "$ROOT" diff --quiet 2>/dev/null || echo "dirty" >> "$SNAP/.bench-source-head"
+fi
+
+FOOTER='
+
+---
+This is a non-interactive session: I cannot answer questions or approve anything later, so these are my answers in advance, from me, the user. I agree to any reasonable interpretation of the request above; where something is unspecified, choose sensibly and list your assumptions at the end. You may commit to this local git repository (do not push or deploy). Finish the whole request in this session.'
+
+run_one() { # task arm rep
+  local task="$1" arm="$2" rep="$3"
+  local tdir="$HERE/tasks/$task" rdir="$WORK/$task/$arm-r$rep" proj
+  proj="$rdir/project"
+  if [ -n "$RESUME_FROM" ]; then
+    [ -d "$proj/.git" ] || { echo "nothing to resume at $proj"; return 1; }
+  else
+  mkdir -p "$proj"
+  ( cd "$proj" && git init -q && git config user.email bench@local && git config user.name bench
+    [ -d "$tdir/seed" ] && cp -R "$tdir/seed/." .
+    # rules = native Claude Code plus a two-line CLAUDE.md asking for what the
+    # plugin does with conventions (a control: is the plugin needed for it?).
+    [ "$arm" = rules ] && cp "$HERE/arms/rules/CLAUDE.md" ./CLAUDE.md
+    [ -n "$(ls -A . | grep -v '^.git$')" ] || echo "# $task" > README.md
+    git add -A && git commit -qm init )
+  fi
+
+  local budget timeout phases
+  budget="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["budget_usd"])' "$tdir/task.json")"
+  timeout="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["timeout_s"])' "$tdir/task.json")"
+  # A phase is "file.md" or {"file": ..., "max_turns": N} — the latter kills the
+  # session mid-change on purpose (continuity tasks resume it in the next phase).
+  phases="$(python3 -c 'import json,sys
+for p in json.load(open(sys.argv[1]))["phases"]:
+    p = p if isinstance(p, dict) else {"file": p}
+    print("%s:%s" % (p["file"], p.get("max_turns", 0)))' "$tdir/task.json")"
+
+  # Both arms run the same pinned model (subagents inherit it).
+  local margs=(--model "$MODEL")
+  [ "$arm" = plugin ] && margs+=(--plugin-dir "$SNAP")
+  # memory = native Claude Code with its built-in auto-memory explicitly on.
+  [ "$arm" = memory ] && margs+=(--settings '{"autoMemoryEnabled": true}')
+
+  echo "▶ $task · $arm · rep $rep  ($rdir)${RESUME_FROM:+  resuming from $RESUME_FROM}"
+  local skipping="$RESUME_FROM"
+  for spec in $phases; do
+    local ph="${spec%%:*}" mt="${spec##*:}"
+    [ "$ph" = "$skipping" ] && skipping=""
+    [ -n "$skipping" ] && continue
+    local n="${ph%.md}" t0 t1 rc pargs=()
+    [ "$mt" != 0 ] && pargs+=(--max-turns "$mt")
+    t0=$(date +%s)
+    ( cd "$proj" && timeout "$timeout" claude -p "$(cat "$tdir/$ph")$FOOTER" \
+        --permission-mode bypassPermissions --output-format json \
+        --max-budget-usd "$budget" "${margs[@]}" "${pargs[@]}" \
+        > "$rdir/$n.claude.json" 2> "$rdir/$n.stderr.log" )
+    rc=$?
+    t1=$(date +%s)
+    # Keep exactly what this phase delivered, so a later rescore (when hidden
+    # suites grow) measures the same state instead of guessing from commits.
+    mkdir -p "$rdir/$n.snapshot"
+    tar -C "$proj" --exclude=./.git --exclude=./.coding-agent --exclude='__pycache__' -cf - . | tar -C "$rdir/$n.snapshot" -xf -
+    python3 "$HERE/score.py" "$tdir" "$proj" "$ph" > "$rdir/$n.score.json"
+    python3 - "$rdir" "$n" "$rc" "$((t1 - t0))" "$proj" <<'PY'
+import glob, json, re, sys, os
+rdir, n, rc, wall, proj = sys.argv[1], sys.argv[2], int(sys.argv[3]), int(sys.argv[4]), sys.argv[5]
+
+def size(p):
+    return os.path.getsize(p) if os.path.isfile(p) else 0
+
+def always_loaded(root):
+    """Bytes Claude Code puts in context every session: project CLAUDE.md files
+    plus the files they @import (one level), deduplicated."""
+    seen, total = set(), 0
+    for f in ("CLAUDE.md", "CLAUDE.local.md", ".claude/CLAUDE.md"):
+        p = os.path.join(root, f)
+        if not os.path.isfile(p):
+            continue
+        for q in [p] + [os.path.join(root, m) for m in re.findall(r"(?m)^\s*@(\S+)", open(p, errors="replace").read())]:
+            q = os.path.normpath(q)
+            if q not in seen and os.path.isfile(q):
+                seen.add(q)
+                total += size(q)
+    # The plugin's session-start hook injects the agreed conventions every session.
+    prod = os.path.join(root, ".coding-agent", "product.md")
+    if os.path.isfile(prod):
+        sec = re.search(r"(?ms)^## conventions[^\n]*\n(.*?)(?=^## |\Z)", open(prod, errors="replace").read())
+        if sec:
+            body = re.sub(r"(?s)<!--.*?-->", "", sec.group(1))
+            total += min(3000, sum(len(l) + 1 for l in body.splitlines() if l.startswith("- ")))
+    return total
+
+def maintained(root):
+    """Project memory an agent maintains and may read: instruction files, docs,
+    and the plugin's product memory (read by the conductor, not auto-loaded)."""
+    files = ["CLAUDE.md", "AGENTS.md", ".coding-agent/product.md", ".coding-agent/history.md"] + [
+        os.path.relpath(p, root) for p in glob.glob(os.path.join(root, "docs", "**", "*.md"), recursive=True)]
+    return {f: size(os.path.join(root, f)) for f in files if size(os.path.join(root, f))}
+try:
+    c = json.load(open(os.path.join(rdir, n + ".claude.json")))
+except Exception:
+    c = {}
+s = json.load(open(os.path.join(rdir, n + ".score.json")))
+row = {"phase": n, "exit": rc, "timed_out": rc == 124, "wall_s": wall,
+       "cost_usd": c.get("total_cost_usd"), "turns": c.get("num_turns"),
+       "is_error": c.get("is_error"), "subtype": c.get("subtype"),
+       "models": {m: round(v.get("costUSD", 0), 4) for m, v in (c.get("modelUsage") or {}).items()},
+       "passed": s["passed"], "total": s["total"], "rate": s["rate"], "score_error": s.get("error"),
+       "scored": s.get("scored", True), "by_tag": s.get("by_tag"),
+       "always_loaded_bytes": always_loaded(proj), "maintained_bytes": maintained(proj)}
+u = c.get("usage") or {}
+ctx = sum(u.get(k) or 0 for k in ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens"))
+row["ctx_tokens_per_turn"] = round(ctx / row["turns"]) if row["turns"] else None
+with open(os.path.join(rdir, n + ".row.json"), "w") as f:
+    json.dump(row, f)
+print("   %-7s %3d/%-3d hidden  $%-6s %4ss  turns=%s%s" % (
+    n, row["passed"], row["total"], row["cost_usd"], wall, row["turns"],
+    "  TIMEOUT" if row["timed_out"] else ("  ERROR:%s" % row["subtype"] if row["is_error"] else "")))
+PY
+  done
+
+  BENCH_RUN_MODEL="$MODEL" BENCH_RESUMED="$RESUME_FROM" python3 - "$rdir" "$task" "$arm" "$rep" "$tdir/task.json" "$proj" <<'PY'
+import glob, json, os, subprocess, sys
+rdir, task, arm, rep, tj, proj = sys.argv[1:7]
+meta = json.load(open(tj))
+files = [p["file"] if isinstance(p, dict) else p for p in meta["phases"]]
+rows = [json.load(open(os.path.join(rdir, p[:-3] + ".row.json"))) for p in files]
+scored = [r for r in rows if r.get("scored", True)]
+def git(*a):
+    return subprocess.run(["git", "-C", proj] + list(a), capture_output=True, text=True).stdout
+root = git("rev-list", "--max-parents=0", "HEAD").split()[-1]
+commits = [c for c in git("rev-list", "HEAD").split() if c != root]
+dirty = [l for l in git("status", "--porcelain").splitlines() if ".coding-agent" not in l]
+gated = None
+ev = glob.glob(os.path.join(proj, ".coding-agent", "*", "evidence.jsonl"))
+if arm == "plugin":
+    entries = []
+    for f in ev:
+        entries += [json.loads(l) for l in open(f) if l.strip()]
+    heads = {e.get("head") for e in entries if e.get("kind") == "run" and e.get("tier") == "commit" and e.get("exit") == 0}
+    gated = sum(1 for c in commits if git("rev-parse", c + "^").strip() in heads)
+run = {"task": task, "tier": meta["tier"], "pillar": meta.get("pillar", "correctness"), "arm": arm, "rep": int(rep),
+       "model": os.environ.get("BENCH_RUN_MODEL"), "phases": rows,
+       "quality": round(sum(r["rate"] for r in scored) / len(scored), 4),
+       "cost_usd": round(sum(r["cost_usd"] or 0 for r in rows), 4),
+       "wall_s": sum(r["wall_s"] for r in rows),
+       "turns": sum(r["turns"] or 0 for r in rows),
+       "commits": len(commits), "gated_commits": gated, "uncommitted_files": len(dirty),
+       "by_tag_final": scored[-1].get("by_tag") if scored else None,
+       "resumed_from": os.environ.get("BENCH_RESUMED") or None,
+       "plugin_source": open(os.path.join(os.path.dirname(os.path.dirname(rdir)), "plugin", ".bench-source-head")).read().split() if arm == "plugin" else None}
+json.dump(run, open(os.path.join(rdir, "run.json"), "w"), indent=2)
+print("   ⇒ quality %.0f%%  cost $%.2f  wall %ss  commits %d%s" % (
+    100 * run["quality"], run["cost_usd"], run["wall_s"], run["commits"],
+    "" if gated is None else "  gated %d/%d" % (gated, len(commits))))
+PY
+}
+
+if [ "$TARGET" = all ]; then
+  TASKS="$(ls "$HERE/tasks")"
+else
+  [ -d "$HERE/tasks/$TARGET" ] || { echo "no such task: $TARGET"; exit 64; }
+  TASKS="$TARGET"
+fi
+ARMS="$ARM"; [ "$ARM" = both ] && ARMS="native plugin"
+
+for task in $TASKS; do
+  for rep in $(seq 1 "$REPS"); do
+    for arm in $ARMS; do
+      run_one "$task" "$arm" "$rep"
+    done
+  done
+done
+echo "work: $WORK"

@@ -1,8 +1,9 @@
 # Workflow
 
-The runtime is one evidence-gated loop. It has no size-specific modes and no
-parallel protocol stack. Small work has fewer applicable gates; consequential,
-visual, or deployable work activates more of the same sequence.
+The runtime is one evidence-gated loop run by the conductor. Its **lane**
+(quick, standard, deep) sets how much ceremony surrounds the work; it never
+changes what counts as proof. Consequential, visual, or deployable work also
+activates more of the same gate sequence.
 
 ## 1. Entry
 
@@ -13,12 +14,25 @@ The conductor first decides whether the request needs a ledger.
   resumes a feature ledger.
 - Existing user changes are snapshotted and preserved before delegation.
 
-Initialization:
+The conductor picks a lane and opens the feature. In the quick and standard
+lanes it frames and freezes in the same call:
 
 ```bash
-bash "${CLAUDE_PLUGIN_ROOT}/lib/ledger.sh" product-init
-bash "${CLAUDE_PLUGIN_ROOT}/lib/ledger.sh" init <feature-slug>
+bash "${CLAUDE_PLUGIN_ROOT}/lib/ca.sh" start <feature-slug> --lane quick --answer "<the user's words>" < frame.md
 ```
+
+| Lane | Use when | Builds | Review | Planner |
+|---|---|---|---|---|
+| quick | small fix, no UI / architecture / deploy | conductor | none, while `reviewed?` measures the diff since `base` at ≤ 150 lines with no ui/consequential/deploy tags | no |
+| standard (default) | features, services, multi-file changes | conductor | one read-only reviewer | architecture questions only |
+| deep | user asks, or a one-way door | developer workers | reviewer + optional dimension fan-out | frame + ADR |
+
+Why the conductor builds in the quick and standard lanes: a subagent starts
+from nothing and re-reads the code, so delegating the writing multiplies cost
+without adding judgment. Measured on the bench (`bench/`), delegating every
+build cost 7–12× native Claude Code for the same hidden-test quality.
+Specialists are dispatched where a *separate* agent adds something: independent
+review, architecture options, diagnosis, the design surface, deployment.
 
 ## 2. Ordered gate loop
 
@@ -32,18 +46,19 @@ bash "${CLAUDE_PLUGIN_ROOT}/lib/ledger.sh" init <feature-slug>
 └───────────┘   └──────────┘   └────────┘   └───────────┘
 ```
 
-At each step the conductor:
+`ca next` runs every gate in order and prints the next action; every other
+`ca` step ends by printing it too. At each step the conductor:
 
-1. runs the first applicable unmet gate;
-2. dispatches the owning kind when it blocks;
-3. verifies the worker’s paths and evidence against the dispatch scope;
+1. takes the first applicable unmet gate;
+2. does the work (quick/standard) or dispatches the owning kind;
+3. verifies any worker’s paths and evidence against the dispatch scope;
 4. records a concise ledger log entry, including skips and assumptions;
-5. reruns the same gate;
-6. advances only on `pass` or `n/a`.
+5. advances only on `pass` or `n/a`.
 
 ## 3. Framing
 
-The planner converts a request into observable intent:
+The conductor (quick/standard) or the planner (deep) converts a request into
+observable intent:
 
 - goal and problem rather than an assumed solution;
 - explicit scope and non-goals;
@@ -104,30 +119,37 @@ one-way door, the conductor asks for separate explicit agreement before build.
 When `touches:` includes `ui`, the designer writes a look-contract and opens the
 localhost review surface. The user comments and approves in the browser.
 
-Approval is bound to SHA-256 digests of the reviewed artifacts and to zero open
-comments. The designer may record the verdict but cannot create it. Any edit to
-approved bytes reopens `designed?`.
+Approval is bound to the SHA-256 digest of `design.html` and to zero open
+comments. The designer may record the verdict but cannot create it, and
+`designed?` re-verifies the verdict on every run rather than trusting the
+recorded command. Approval binds to the look-contract, not the source tree:
+building the design does not reopen the gate, but editing `design.html` does.
+Whether the build matches the approved design is a review question.
 
 ## 6. Build and prove
 
-The conductor sends the developer a bounded brief, path scope, relevant ledger
-slice, pre-dispatch snapshot, and named skills. The developer:
+In the quick and standard lanes the conductor builds. In the deep lane it sends
+developers a bounded brief, path scope, relevant ledger slice, pre-dispatch
+snapshot, and named skills. Either way, whoever builds:
 
 1. reads project instructions and peer files;
 2. confirms the active test-discovery convention;
-3. writes behavior-first tests;
+3. writes behavior-first tests, one per acceptance line;
 4. implements within scope;
-5. runs every declared tier through `lib/record.sh`;
-6. returns changed paths, evidence ids, open questions, and skips.
+5. records every declared tier (`ca prove` wraps `lib/record.sh`);
+6. (a worker) returns changed paths, evidence ids, open questions, and skips.
 
 `proven?` requires all declared tiers to be green at the current tree. A UI
 feature must declare an end-to-end tier that exercises the live path.
 
 ## 7. Review and repair
 
-Review is a separate dispatch from implementation. The conductor may fan out
-read-only dimensions—correctness, security, simplicity—then sends one aggregate
-reviewer to write `review.md` and record the verdict.
+Review is a separate agent from whoever built, and it runs before the commit,
+so the reviewer reads the working tree against the recorded `base`. Standard
+work gets one read-only reviewer; deep work may fan out read-only dimensions
+(correctness, security, simplicity) and then send one aggregate reviewer to write
+`review.md`. The conductor records the verdict with `ca verdict`. The quick lane
+skips review only while `reviewed?` measures the change as small and low-risk.
 
 Findings use a load-bearing shape:
 
@@ -143,7 +165,10 @@ rather than spinning.
 ## 8. Clean, commit, document
 
 The conductor stages only attributable paths. `clean?` scans the staged diff for
-obvious secrets and raw debug prints. `.coding-agent/` is never staged.
+staged coordinator state, hardcoded secrets, and debugger statements. The conductor
+then commits, and the git pre-commit gate re-runs `framed?` through `clean?`
+and refuses the commit at the first block. That holds even when the model
+skipped a gate or the commit message claims nothing.
 
 When product behavior, architecture, component contracts, commands, or
 deployment changed, the conductor refreshes portable consumer documentation:
@@ -167,9 +192,11 @@ subsequently observed healthy, then to diagnosis.
 
 ## 10. Close and resume
 
-The conductor rolls summary, learnings, and deployment outcome into
-`product.md`, closes the feature, and pops `CURRENT`. If the feature interrupted
-another one, that earlier ledger becomes active again.
+The conductor closes the feature with a summary, learnings, and deployment
+outcome: the full rollup is appended to `history.md`, `product.md` keeps one-line
+views of the newest features and learnings, and `CURRENT` pops. If the feature
+interrupted another one, that earlier ledger becomes active again.
 
-On any new session, the resume hook injects the active ledger tail. Running the
+On any new session, the start hook injects the agreed conventions and, when a
+feature is active, its ledger tail. Running the
 ordered gates reconstructs the exact next action.

@@ -11,7 +11,9 @@ margs=()
 claude -p "$(cat "$EV_RENDERED_PROMPT")" \
   --permission-mode bypassPermissions --output-format json --max-turns 8 \
   "${margs[@]+"${margs[@]}"}" \
-  > "$EV_RESULT_DIR/claude-output.json" 2> "$EV_RESULT_DIR/claude-stderr.log" || true
+  > "$EV_RESULT_DIR/phase-a-killed.json" 2> "$EV_RESULT_DIR/claude-stderr.log" || true
+# (named outside the claude-output*.json pattern: dying at max_turns is this
+#  phase's purpose, not a runner failure; run.sh only scans claude-output*.json)
 
 # capture what phase A left behind, so asserts can prove phase B built on it
 cp .coding-agent/*/ledger.md "$EV_RESULT_DIR/ledger-after-phase-a.md" 2>/dev/null || true
@@ -20,7 +22,7 @@ cp .coding-agent/*/ledger.md "$EV_RESULT_DIR/ledger-after-phase-a.md" 2>/dev/nul
 claude -p "You are the conductor defined at $EV_PLUGIN_ROOT/agents/conductor.md.
 A previous session on this project died mid-feature. Re-enter your loop at
 step 1 (read the ledger tail + evidence), find the first unmet gate, and finish
-the feature. Eval-mode: intent agreement and commit are pre-approved; work
+the feature. From me, the user: I agree to the drafted intent and I approve the commit (quote this when you freeze); work
 until the feature is closed. Do NOT start a new feature ledger — resume the
 existing one." \
   --permission-mode bypassPermissions --output-format json \

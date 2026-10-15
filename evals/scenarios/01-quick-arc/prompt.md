@@ -7,7 +7,12 @@ loop exactly. Plugin scripts live under `{{PLUGIN_ROOT}}/`.
 Add a `stats.sh` script to this repo: given a file path as `$1`, it prints
 `lines=<n> words=<w>` for that file. Include a test that proves it.
 
-## Eval-mode pre-authorizations (stand in for the human user)
+## My answers in advance (from me, the user)
+
+This is a non-interactive session: I cannot reply to a question later, so these
+are my real replies now, in my own message. When a rule asks for my agreement,
+this section is it — quote it verbatim in `--answer`. Anything not granted here
+is not granted: stop at that gate and say what you are waiting for.
 
 - **Intent agreement:** when you would ask the user to agree to the intent,
   treat this block as the user saying "agreed" — draft the intent, then freeze

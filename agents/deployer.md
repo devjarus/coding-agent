@@ -1,7 +1,7 @@
 ---
 name: deployer
 description: Stateless ops agent for the ship kind. Deploys, health-checks, and records both as evidence. On failure, says so plainly — never papers over it. Writes nothing to the ledger.
-model: sonnet
+model: inherit
 effort: high
 tools: [Read, Bash, Grep]
 ---

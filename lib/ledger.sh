@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # ledger.sh — the conductor's safe primitives for the (single-writer) ledger.
-#   ledger.sh init <slug>          create a feature ledger, set it active
+#   ledger.sh init <slug>          create a feature ledger, set it active,
+#                                  and install the git pre-commit gate
 #   ledger.sh product-init [name]  create the product ledger
 #   ledger.sh tail [n]             show the last n lines of the active ledger
 #   ledger.sh log "<msg>"          append a timestamped line under ## log
 #   ledger.sh freeze intent        stamp the agreed frame with the user's reply
 #   ledger.sh revise <section> "why"  re-open a frozen section (append a revision marker)
-#   ledger.sh close [--abandoned|--superseded]  roll up into product.md, clear CURRENT
+#   ledger.sh waive design --answer "<user's words>"  record the user declining visual review
+#   ledger.sh close [--abandoned|--superseded]  roll up into history.md + product.md, clear CURRENT
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$HERE/../gates/lib.sh"
@@ -36,7 +38,9 @@ case "$cmd" in
     else
       printf '%s\n' "$slug" > "$cur"
       echo "active feature: $slug  ($dir/ledger.md)"
-    fi ;;
+    fi
+    # The commit wall: from here on a commit cannot land past an unmet gate.
+    echo "commit gate: $(ca_install_commit_gate "$ROOT")" ;;
   product-init)
     name="${1:-$(basename "$(ca_root)")}"; prod="$(ca_product)"; mkdir -p "$(ca_dir)"
     [ -f "$prod" ] || sed "s/<name>/$name/g" "$ROOT/templates/product.template.md" > "$prod"
@@ -69,6 +73,23 @@ case "$cmd" in
       END { if(inhdr) print "> frozen: agreed @" ts " — user said: \"" a "\"" }
     ' "$l" > "$tmp" && mv "$tmp" "$l"
     echo "frozen: $sec (agreement recorded)" ;;
+  waive)
+    # Record the user's explicit decision to skip a human review step. Only the
+    # visual design review can be waived, and only with the user's own words:
+    # the waiver is the same kind of evidence as a freeze.
+    what="${1:?usage: ledger.sh waive design --answer \"<what the user said>\"}"; shift || true
+    [ "$what" = design ] || { echo "ledger.sh waive: only 'design' can be waived" >&2; exit 64; }
+    answer=""
+    while [ $# -gt 0 ]; do case "$1" in --answer) answer="${2:-}"; shift 2 ;; *) shift ;; esac; done
+    [ -n "$answer" ] || { echo "ledger.sh waive: --answer \"<what the user said>\" is required" >&2; exit 64; }
+    answer="$(printf '%s' "$answer" | tr '\n' ' ' | cut -c1-200)"
+    l="$(ca_ledger)"; ts="$(date -u +%FT%TZ)"; tmp="$(mktemp)"
+    awk -v ts="$ts" -v a="$answer" '
+      /^## / { if(inhdr){ print "> waived: design @" ts " — user said: \"" a "\""; inhdr=0 } if($0 ~ "^## intent"){ inhdr=1 } }
+      { print }
+      END { if(inhdr) print "> waived: design @" ts " — user said: \"" a "\"" }
+    ' "$l" > "$tmp" && mv "$tmp" "$l"
+    echo "waived: design (user's words recorded)" ;;
   revise)
     # Re-open a frozen section: append a revision marker at its end. framed? (and
     # any freeze gate) checks the LAST marker — a revision after a freeze re-opens
@@ -209,16 +230,49 @@ PY
       echo "  from what this run actually surfaced — a placeholder is worse than nothing." >&2
       echo "  Abandoned features still owe a learning: that is usually where it is." >&2; exit 64; }
     [ -f "$prod" ] || sed "s/<name>/$(basename "$(ca_root)")/g" "$ROOT/templates/product.template.md" > "$prod"
+    # The full rollup goes to history.md (append-only, read only on demand).
+    # product.md is read every session, so it keeps bounded one-line views:
+    # the newest shipped features and the newest learnings. Memory that grows
+    # with every feature costs every later session, and buries the conventions.
+    hist="$(ca_dir)/history.md"
+    [ -f "$hist" ] || printf '# history\n\nEvery closed feature, oldest first. Not read by default.\n' > "$hist"
     {
       printf '\n### %s — %s @%s\n' "$slug" "$status" "$ts"
       printf -- '- summary: %s\n' "$summary"
       printf -- '- learnings: %s\n' "$learnings"
       [ -n "$deployment" ] && printf -- '- deployment: %s\n' "$deployment"
-    } >> "$prod"
-    # Also file the learning where workers actually read it.
-    tmp="$(mktemp)"
-    awk -v l="- [$slug @$ts] $learnings" '
-      /^## learnings/ { print; print l; next } { print }' "$prod" > "$tmp" && mv "$tmp" "$prod"
+    } >> "$hist"
+    python3 - "$prod" "$slug" "$status" "$ts" "$summary" "$learnings" <<'PY'
+import re, sys
+prod, slug, status, ts, summary, learnings = sys.argv[1:7]
+KEEP = {"shipped": 12, "learnings": 10}
+
+def clip(t, n):
+    t = " ".join(t.split())
+    return t if len(t) <= n else t[:n].rsplit(" ", 1)[0] + " … (full: history.md)"
+
+def push(text, section, line, before="## deployments"):
+    """Insert line at the top of a section's bullet list; keep the newest KEEP."""
+    m = re.search(r"(?m)^## %s[^\n]*\n" % section, text)
+    if not m:
+        b = text.find("\n" + before)
+        block = "## %s\n" % section
+        text = (text[:b + 1] + block + "\n" + text[b + 1:]) if b >= 0 else text.rstrip("\n") + "\n\n" + block
+        m = re.search(r"(?m)^## %s[^\n]*\n" % section, text)
+    end = re.search(r"(?m)^## ", text[m.end():])
+    body = text[m.end():m.end() + end.start()] if end else text[m.end():]
+    keep = [l for l in body.splitlines() if l.startswith("- ")][:KEEP[section] - 1]
+    other = [l for l in body.splitlines() if l.strip() and not l.startswith("- ")]
+    new = "\n".join(other + [line] + keep) + "\n\n"
+    return text[:m.end()] + new + (text[m.end() + end.start():] if end else "")
+
+s = open(prod).read()
+s = push(s, "shipped", "- %s — %s @%s: %s" % (slug, status, ts, clip(summary, 200)))
+s = push(s, "learnings", "- [%s] %s" % (slug, clip(learnings, 300)))
+open(prod, "w").write(s)
+PY
+    budget=12000; size="$(wc -c < "$prod" | tr -d ' ')"
+    [ "$size" -le "$budget" ] || echo "product.md is $size bytes (budget $budget): move superseded ADRs from ## decisions to history.md and delete shipped items from ## backlog" >&2
     # Pop the stack: back to whatever this feature interrupted, if anything.
     cur="$(ca_dir)/CURRENT"; tmp="$(mktemp)"
     grep -v '^[[:space:]]*$' "$cur" 2>/dev/null | sed '$d' > "$tmp"; mv "$tmp" "$cur"
@@ -226,7 +280,7 @@ PY
     if [ "$status" = abandoned ] && [ -d "$dir" ]; then
       mv "$dir" "${dir%/}.abandoned" 2>/dev/null && echo "moved $slug → ${slug}.abandoned"
     fi
-    echo "closed: $slug ($status) → rolled into $prod"
+    echo "closed: $slug ($status) → rolled into $hist (one-line views in $prod)"
     [ -n "$resumed" ] && echo "resumed: $resumed (this feature had interrupted it)" || echo "CURRENT cleared" ;;
   *)
     echo "usage: ledger.sh init|product-init|tail|log|freeze|revise|close" ;;

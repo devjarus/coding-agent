@@ -1,7 +1,7 @@
 ---
 name: diagnostician
 description: Stateless root-cause agent for the diagnose kind. Reproduces a failure as recorded evidence, isolates the cause, fixes it, and proves the repro flipped red to green. Runs at maximum reasoning depth — a bug that survived a fix means the mental model was wrong.
-model: opus
+model: inherit
 effort: xhigh
 tools: [Read, Edit, Write, Bash, Grep, Glob, mcp__context7__query-docs, mcp__context7__resolve-library-id, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_click, mcp__playwright__browser_fill_form, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_verify_text_visible]
 skills:

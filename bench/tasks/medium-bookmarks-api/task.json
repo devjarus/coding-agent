@@ -1,0 +1,2 @@
+{ "tier": "medium", "phases": ["phase1.md"], "budget_usd": 10, "timeout_s": 2400,
+  "hidden": { "phase1.md": ["test_phase1.py"] } }

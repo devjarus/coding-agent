@@ -84,7 +84,7 @@ mcp_count="$(python3 -c 'import json,sys; print(len(json.load(open(sys.argv[1]))
 printf '  inventory: %s agents · %s skills · %s gates · %s templates · %s MCP servers\n' \
   "$agent_count" "$skill_count" "$gate_count" "$template_count" "$mcp_count"
 [ "$agent_count" -eq 6 ] || error "expected 6 agents, found $agent_count"
-[ "$skill_count" -eq 59 ] || error "expected 59 skills, found $skill_count"
+[ "$skill_count" -eq 60 ] || error "expected 60 skills, found $skill_count"
 [ "$gate_count" -eq 8 ] || error "expected 8 gates, found $gate_count"
 [ "$template_count" -eq 12 ] || error "expected 12 templates, found $template_count"
 [ "$mcp_count" -eq 5 ] || error "expected 5 MCP servers, found $mcp_count"
@@ -141,7 +141,7 @@ while IFS= read -r file; do
   [ -x "$file" ] || { error "$rel is not executable"; shell_ok=0; }
   bash -n "$file" 2>/dev/null || { error "$rel has a Bash syntax error"; shell_ok=0; }
 done < <(find "$PLUGIN_ROOT/gates" "$PLUGIN_ROOT/lib" "$PLUGIN_ROOT/hooks" \
-  "$PLUGIN_ROOT/scripts" "$PLUGIN_ROOT/evals" \
+  "$PLUGIN_ROOT/scripts" "$PLUGIN_ROOT/evals" "$PLUGIN_ROOT/bench" \
   -path "$PLUGIN_ROOT/evals/results" -prune -o -name '*.sh' -print | sort)
 [ "$shell_ok" -eq 1 ] && pass "shell scripts executable and syntax-clean"
 
@@ -167,6 +167,10 @@ grep -q 'declared_test_command' "$PLUGIN_ROOT/lib/record.sh" || { error "record.
 grep -q 'lockdir="${ev}.lock"' "$PLUGIN_ROOT/lib/record.sh" || { error "record.sh has no append lock"; gate_ok=0; }
 grep -q 'delivery plan is empty' "$PLUGIN_ROOT/gates/framed.sh" || { error "framed? does not require a delivery plan"; gate_ok=0; }
 grep -q 'comments_open' "$PLUGIN_ROOT/gates/lib.sh" || { error "design verdict validation does not require zero open comments"; gate_ok=0; }
+grep -q 'verify_design_verdict' "$PLUGIN_ROOT/gates/designed.sh" || { error "designed? does not re-verify the human verdict"; gate_ok=0; }
+grep -q 'coding-agent/' "$PLUGIN_ROOT/gates/clean.sh" || { error "clean? does not block staged coordinator state"; gate_ok=0; }
+grep -q 'ca_install_commit_gate' "$PLUGIN_ROOT/lib/ledger.sh" || { error "ledger.sh init does not install the pre-commit gate"; gate_ok=0; }
+[ -x "$PLUGIN_ROOT/hooks/pre-commit.sh" ] || { error "hooks/pre-commit.sh missing or not executable"; gate_ok=0; }
 grep -q 'git add -- <explicit changed_paths' "$PLUGIN_ROOT/agents/conductor.md" || { error "conductor lacks explicit attributable staging"; gate_ok=0; }
 grep -q 'aggregate: false' "$PLUGIN_ROOT/agents/conductor.md" || { error "parallel review isolation contract missing"; gate_ok=0; }
 if grep -qE 'browser_(click|evaluate|fill_form)' "$PLUGIN_ROOT/agents/designer.md"; then

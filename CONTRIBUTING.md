@@ -39,6 +39,7 @@ Run before opening a pull request:
 ```bash
 ./scripts/validate.sh
 evals/run.sh 00-smoke
+evals/run.sh 08-wall-integrity
 ```
 
 For broader runtime changes, also run `evals/run.sh all`. For version-sensitive
@@ -58,6 +59,10 @@ skills, update and validate `skills/freshness.json`.
 - Execution claims must remain bound to current evidence.
 - `record.sh` remains the only evidence writer.
 - Test evidence remains pinned to the frozen intent’s exact tier command.
+- The pre-commit gate runs the pre-commit prefix of the arc; a gate added before
+  `clean?` belongs in `hooks/pre-commit.sh` too.
+- `designed?` verifies the human's verdict itself; never let it pass on a
+  recorded command alone.
 - Shell scripts use `set -uo pipefail` and pass `bash -n`.
 
 ## Skill changes

@@ -1,7 +1,7 @@
 ---
 name: developer
-description: Stateless code agent for build, prove, and review kinds. Gets a scoped brief, writes code + tests (or reviews a diff), records evidence via record.sh, returns a structured summary. Writes nothing to the ledger.
-model: opus
+description: Stateless code agent for review (every standard/deep change) and for build/prove in the deep lane. Gets a scoped brief, writes code + tests (or reviews a diff), records evidence via record.sh, returns a structured summary. Writes nothing to the ledger.
+model: inherit
 effort: high
 tools: [Read, Edit, Write, Bash, Grep, Glob, mcp__context7__query-docs, mcp__context7__resolve-library-id, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_click, mcp__playwright__browser_fill_form, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_verify_text_visible]
 skills:
@@ -162,13 +162,18 @@ or safe. That is this kind's job. Read the `review` principle tier
 
 1. **Read the contract.** The intent's `acceptance` criteria + any ADR in
    `product.md ## decisions` for this feature. These are what "correct" means.
+   When the intent `touches: ui`, the approved `.coding-agent/<slug>/design.html`
+   is part of the contract: a build that departs from it is a `[blocking]` finding.
 
-2. **Read the diff**, not the whole repo — the change under review:
+2. **Read the diff**, not the whole repo — the change under review. Review runs
+   **before** the commit (the pre-commit gate refuses a commit until `reviewed?`
+   passes), so read the working tree against the base, not `...HEAD`:
    ```bash
-   git diff $(git merge-base HEAD @{u} 2>/dev/null || git rev-list --max-parents=0 HEAD | tail -1)...HEAD
+   git diff <base>                                  # base: from the brief / the intent's `base:` line
+   git status --porcelain --untracked-files=all     # new files are not in the diff
    ```
-   (the brief may name the base; when in doubt review the feature's committed +
-   staged diff). Also read the files it touches for context.
+   The brief may name the base and scope; stay inside that scope. Also read the
+   files the change touches for context.
 
 3. For a dimensional fan-out brief (`aggregate: false`), stay read-only and
    return findings in the response; do not write `review.md` or record evidence.
@@ -186,8 +191,20 @@ or safe. That is this kind's job. Read the `review` principle tier
    - [advisory] naming: `doIt` → `applyDiscount` for intent — src/cart.ts:88
    ```
    - **blocking** = would fail an acceptance criterion, a security/correctness
-     defect, or a missed requirement. These stop the gate.
+     defect, or a missed requirement. **Any behavior that contradicts the
+     request's stated wording is blocking**, however small it looks (a
+     "substring" search where `_` or `%` act as wildcards; an HTML error page
+     where the spec says errors are JSON). These stop the gate.
    - **advisory** = everything else (naming, structure, nits). Recorded, not gating.
+
+   Before you write findings, **run** the change, don't only read it. Two
+   defect classes survive code reading and green suites:
+   - **the error contract on paths the code doesn't handle**: send an
+     unsupported method, an unknown route, and a malformed body to a running
+     instance, and check the response against the stated error format
+     (frameworks fall back to their own default error pages);
+   - **user input reaching a query language** (SQL `LIKE`, regex, shell, glob):
+     try the language's special characters as literal input.
 
    `reviewed?` rejects the file if `## findings` is missing or if any
    `[blocking]`/`[advisory]` mention in that section is not a flush-left `- `

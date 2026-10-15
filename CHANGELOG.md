@@ -5,6 +5,212 @@ All notable changes to this plugin will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [7.1.0] — 2026-10-11 — Agreed conventions are enforced by tests; product memory stays bounded
+
+The new 11-session bench (`longrun-library`) found native Claude Code and v7
+failing the same way: a convention stated once (list pagination) was dropped on
+new endpoints. v7 had the rule in `product.md` and still dropped it, then filed
+the exception as a learning that the next session followed; `product.md` grew
+~2.6 KB per feature and context per turn rose 42% over the run.
+
+### Added
+- **`proven?` blocks an unenforced convention.** Each `product.md ## conventions`
+  line must end `test: <path>` naming an existing contract test (or
+  `test: none (<why>)`). The conductor writes the rule as a test that discovers
+  every instance from the code, so the next endpoint is checked automatically.
+- **Session start injects the agreed conventions** every session (capped at 3 KB),
+  with or without an active feature.
+- **`.coding-agent/history.md`:** every closed feature's full rollup, append-only,
+  read only on demand.
+
+### Changed
+- **Close keeps `product.md` bounded:** newest 12 shipped and 10 learnings, one
+  line each (long text clipped, full text in `history.md`); warns past 12 KB.
+- **Conductor:** a rule for all future work becomes a contract test, not a note;
+  a learning, a reviewer's advice, or a precedent in the code never relaxes a
+  convention — only the user's words change one.
+- `product.md` template gains `## conventions`, `## shipped`, and backlog/ADR
+  pruning guidance.
+
+### Fixed
+- Two smoke assertions (`the missing tier is named`, `rollback targets the
+  healthy head`) piped their own result into `grep` and were never counted; they
+  now run and pass. Smoke: 78 → 92 checks (12 new for conventions and memory).
+
+### Bench (not shipped in the plugin)
+
+Results and next experiments: `bench/RESULTS.md`. On `longrun-library` (n=1):
+native 92%, v7 95%, native + two-line `CLAUDE.md` 97% at $8, v7.1 100% at $22.
+
+#### Added
+- **Pillars:** the goal is continuity, standards and speed (`bench/GOAL.md`);
+  worth running only if it wins continuity or standards without falling below
+  native on correctness. Absolute behaviour floors and a 16 KB auto-loaded cap
+  in `goal.json`.
+- **Tasks:** `continuity-inventory` (5 sessions), `standards-orders` (house rules
+  in `AGENTS.md`), and `longrun-library` (11 sessions, scored per behaviour:
+  `conv`, `dec`, `defer`, `resume`, `feat`; mutation-checked so each failure
+  mode costs only its own behaviour).
+- **Arms:** `memory` (native with auto-memory on) and `rules` (native plus a
+  two-line `CLAUDE.md` asking for conventions as discovered-instance tests).
+- **Runner:** one pinned model for every arm; deliberately interrupted phases
+  (`max_turns`); per-session memory footprint (auto-loaded bytes including
+  injected conventions, maintained memory files, context tokens per turn);
+  `--resume-from` for sessions invalidated by a usage limit.
+
+#### Changed
+- Behaviour scores are pooled over every scored session, so drift that a later
+  session repairs still counts against the sessions that shipped it.
+- `report.py` shows behaviours and memory, the `memory` and `rules` arms, and
+  reads feature closes from `history.md`.
+
+#### Fixed
+- `report.py` no longer prints "Goal met" with no native/plugin pair.
+- `longrun-library` hidden tests: timestamp inputs use the service's own
+  precision; every list added after session 5 gets a `conv` envelope check;
+  page-size checks run only under `conv`/`dec`. Every run was re-scored.
+- `rescore.py` refreshes per-behaviour tallies.
+
+## [7.0.0] — 2026-09-27 — Goal-driven runtime: measured against native Claude Code
+
+The plugin now has a measured goal: beat native Claude Code on quality without
+losing on cost or time (`bench/GOAL.md`). The first baseline showed v6.1 at the
+same hidden-test quality as native for **7.2× the cost and 3.5× the wall time**.
+The causes were structural, so this release changes the runtime's shape.
+Result so far (`bench/RESULTS.md`): suite cost 7.2× → 3.0× native and time
+3.5× → 2.5×, at quality parity; the goal is not yet met.
+
+### Changed (breaking)
+
+- **The conductor builds.** In the quick and standard lanes the main loop
+  writes the code itself; specialists are dispatched only where a separate agent
+  adds judgment (independent review, architecture, diagnosis, design surface,
+  deployment). Deep-lane builds still go to developer workers. Delegating every
+  build meant each worker re-read the code from scratch.
+- **Lanes: quick, standard, deep.** Lanes change ceremony, never proof. The
+  quick lane skips review only while `reviewed?` measures the diff since the
+  recorded base at ≤ 150 lines with no `ui`/`consequential`/`deploys` tag;
+  beyond that it blocks.
+- **Every role uses `model: inherit`.** v6.1 forced Opus on every role even
+  when the user's session ran a cheaper model.
+
+### Added
+
+- **`lib/ca.sh`**: the loop's bookkeeping as one command each (`next`,
+  `start [--answer … < frame]`, `frame`, `prove`, `verdict`, `waive design`,
+  `commit`, `close`). Every step prints the next action.
+- **Design-review waiver.** `designed?` passes when the user declined visual
+  review in their own words (`ca waive design --answer`).
+- **Cheaper review.** The conductor updates docs before review (a later change
+  re-opens `proven?`), dispatches the reviewer in the foreground instead of
+  polling, and asks for a delta re-review of the fixed findings only.
+  `ca next` lists uncommitted paths when it says to commit. Advisory findings
+  are logged for follow-up instead of fixed mid-feature, since any code change
+  after review costs a re-review.
+
+### Fixed
+
+- **`clean?` false positives.** It blocked `print(` (a CLI's output) and any
+  `token =` / `password:` line, which fired on 3 of 4 complex bench runs and
+  each time forced a rewrite plus another review round. It now blocks
+  high-confidence key formats, secret-named keys assigned a long non-placeholder
+  literal outside test files, and debugger statements.
+- **Verdicts over unreviewed code.** `ca verdict` refuses when any non-doc file
+  changed after `review.md` was written, so a post-review code change needs a
+  (delta) re-review; docs-only follow-ups don't.
+- **Principles referenced but never read.** Transcripts showed neither the
+  conductor nor the reviewer ever opened `principles.md`; the reviewer even
+  found the `LIKE` defect and filed it as advisory. The two defect classes and
+  the rule "a behavior contradicting the request's wording is blocking" now
+  live in the prompts the agents actually load (conductor build steps,
+  developer review section), and the reviewer runs the change before writing
+  findings.
+- **Review misses by luck.** Two v7 runs of the same task differed only in
+  whether the reviewer happened to check the error contract on unhandled
+  methods and SQL `LIKE` escaping. `principles.md` now names both defect classes
+  in the review tier, and the build tier asks for a test per stated rule
+  (including error formats and literal inputs).
+- **Generated files in commits.** `ca commit` refuses `__pycache__`, `*.pyc`,
+  `node_modules`, build output and `.DS_Store`, and says to ignore them.
+- **`bench/`**: a two-arm benchmark. The same tasks run under native Claude
+  Code and under the plugin (loaded via `--plugin-dir`, as users install it),
+  scored by hidden acceptance tests the agents never see. Tasks: a small
+  maintenance fix, a medium REST service, and two complex apps (an issue
+  tracker with auth and a state machine; a booking engine with expiring holds
+  and a FIFO waitlist), each with a later change-request phase that is also
+  regression-tested, plus a multi-process job queue (leases, retries with
+  backoff, dead-lettering, 8 concurrent worker processes in the hidden tests). `bench/GOAL.md` + `goal.json` set the targets: quality at
+  least native (and +10 points on complex work), cost and time no worse
+  suite-wide. `bench/selftest.sh` proves every hidden suite passes on a
+  reference implementation and fails on the starting state.
+
+## [6.1.0] — 2026-09-25 — Close the design, commit, and staging holes
+
+An end-to-end and adversarial review of 6.0.0 against 4.3.0 found that the
+design gate could be satisfied without a human, that nothing stopped a commit
+past an unmet gate, and that the UI arc could not finish once built. This
+release closes those gaps and brings the runtime docs in line with the code.
+
+### Added
+
+- **Git pre-commit gate** (`hooks/pre-commit.sh`, installed as a shim by
+  `ledger.sh init` and refreshed by `session-start.sh`). While a feature is
+  active it runs `framed?` through `clean?` and refuses the commit at the first
+  block, regardless of the commit message. It is a no-op with no active feature,
+  never overwrites a foreign hook, and skips a managed `core.hooksPath`. This
+  restores and extends the commit wall 4.x had through its commit-msg hook.
+- **`architecture-visualization` skill** carried over from `main` (4.3.0 there),
+  which this branch had diverged from. It is routed from the conductor's skills
+  table. Inventory is 59 → 60 skills.
+- **Smoke assertions** for each fix: 48 → 61 checks.
+- **`08-wall-integrity` eval** (script-only, zero-cost like `00-smoke`):
+  install scope, foreign-hook and `core.hooksPath` safety, stale-shim refresh,
+  refusals naming the blocking gate, no-op with no active feature, every
+  evidence-wall write route, and a self-test that the bypass detectors fire.
+- **The pre-commit gate leaves a trace.** It runs its check through
+  `record.sh` as `kind=run tier=commit`, so every gated commit has green
+  evidence at its parent. A `--no-verify` commit has none.
+- **Model scenarios assert the wall held.** New helpers
+  `ev_commit_gate_intact`, `ev_every_commit_gated`, and
+  `ev_state_never_committed` are wired into 01–07 as each scenario allows.
+  05 also requires the look-contract to exist and no commit to land without
+  approval.
+
+### Fixed
+
+- **`designed?` accepted any recorded `kind=design` command.**
+  `record.sh "true" design` passed the one gate that needs a human. The gate now
+  re-verifies `design-verdict.json` against `design.html` (approved, zero open
+  comments, matching SHA) on every run, and still requires the recorded entry.
+- **The UI arc could never reach `proven?`.** Design approval was bound to the
+  source tree, so the build that implemented the approved design re-opened
+  `designed?`. Approval now binds to the look-contract (`design.html`) instead.
+  Editing `design.html` still re-opens the gate.
+- **`design-review.sh verify` failed after any ledger log line.** It bound
+  approval to `ledger.md`, which the conductor appends to after every dispatch.
+  Verify now binds to `design.html`; the verdict keeps `ledger_sha` for audit.
+- **`clean?` passed force-staged coordinator state.** It now blocks any staged
+  path under `.coding-agent/`, which the architecture already claimed.
+- **Evidence wall let interpreter writes through.** It now also denies
+  in-place editors, file-moving tools, and Python/Perl/Node/Ruby writes that
+  name `evidence.jsonl`, while still allowing reads (including `2>/dev/null`).
+  It also covers `NotebookEdit`. The docs now say plainly that the wall is an
+  accident guard, not a security boundary.
+- **Review read `...HEAD` although review runs before the commit.** The
+  developer's review now diffs the working tree against the base and lists
+  untracked files. When the intent touches UI, departing from the approved
+  `design.html` counts as a blocking finding.
+- **Codex skipped the lifecycle preflight.** `delivery-pipeline` now runs
+  `hooks/session-start.sh` explicitly (gitignore, commit gate, resume state).
+
+### Changed
+
+- README, ARCHITECTURE, AGENTS, CONTRIBUTING, concept docs, and the evals guide
+  now describe the commit wall, the design-approval binding, the evidence
+  wall's real limits, the non-root requirement for headless evals, and 60
+  skills. AGENTS no longer claims the skill count is derived when the validator
+  pins it.
+
 ## [6.0.0] — 2026-09-06 — Canonical evidence-gated runtime
 
 ### Added

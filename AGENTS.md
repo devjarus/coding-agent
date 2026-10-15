@@ -5,9 +5,9 @@ may generate their own AGENTS.md; do not copy plugin-runtime details into them.
 
 ## What this is
 
-A Claude Code and Codex plugin: 6 registered agents, 59 skills, 8 executable
-gates, 12 artifact/documentation templates, 2 runtime libraries, 2 hooks, and 5
-optional MCP servers. The runtime has one conductor, five bounded worker roles,
+A Claude Code and Codex plugin: 6 registered agents, 60 skills, 8 executable
+gates, 12 artifact/documentation templates, 3 runtime libraries, 2 lifecycle
+hooks plus a git pre-commit gate, and 5 optional MCP servers. The runtime has one conductor, five bounded worker roles,
 and three primitives: ledger, evidence, and gate.
 
 Codex enters through the `delivery-pipeline` skill. Claude Code registers the six
@@ -28,9 +28,9 @@ coding-agent/
 │   ├── framed.sh       architected.sh   designed.sh   proven.sh
 │   ├── reviewed.sh     clean.sh          shipped.sh    observed.sh
 │   └── lib.sh
-├── lib/                             # ledger.sh + record.sh
-├── hooks/                           # evidence wall + session resume
-├── skills/                          # 59 scoped engineering skills
+├── lib/                             # ca.sh (the loop) + ledger.sh + record.sh
+├── hooks/                           # evidence wall, session resume, pre-commit gate
+├── skills/                          # 60 scoped engineering skills
 │   ├── frontend/ backend/ data/ mobile/ infra/
 │   └── general/ practices/
 ├── templates/                       # 12 runtime + portable-doc templates
@@ -58,12 +58,25 @@ coding-agent/
   for that tier.
 - **User owns authority:** never invent intent agreement, a one-way-door
   decision, design approval, destructive action, deployment, or push consent.
-- **Separate role instances:** each bounded dispatch is a worker instance; a
-  role is not a personality toggle on the conductor.
+- **Single-threaded writes:** the conductor builds quick and standard changes;
+  specialists are separate, stateless instances that add judgment (review,
+  architecture, diagnosis, design, deploy). Review is never done by whoever built.
+- **Proof never flexes, ceremony does:** lanes change who builds and what is
+  dispatched, never what counts as proof. The quick lane's review skip is
+  measured by `reviewed?`, not declared.
+- **Roles inherit the user's model** (`model: inherit`); the plugin never forces
+  a more expensive model than the user chose.
 - **Architecture dialogue first:** ask design-changing system/component questions
   before drafting an ADR.
 - **Explicit staging:** never stage `.coding-agent/`, unrelated changes, or a
-  repo-wide pathspec.
+  repo-wide pathspec. `clean?` blocks staged coordinator state.
+- **Commit wall:** while a feature is active, the git pre-commit gate refuses a
+  commit past an unmet gate. Agents never pass `--no-verify`.
+- **Human design verdict:** `designed?` re-verifies the browser verdict against
+  `design.html` itself; a recorded command alone is never approval. Only the
+  user's own words can waive it (`ca waive design --answer`).
+- **Measured, not claimed:** a change that trades cost or time for quality is
+  justified on `bench/` against native Claude Code (`bench/GOAL.md`).
 - **Portable consumer docs:** project docs never mention plugin runtime state or
   vendor-specific instructions.
 
@@ -73,12 +86,13 @@ Run this checklist whenever you edit an agent, gate, library, hook, skill,
 template, script, eval, manifest, or canonical doc:
 
 1. Run `./scripts/validate.sh`; it must end in `PASSED`.
-2. Run `evals/run.sh 00-smoke` after any runtime script, gate, hook, agent, or
-   template change.
+2. Run `evals/run.sh 00-smoke` and `evals/run.sh 08-wall-integrity` after any
+   runtime script, gate, hook, agent, or template change.
 3. If a skill contains version-sensitive guidance, update `skills/freshness.json`
    and run `./scripts/validate-skill-freshness.sh`.
-4. If inventory changes, copy the validator’s actual counts into this file,
-   README badges/text, manifests, docs index, and architecture document.
+4. If inventory changes, update the pinned counts in `scripts/validate.sh`,
+   then copy them into this file, README badges/text, both manifests and
+   marketplace files, the docs index, and the architecture document.
 5. Update `CHANGELOG.md` and bump versions unless the edit is a truly internal
    typo that changes no published behavior.
 6. Inspect `git diff --check`, JSON validity, shell syntax, and the final scoped
@@ -146,8 +160,9 @@ description: <when this knowledge should be used; under 250 characters>
 
 Keep SKILL.md under 500 lines and move details into `rules/`. Reference bundled
 resources relative to `${CLAUDE_SKILL_DIR}`. Add domain-specific skills to the
-conductor routing table or relevant worker preload list. Do not hand-maintain the
-skill count; use the validator’s directory count.
+conductor routing table or relevant worker preload list. The validator pins the
+skill count; when you add a skill, bump it there and sync the docs (checklist
+step 4).
 
 ## Paths
 
@@ -180,14 +195,50 @@ The in-repo harness judges artifacts, evidence, and Git state—not prose:
 
 ```bash
 evals/run.sh 00-smoke
+evals/run.sh 08-wall-integrity
 evals/run.sh all
 evals/run.sh 03-escalation --manual
 evals/compare.sh evals/results/<A> evals/results/<B>
 ```
 
-`00-smoke` is the zero-cost runtime test and must pass after any runtime edit.
-Headless scenarios require the `claude` CLI. Manual scenarios are for interactive
-human gates.
+`00-smoke` and `08-wall-integrity` are the zero-cost runtime tests and must pass
+after any runtime edit.
+Headless scenarios require an authenticated `claude` CLI running as a non-root
+user (`bypassPermissions` is refused under root). Manual scenarios are for
+interactive human gates.
+
+## Benchmark vs native Claude Code
+
+`bench/` measures whether the plugin is worth running, on the same pinned model
+as native Claude Code. Tasks are run as fresh headless sessions in scratch repos
+outside this repository and scored by hidden acceptance tests the agents never
+see:
+
+- **correctness floor:** five single-session tasks (small fix, REST service,
+  three complex apps);
+- **standards:** `standards-orders`, an existing repo with `AGENTS.md` house rules;
+- **continuity:** `continuity-inventory` (5 sessions) and `longrun-library`
+  (11 sessions, scored per behaviour: `conv`, `dec`, `defer`, `resume`, `feat`,
+  plus memory footprint).
+
+Arms: `native`, `memory` (auto-memory on), `rules` (native plus a two-line
+`CLAUDE.md`), `plugin`. `bench/GOAL.md` and `bench/goal.json` define the targets;
+`bench/RESULTS.md` holds the numbers and the open experiments. Architecture
+changes are justified by a scoreboard delta, and a change must beat the `rules`
+control, not just native.
+
+```bash
+bench/selftest.sh                                   # zero cost: hidden tests are sound
+bench/run.sh <task|all> --arm <arm|both> [--reps N] # paid: real headless sessions
+bench/run.sh <task> --arm <arm> --work <dir> --resume-from phaseNN.md
+bench/rescore.py <work-dir>...                      # after a hidden suite changes
+bench/report.py <work-dir>...                       # scoreboard vs goal.json
+```
+
+The plugin arm loads a snapshot without `bench/`, so hidden tests are
+unreachable. When you add a task, add a reference implementation and keep
+`bench/selftest.sh` green; when you add or change a hidden test, re-score every
+run and record why in `RESULTS.md`.
 
 ## Commit convention
 

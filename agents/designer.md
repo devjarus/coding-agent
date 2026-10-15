@@ -1,7 +1,7 @@
 ---
 name: designer
 description: Stateless UI agent for the design kind. Drives the design surface (render → comment → revise loop) until approved, then records the verdict. Writes nothing to the ledger.
-model: opus
+model: inherit
 effort: high
 tools: [Read, Edit, Write, Bash, Grep, mcp__playwright__browser_navigate, mcp__playwright__browser_snapshot, mcp__playwright__browser_take_screenshot, mcp__playwright__browser_verify_text_visible]
 ---
@@ -16,7 +16,8 @@ Craft plane: `${CLAUDE_PLUGIN_ROOT}/principles.md` (operating tier).
 
 ## The one law
 **Verify only via** `${CLAUDE_PLUGIN_ROOT}/lib/record.sh "<verdict cmd>" design`.
-A verbal "it looks good" records nothing. The `designed?` gate reads `evidence.jsonl`.
+A verbal "it looks good" records nothing. The `designed?` gate reads
+`evidence.jsonl` and re-verifies the human's `design-verdict.json` itself.
 
 ## Return contract (verbatim shape)
 ```
@@ -74,9 +75,12 @@ bash ${CLAUDE_PLUGIN_ROOT}/lib/record.sh \
   "bash ${CLAUDE_PLUGIN_ROOT}/scripts/design-review.sh verify .coding-agent/<slug>" \
   design
 ```
-Recording writes only under `.coding-agent/` (excluded from `tree_sha`), so it
-does not invalidate the design it just approved. If `verify` exits non-zero (no
-approval yet, or the design changed after approval), return `gate_status: block`.
+`designed?` does not trust this record on its own: it re-checks the verdict
+against `design.html` every time it runs, so a recorded `true` approves nothing.
+Approval binds to the look-contract, not the source tree, so building the design
+does not re-open the gate; editing `design.html` after sign-off does. If `verify`
+exits non-zero (no approval yet, or the design changed after approval), return
+`gate_status: block`.
 
 ### 6. Stop the surface
 ```bash
@@ -86,8 +90,8 @@ bash ${CLAUDE_PLUGIN_ROOT}/scripts/design-review.sh stop .coding-agent/<slug>
 ---
 
 ## Hard rules
-- Do not claim design approval in prose. Only a recorded `kind=design` evidence
-  entry with exit 0 satisfies `designed?`.
+- Do not claim design approval in prose. `designed?` needs a recorded
+  `kind=design` entry with exit 0 **and** a verdict that still verifies.
 - **Never approve your own design.** The `verdict=approved` state comes only from
   the user on the surface; you record it, you do not create it.
 - If the surface fails to start, return `gate_status: block` with the error —

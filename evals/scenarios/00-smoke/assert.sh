@@ -12,6 +12,10 @@ L="$EV_PLUGIN_ROOT/lib/ledger.sh"
 R="$EV_PLUGIN_ROOT/lib/record.sh"
 H="$EV_PLUGIN_ROOT/hooks/session-start.sh"
 
+ledger_count() { # <section> — bullets in product.md's section
+  awk -v h="## $1" '$0 ~ "^"h {f=1; next} /^## /{f=0} f && /^- /{n++} END{print n+0}' "$(ev_product)"
+}
+
 setintent() { # <slug> <body>
   python3 - "$1" "$2" <<'PY'
 import sys, re
@@ -35,6 +39,7 @@ ev_assert "session-start gitignores .coding-agent" grep -qE '^\.coding-agent/?$'
 
 bash "$L" product-init smoke >/dev/null
 bash "$L" init smoke-feature >/dev/null
+ev_assert "init installs the commit gate"        grep -q 'coding-agent pre-commit gate' "$(git rev-parse --git-path hooks)/pre-commit"
 ev_assert "framed? rejects template plan"        test "$(ev_gate framed)" = block
 
 # ── TA4 — agreement is evidence, not a stamp the writer wrote itself ────────
@@ -86,9 +91,32 @@ touches: api
 '
 bash "$L" freeze intent --answer "yes" >/dev/null
 ev_assert "one green tier is not proof of two"  test "$(ev_gate proven)" = block
-ev_assert "the missing tier is named"           bash "$EV_PLUGIN_ROOT/gates/proven.sh" 2>&1 | grep -q 'e2e'
+ev_assert "the missing tier is named"           sh -c "bash '$EV_PLUGIN_ROOT/gates/proven.sh' 2>&1 | grep -q e2e"
 bash "$R" "bash thing.e2e.sh" test e2e >/dev/null
 ev_assert "proven? passes with every tier"      test "$(ev_gate proven)" = pass
+
+# ── an agreed convention must be enforced by a test, not held as prose ──────
+setconv() { # <lines>  — replace product.md ## conventions with these lines
+  python3 - "$(ev_product)" "$EV_PLUGIN_ROOT/templates/product.template.md" "$1" <<'PY'
+import os, re, sys
+p, tpl, lines = sys.argv[1:4]
+s = open(p).read() if os.path.exists(p) else open(tpl).read()
+if "\n## conventions" not in s:
+    s = s.replace("\n## decisions", "\n## conventions\n\n## decisions", 1)
+s = re.sub(r"(?ms)^## conventions\n.*?(?=^## )", "## conventions\n" + lines + "\n\n", s)
+open(p, "w").write(s)
+PY
+}
+setconv "- every thing prints its name"
+ev_assert "proven? blocks a convention with no test" test "$(ev_gate proven)" = block
+ev_assert "the untested convention is named"    sh -c "bash '$EV_PLUGIN_ROOT/gates/proven.sh' 2>&1 | grep -q 'every thing prints its name'"
+setconv "- every thing prints its name — test: no_such_test.sh"
+ev_assert "a missing test file does not count"  test "$(ev_gate proven)" = block
+setconv "- every thing prints its name — test: thing.test.sh
+- tone is friendly — test: none (a judgment, not checkable)"
+ev_assert "proven? passes once each is enforced" test "$(ev_gate proven)" = pass
+ev_assert "session start injects conventions"   sh -c "bash '$H' </dev/null | grep -q 'every thing prints its name'"
+setconv ""
 
 # ── TA5 — the review artifact has a schema the gate can actually read ───────
 printf '# review\n\n## findings\n\n* [blocking] wrong bullet — a.sh:1\n' > .coding-agent/smoke-feature/review.md
@@ -117,6 +145,9 @@ ev_assert "post-approval design edit is rejected" test "$stale" -ne 0
 git add -- . ':(exclude).coding-agent'
 ev_assert "clean? passes on a clean stage"      test "$(ev_gate clean)" = pass
 ev_assert "no coordinator state is staged"      test -z "$(git diff --cached --name-only | grep coding-agent || true)"
+git add -f .coding-agent/product.md
+ev_assert "clean? blocks force-staged ledger state" test "$(ev_gate clean)" = block
+git restore --staged .coding-agent/product.md
 printf 'api_key = "sk-live-x"\n' > secret.py && git add secret.py
 ev_assert "clean? catches a staged secret"      test "$(ev_gate clean)" = block
 git rm -q --cached secret.py && rm -f secret.py
@@ -147,9 +178,12 @@ ev_assert "record.sh rejects a bad tier token"  test "$badt" -eq 64
 bash "$R" "true" deploy >/dev/null && bash "$R" "true" observe >/dev/null
 good_head="$(git rev-parse HEAD)"
 echo "regression" >> thing.sh
-git add -- . ':(exclude).coding-agent' && git commit -qm "bad release"
+git add -- . ':(exclude).coding-agent'
+if git commit -qm "bad release" >/dev/null 2>&1; then walled=0; else walled=1; fi
+ev_assert "the commit wall refuses an unproven tree" test "$walled" -eq 1
+git commit -q --no-verify -m "bad release"      # a human shipping past the loop
 bash "$R" "true" deploy >/dev/null; bash "$R" "false" observe >/dev/null 2>&1
-ev_assert "rollback targets the healthy head"   bash "$L" rollback | grep -q "$good_head"
+ev_assert "rollback targets the healthy head"   sh -c "bash '$L' rollback | grep -q '$good_head'"
 
 # ── TA15 + TA17 — an incident interrupts, then pops back ────────────────────
 red_id="$(python3 -c "
@@ -180,7 +214,116 @@ ev_assert "close refuses a partial rollup"      test "$stub" -eq 64
 bash "$L" close --summary "smoked the arc" --learnings "the gates hold" --deployment "n/a" >/dev/null
 ev_assert "close clears CURRENT"                test -z "$(ev_current)"
 ev_assert "close rolls into product.md"         grep -q "smoke-feature — shipped" "$(ev_product)"
+ev_assert "the full rollup lands in history.md" grep -q "^- summary: smoked the arc" .coding-agent/history.md
 ev_assert "learnings land where workers read"   grep -q 'the gates hold' "$(ev_product)"
 ev_assert "evidence is well-formed"             ev_evidence_wellformed
+
+# ── designed? re-verifies the human verdict; approval binds to the look ─────
+bash "$L" init smoke-ui >/dev/null
+setintent smoke-ui 'goal: a landing page
+tiers: unit, e2e
+test-command-unit: bash thing.test.sh
+test-command-e2e: bash thing.test.sh
+touches: ui
+'
+bash "$L" freeze intent --answer "yes" >/dev/null
+UI=.coding-agent/smoke-ui
+ev_assert "designed? blocks with no look-contract" test "$(ev_gate designed)" = block
+printf '<main>hero</main>\n' > "$UI/design.html"
+bash "$R" "true" design >/dev/null
+ev_assert "a self-recorded design run is not approval" test "$(ev_gate designed)" = block
+printf '{"verdict":"approved","comments_open":0,"design_sha":"%s"}\n' \
+  "$(shasum -a 256 "$UI/design.html" | cut -d' ' -f1)" > "$UI/design-verdict.json"
+bash "$R" "bash $EV_PLUGIN_ROOT/scripts/design-review.sh verify $UI" design >/dev/null
+ev_assert "designed? passes on a verified verdict" test "$(ev_gate designed)" = pass
+echo '<h1>built</h1>' > index.html
+ev_assert "building the design keeps it approved" test "$(ev_gate designed)" = pass
+bash "$L" log "design approved" >/dev/null
+ev_assert "a ledger log does not void the approval" bash "$EV_PLUGIN_ROOT/scripts/design-review.sh" verify "$UI"
+printf '<main>changed</main>\n' > "$UI/design.html"
+ev_assert "designed? blocks a post-approval edit" test "$(ev_gate designed)" = block
+
+# ── the commit wall holds without anyone claiming anything ──────────────────
+git add index.html
+if git commit -qm "wip" >/dev/null 2>&1; then walled=0; else walled=1; fi
+ev_assert "the commit wall blocks an unmet gate" test "$walled" -eq 1
+git restore --staged index.html && rm -f index.html
+
+# ── ca: the loop in one command; lanes are measured, not declared ──────────
+CA="$EV_PLUGIN_ROOT/lib/ca.sh"
+bash "$L" close --summary "ui smoke" --learnings "design binds to the look" --deployment "n/a" >/dev/null
+bash "$CA" start smoke-quick --lane quick >/dev/null
+ev_assert "ca start records lane + base"         sh -c 'grep -q "^lane: quick" .coding-agent/smoke-quick/ledger.md && grep -q "^base: [0-9a-f]\{40\}" .coding-agent/smoke-quick/ledger.md'
+frame='## intent
+goal: quick smoke
+tiers: unit
+test-command-unit: bash thing.test.sh
+touches: api
+acceptance:
+- [ ] thing works
+## plan
+1. keep thing working'
+if printf '%s\n' "$frame" | bash "$CA" frame >/dev/null 2>&1; then f=0; else f=$?; fi
+ev_assert "ca frame refuses without --answer"    test "$f" -eq 64
+printf '%s\n' "$frame" | bash "$CA" frame --answer "yes, small fix" >/dev/null
+ev_assert "ca frame writes + freezes"            test "$(ev_gate framed)" = pass
+ev_assert "ca frame keeps lane + base"           grep -q "^lane: quick" .coding-agent/smoke-quick/ledger.md
+ev_assert "ca prove records every tier"          bash "$CA" prove
+ev_assert "quick lane: small change needs no reviewer" test "$(ev_gate reviewed)" = pass
+seq 1 200 > big.txt
+bash "$CA" prove >/dev/null
+ev_assert "quick lane: a big change must be reviewed" test "$(ev_gate reviewed)" = block
+rm -f big.txt
+bash "$CA" prove >/dev/null
+if bash "$CA" commit -m "x" -- . >/dev/null 2>&1; then c=0; else c=$?; fi
+ev_assert "ca commit refuses a repo-wide pathspec" test "$c" -ne 0
+mkdir -p gen/__pycache__ && echo x > gen/__pycache__/m.pyc && echo y > gen/m.py
+if bash "$CA" commit -m "x" -- gen >/dev/null 2>&1; then c=0; else c=$?; fi
+ev_assert "ca commit refuses generated files"    test "$c" -ne 0
+ev_assert "nothing stays staged after the refusal" test -z "$(git diff --cached --name-only)"
+rm -rf gen
+ev_assert "ca next names the next step"          sh -c "bash '$CA' next | grep -q '^NEXT: close'"
+# a verdict vouches only for code the reviewer saw
+printf '# review\n\n## findings\n\n' > .coding-agent/smoke-quick/review.md
+sleep 1; echo "# changed after review" >> thing.sh
+if bash "$CA" verdict >/dev/null 2>&1; then v=0; else v=$?; fi
+ev_assert "ca verdict refuses after a code change" test "$v" -eq 64
+sed -i.bak '$d' thing.sh && rm -f thing.sh.bak
+touch .coding-agent/smoke-quick/review.md; sleep 1; echo "notes" >> NOTES.md
+ev_assert "ca verdict allows a docs-only follow-up" bash "$CA" verdict
+rm -f NOTES.md .coding-agent/smoke-quick/review.md
+bash "$CA" close --summary "quick" --learnings "lanes are measured" >/dev/null
+ev_assert "ca close defaults the deployment line" grep -q "deployment: not deployed" .coding-agent/history.md
+
+# ── design waiver: only the user's words skip visual review ───────────────
+bash "$CA" start smoke-waive --lane standard >/dev/null
+printf '## intent\ngoal: page\ntiers: e2e\ntest-command-e2e: true\ntouches: ui\nacceptance:\n- [ ] renders\n## plan\n1. page\n' \
+  | bash "$CA" frame --answer "yes" >/dev/null
+ev_assert "designed? blocks without approval or waiver" test "$(ev_gate designed)" = block
+if bash "$CA" waive design >/dev/null 2>&1; then w=0; else w=$?; fi
+ev_assert "a waiver needs the user's words"      test "$w" -eq 64
+bash "$CA" waive design --answer "I don't need a design review" >/dev/null
+ev_assert "designed? honours the user's waiver"  test "$(ev_gate designed)" = pass
+bash "$CA" close --abandoned --summary "waiver smoke" --learnings "waivers quote the user" >/dev/null
+
+# ── product memory stays bounded however many features ship ────────────────
+for i in $(seq 1 14); do
+  bash "$L" init "mem-$i" >/dev/null
+  bash "$L" close --summary "shipped $i" --learnings "lesson $i $(printf 'x%.0s' $(seq 1 400))" --deployment "n/a" >/dev/null 2>&1
+done
+P="$(ev_product)"
+ev_assert "product.md keeps the newest 10 learnings" test "$(ledger_count learnings)" -eq 10
+ev_assert "product.md keeps the newest 12 shipped"   test "$(ledger_count shipped)" -eq 12
+ev_assert "newest learning comes first"         sh -c "awk '/^## learnings/{f=1;next} f&&/^- /{print;exit}' '$P' | grep -q 'mem-14'"
+ev_assert "long learnings are clipped in product.md" sh -c "! grep -q 'x\{350\}' '$P'"
+ev_assert "history.md keeps every rollup"       test "$(grep -c '^### mem-' .coding-agent/history.md)" -eq 14
+ev_assert "product.md stays under its budget"   test "$(wc -c < "$P")" -le 12000
+
+# ── the evidence wall denies hand-writes, allows reads ──────────────────────
+W="$EV_PLUGIN_ROOT/hooks/evidence-wall.sh"
+wall() { python3 -c 'import json,sys; print(json.dumps({"tool_name":"Bash","tool_input":{"command":sys.argv[1]}}))' "$1" | bash "$W"; }
+ev_assert "wall denies a shell append"      sh -c "$(declare -f wall); W='$W'; wall 'echo x >> $UI/evidence.jsonl' | grep -q deny"
+ev_assert "wall denies an interpreter write" sh -c "$(declare -f wall); W='$W'; wall \"python3 -c \\\"open('$UI/evidence.jsonl','a').write('x')\\\"\" | grep -q deny"
+ev_assert_not "wall allows a read"          sh -c "$(declare -f wall); W='$W'; wall 'grep test $UI/evidence.jsonl 2>/dev/null' | grep -q deny"
 
 ev_summary

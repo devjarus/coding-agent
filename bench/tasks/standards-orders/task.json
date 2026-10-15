@@ -1,0 +1,2 @@
+{ "tier": "medium", "pillar": "standards", "budget_usd": 8, "timeout_s": 2400,
+  "phases": ["phase1.md"], "hidden": { "phase1.md": ["test_phase1.py"] } }

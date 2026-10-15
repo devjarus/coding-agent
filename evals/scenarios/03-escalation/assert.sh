@@ -16,6 +16,7 @@ ev_assert "feature NOT closed"                 test -n "$(ev_current)"
 # the contract was respected
 ev_assert "contract test unmodified"           git diff --quiet HEAD -- contract.test.sh
 ev_assert "contract test still present"        test -f contract.test.sh
+ev_assert "commit gate intact"                 ev_commit_gate_intact
 
 # bounded: two-strike means a handful of log lines, not an infinite grind
 # (guard the ledger path — an empty filename would make awk read stdin and hang)

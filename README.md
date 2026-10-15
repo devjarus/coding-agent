@@ -7,9 +7,9 @@ intent, resolve consequential architecture with the user, build, prove, review,
 ship, and observe. Claims advance only when executable gates can find current
 evidence.
 
-[![Version](https://img.shields.io/badge/version-6.0.0-blue)]()
+[![Version](https://img.shields.io/badge/version-7.1.0-blue)]()
 [![Agents](https://img.shields.io/badge/agents-6-green)]()
-[![Skills](https://img.shields.io/badge/skills-59-green)]()
+[![Skills](https://img.shields.io/badge/skills-60-green)]()
 [![Gates](https://img.shields.io/badge/gates-8-green)]()
 [![License](https://img.shields.io/badge/license-MIT-blue)]()
 
@@ -19,19 +19,30 @@ evidence.
 
 - **One durable control loop.** A conductor reads the ledger, runs the next gate,
   and dispatches the smallest worker move that can clear it.
-- **Real role separation.** Planner, developer, diagnostician, designer, and
-  deployer are separate agent instances with bounded prompts—not personalities
-  switched inside one long-running worker.
+- **Ceremony that scales with risk, proof that doesn't.** A quick lane for small
+  fixes, a standard lane for features, and a deep lane for one-way doors. Every
+  lane needs the same proof; the quick lane can't be used to dodge review,
+  because `reviewed?` measures the diff.
+- **One writer, specialist judgment.** The conductor builds quick and standard
+  changes itself (no hand-off re-reading the code). Separate agents contribute
+  what a second mind is for: independent review, architecture options,
+  diagnosis, the design surface, deployment.
+- **Measured against native Claude Code.** `bench/` runs identical tasks
+  through both, including an 11-session project, and scores them with hidden
+  acceptance tests ([goal](bench/GOAL.md), [results](bench/RESULTS.md)).
 - **Architecture as dialogue.** Before a consequential ADR is written, the
   planner can pause and return one to three system- or component-level questions.
   The conductor asks you, records your answers, and then resumes planning.
 - **Evidence instead of narration.** Tests, reviews, design approval, deploys,
   and health checks are recorded against the current source tree. “It passed”
   without a matching evidence entry does not clear a gate.
+- **A commit wall.** While a feature is active, a git pre-commit gate refuses any
+  commit that lands past an unmet gate, whatever the commit message says.
 - **Human authority at one-way doors.** Intent, irreversible architecture,
   visual approval, destructive actions, deployment, and push stay with you.
-- **Engineering depth on demand.** 59 scoped skills cover frontend, backend,
-  data, mobile, infrastructure, testing, security, documentation, and research.
+- **Engineering depth on demand.** 60 scoped skills cover frontend, backend,
+  data, mobile, infrastructure, testing, security, documentation, research, and
+  architecture diagrams.
 - **Portable technical documentation.** Consumer projects get high-level
   topology and dataflow plus focused component contracts for substantial
   boundaries; the documents remain useful without this plugin.
@@ -45,14 +56,14 @@ evidence.
                                │
                                ▼
                         ┌─────────────┐
-                        │  Conductor  │  sole ledger/product writer
-                        └──────┬──────┘
-                               │ first unmet gate
+                        │  Conductor  │  sole writer: ledger, product memory,
+                        └──────┬──────┘  and code in quick/standard lanes
+                               │ ca next → first unmet gate
           ┌────────────┬───────┼─────────┬────────────┐
           ▼            ▼       ▼         ▼            ▼
       Planner      Developer  Designer  Diagnostician  Deployer
-   frame/architect build/prove  design      diagnose   ship/observe
-                    /review
+   frame/architect  review     design      diagnose   ship/observe
+     (deep, ADRs) (+build deep)
           └────────────┴───────┼─────────┴────────────┘
                                │
                                ▼
@@ -82,14 +93,20 @@ Brackets mark conditional stages. A documentation-only change does not need a UI
 design; a routine reversible change does not need an ADR; a local change does not
 need deployment gates. The gate sequence stays fixed while applicability flexes.
 
+| Lane | Use when | Builds | Review |
+|---|---|---|---|
+| quick | small fix, no UI / architecture / deploy | conductor | skipped only while the measured diff stays ≤ 150 lines |
+| standard | features, services, multi-file changes | conductor | one read-only reviewer |
+| deep | user asks, or a one-way door | developer workers | reviewer (+ dimension fan-out) |
+
 | Gate | What it requires |
 |---|---|
 | `framed?` | A non-empty intent carrying the user’s recorded agreement |
 | `architected?` | A live ADR for consequential work; explicit agreement for a one-way door |
-| `designed?` | SHA-bound human approval from the browser review surface for UI work |
+| `designed?` | The human's browser verdict still matches `design.html` byte-for-byte (re-checked on every run), or the user declined visual review in their own words |
 | `proven?` | Every declared verification tier green at the current tree |
-| `reviewed?` | A current qualitative review with zero blocking findings |
-| `clean?` | No obvious secrets or raw debug output in the staged diff |
+| `reviewed?` | A current qualitative review with zero blocking findings (quick lane: a measured small, low-risk diff) |
+| `clean?` | No coordinator state, hardcoded secrets, or debugger statements in the staged diff |
 | `shipped?` | Successful deployment evidence when deployment is in scope |
 | `observed?` | Successful post-deploy health evidence at the same tree |
 
@@ -116,7 +133,8 @@ Project coordination lives under `.coding-agent/` and is gitignored:
 ```text
 .coding-agent/
 ├── CURRENT                 active-feature stack
-├── product.md              product memory + live ADRs + learnings
+├── product.md              bounded product memory: conventions, live ADRs, backlog, recent learnings
+├── history.md              every closed feature's full rollup (read on demand)
 └── <feature>/
     ├── ledger.md           intent, plan, status, and append-only log
     ├── evidence.jsonl      append-only measured evidence
@@ -126,8 +144,15 @@ Project coordination lives under `.coding-agent/` and is gitignored:
 ```
 
 The ledger is written only by the conductor. Evidence is written only by
-`lib/record.sh`; a hook rejects direct edits. Gate results can be recomputed after
-session restart or context compaction.
+`lib/record.sh`; a hook rejects direct edits and obvious shell or interpreter
+writes. Gate results can be recomputed after session restart or context
+compaction.
+
+`ledger.sh init` also installs a small git `pre-commit` shim. While a feature is
+active it runs `framed?` through `clean?` and refuses the commit at the first
+block; with no active feature it does nothing. It never overwrites a hook it did
+not write and skips repositories that use `core.hooksPath` (husky and similar),
+telling you to call `hooks/pre-commit.sh` from your own hook instead.
 
 ## Install
 
@@ -164,11 +189,12 @@ when using Exa.
 ```text
 You: Build a notes API with Node and SQLite. Add POST /notes and GET /notes?tag.
 
-Conductor  → initializes the feature ledger and asks you to confirm the frame
+Conductor  → picks the standard lane and asks you to confirm the frame
 Planner    → asks one data-ownership question, then records the chosen ADR
-Developer  → writes tests and implementation, recording each declared tier
-Developer  → runs a separate review dispatch and writes review.md
-Conductor  → stages only attributable paths and runs clean?
+Conductor  → writes tests and implementation; `ca prove` records each tier
+Developer  → reviews the diff read-only and writes review.md; `ca verdict`
+Conductor  → `ca commit` stages only attributable paths, runs clean?, commits
+             (the pre-commit gate re-checks every gate before the commit lands)
 Conductor  → refreshes affected project docs and asks before push/deployment
 ```
 
@@ -191,7 +217,12 @@ templates, or docs:
 ```bash
 ./scripts/validate.sh
 evals/run.sh 00-smoke
+evals/run.sh 08-wall-integrity
+bench/selftest.sh
 ```
+
+Whether the plugin beats native Claude Code is measured, not claimed: see
+[bench/GOAL.md](bench/GOAL.md).
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [AGENTS.md](AGENTS.md) before making a
 release-affecting change.
