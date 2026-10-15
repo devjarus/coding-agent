@@ -209,22 +209,36 @@ interactive human gates.
 
 ## Benchmark vs native Claude Code
 
-`bench/` measures whether the plugin is worth running: identical tasks (a small
-maintenance fix, a new service, two complex apps with a change request) run by
-native Claude Code and by the plugin, scored by hidden acceptance tests the
-agents never see. `bench/GOAL.md` and `bench/goal.json` define the targets:
-better quality, no worse cost or time. Architecture changes are justified by a
-scoreboard delta.
+`bench/` measures whether the plugin is worth running, on the same pinned model
+as native Claude Code. Tasks are run as fresh headless sessions in scratch repos
+outside this repository and scored by hidden acceptance tests the agents never
+see:
+
+- **correctness floor:** five single-session tasks (small fix, REST service,
+  three complex apps);
+- **standards:** `standards-orders`, an existing repo with `AGENTS.md` house rules;
+- **continuity:** `continuity-inventory` (5 sessions) and `longrun-library`
+  (11 sessions, scored per behaviour: `conv`, `dec`, `defer`, `resume`, `feat`,
+  plus memory footprint).
+
+Arms: `native`, `memory` (auto-memory on), `rules` (native plus a two-line
+`CLAUDE.md`), `plugin`. `bench/GOAL.md` and `bench/goal.json` define the targets;
+`bench/RESULTS.md` holds the numbers and the open experiments. Architecture
+changes are justified by a scoreboard delta, and a change must beat the `rules`
+control, not just native.
 
 ```bash
 bench/selftest.sh                                   # zero cost: hidden tests are sound
-bench/run.sh <task|all> --arm both [--reps N]       # paid: real headless sessions
+bench/run.sh <task|all> --arm <arm|both> [--reps N] # paid: real headless sessions
+bench/run.sh <task> --arm <arm> --work <dir> --resume-from phaseNN.md
+bench/rescore.py <work-dir>...                      # after a hidden suite changes
 bench/report.py <work-dir>...                       # scoreboard vs goal.json
 ```
 
-Runs happen outside the repository and the plugin arm loads a snapshot without
-`bench/`, so hidden tests are unreachable. When you add a task, add a reference
-implementation and keep `bench/selftest.sh` green.
+The plugin arm loads a snapshot without `bench/`, so hidden tests are
+unreachable. When you add a task, add a reference implementation and keep
+`bench/selftest.sh` green; when you add or change a hidden test, re-score every
+run and record why in `RESULTS.md`.
 
 ## Commit convention
 

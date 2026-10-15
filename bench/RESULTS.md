@@ -1,3 +1,39 @@
+# Where this stands (2026-10-15)
+
+**Verdict so far (n=1 per arm, directional):** on an 11-session project, v7.1 is
+the only arm that meets every behaviour floor (100%), with bounded memory — but
+at $22 against $8 for native plus a two-line `CLAUDE.md`, which matches it on
+conventions and decisions. The plugin's measured edge over that control is
+deferred work (a spec parked in session 3 built exactly in session 10). Nothing
+yet measures what its review and gates add beyond the hidden tests.
+
+**Next experiments, in order:**
+
+1. **3-line `rules` control** (≈ $8): add "when I defer work, write its full spec
+   to `BACKLOG.md` and build from it when asked". If it meets every floor, the
+   plugin's default should become that light layer (template + session hook +
+   convention check) with the full loop opt-in.
+2. **Reps** (≈ $50): 3 runs each of `native`, `rules`, `plugin` on
+   `longrun-library` — `goal.json` requires 3 before any claim.
+3. **External benchmarks** (needs Docker):
+   - [SlopCodeBench](https://neurips.cc/virtual/2026/poster/138903) — agents
+     extend their own code over many checkpoints; scores pass rate plus code
+     erosion and verbosity. The best test of whether review/gates keep a
+     codebase from rotting. Check first that its harness is public.
+   - [Terminal-Bench 2.0](https://www.tbench.ai/docs/run-terminal-bench-2-0) via
+     Harbor — a 20-task slice as the correctness floor. Harbor runs
+     `claude-code`; a custom agent (`--agent-import-path`) adds `--plugin-dir`.
+   - [SWE-EVO](https://github.com/bdqnghi/SWE-EVO) — release-note-sized changes
+     to mature Python repos, with partial credit; for real-codebase evidence.
+4. Related finding to keep in mind: *Evaluating AGENTS.md* (ICLR 2026) found
+   context files tended to lower success and raise cost >20%; keep always-loaded
+   instructions minimal.
+
+Raw runs from these rounds lived in `/tmp/ca-bench/` on the machine that ran
+them and are not in the repository; the tables below are their record.
+
+---
+
 # Long-horizon round 2 — v7.1 and a native control (`longrun-library`, 11 sessions, claude-sonnet-5, n=1)
 
 | Arm | conv | dec | defer | resume | feat | Quality | Cost | Time | `product.md` s1 → s11 |

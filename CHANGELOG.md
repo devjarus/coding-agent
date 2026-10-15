@@ -38,38 +38,38 @@ the exception as a learning that the next session followed; `product.md` grew
   now run and pass. Smoke: 78 → 92 checks (12 new for conventions and memory).
 
 ### Bench (not shipped in the plugin)
-- A `rules` arm: native plus a two-line `CLAUDE.md` asking for conventions as
-  discovered-instance tests — the control for whether the plugin is needed.
-- Auto-loaded memory now counts the conventions the plugin injects at session
-  start; `report.py` reads feature closes from `history.md` too.
-#### Changed
-- **The goal is now three pillars:** continuity, standards, speed (`bench/GOAL.md`).
-  Worth running only if it wins continuity or standards without falling below
-  native on correctness; wins neither and is slower → retire.
-- **Both arms run the same pinned model** (`--model`, default `claude-sonnet-5`),
-  recorded per run.
+
+Results and next experiments: `bench/RESULTS.md`. On `longrun-library` (n=1):
+native 92%, v7 95%, native + two-line `CLAUDE.md` 97% at $8, v7.1 100% at $22.
 
 #### Added
-- `continuity-inventory`: five fresh sessions on one codebase, with conventions
-  stated only once, a session killed mid-change, and a deferred request.
-- `standards-orders`: an existing repo whose `AGENTS.md` rules are checked
-  mechanically (migration discipline, logger, error type, docs, changelog, tests).
-- Runner support for deliberately interrupted phases (`max_turns`).
-- `longrun-library`: 11 sessions on one codebase, scored per behaviour: `conv`
-  (conventions stated once), `dec` (a superseded decision), `defer` (two parked
-  features requested together much later), `resume` (a killed session), `feat`.
-  Mutation-checked so each failure mode costs only its own behaviour.
-- The runner records per-session memory footprint (bytes auto-loaded via
-  CLAUDE.md and its imports, maintained memory files, context tokens per turn);
-  `goal.json` adds absolute behaviour floors and a 16 KB auto-loaded cap, and
-  `report.py` shows both, plus the memory arm.
+- **Pillars:** the goal is continuity, standards and speed (`bench/GOAL.md`);
+  worth running only if it wins continuity or standards without falling below
+  native on correctness. Absolute behaviour floors and a 16 KB auto-loaded cap
+  in `goal.json`.
+- **Tasks:** `continuity-inventory` (5 sessions), `standards-orders` (house rules
+  in `AGENTS.md`), and `longrun-library` (11 sessions, scored per behaviour:
+  `conv`, `dec`, `defer`, `resume`, `feat`; mutation-checked so each failure
+  mode costs only its own behaviour).
+- **Arms:** `memory` (native with auto-memory on) and `rules` (native plus a
+  two-line `CLAUDE.md` asking for conventions as discovered-instance tests).
+- **Runner:** one pinned model for every arm; deliberately interrupted phases
+  (`max_turns`); per-session memory footprint (auto-loaded bytes including
+  injected conventions, maintained memory files, context tokens per turn);
+  `--resume-from` for sessions invalidated by a usage limit.
+
+#### Changed
+- Behaviour scores are pooled over every scored session, so drift that a later
+  session repairs still counts against the sessions that shipped it.
+- `report.py` shows behaviours and memory, the `memory` and `rules` arms, and
+  reads feature closes from `history.md`.
 
 #### Fixed
-- `report.py` no longer prints "Goal met" when there is no native/plugin pair.
-- `longrun-library` hidden tests send timestamp inputs in the service's own
-  output precision ("our usual format"). Whole-second inputs failed a native
-  run that strictly parsed its own millisecond format — a test ambiguity, not
-  a defect. Runs are re-scored with `rescore.py`.
+- `report.py` no longer prints "Goal met" with no native/plugin pair.
+- `longrun-library` hidden tests: timestamp inputs use the service's own
+  precision; every list added after session 5 gets a `conv` envelope check;
+  page-size checks run only under `conv`/`dec`. Every run was re-scored.
+- `rescore.py` refreshes per-behaviour tallies.
 
 ## [7.0.0] — 2026-09-27 — Goal-driven runtime: measured against native Claude Code
 

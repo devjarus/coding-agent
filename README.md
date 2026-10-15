@@ -28,8 +28,8 @@ evidence.
   what a second mind is for: independent review, architecture options,
   diagnosis, the design surface, deployment.
 - **Measured against native Claude Code.** `bench/` runs identical tasks
-  through both and scores them with hidden acceptance tests
-  ([bench/GOAL.md](bench/GOAL.md)).
+  through both, including an 11-session project, and scores them with hidden
+  acceptance tests ([goal](bench/GOAL.md), [results](bench/RESULTS.md)).
 - **Architecture as dialogue.** Before a consequential ADR is written, the
   planner can pause and return one to three system- or component-level questions.
   The conductor asks you, records your answers, and then resumes planning.

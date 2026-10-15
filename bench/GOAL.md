@@ -84,9 +84,23 @@ Latest numbers and what they mean: [RESULTS.md](RESULTS.md).
 ## How to use it
 
 ```bash
-bench/selftest.sh                           # zero cost: hidden tests pass on references
-bench/run.sh small-pricing-fix --arm both   # one task, both arms
-bench/run.sh all --arm both --reps 3        # the full claim
-bench/report.py <results-dir>...            # scoreboard vs goal.json
-bench/rescore.py <results-dir>...           # re-score after the hidden suites change
+bench/selftest.sh                                        # zero cost: hidden tests pass on references
+bench/run.sh small-pricing-fix --arm both                # one task, native + plugin
+bench/run.sh longrun-library --arm rules --work /tmp/lr  # one arm: native|memory|rules|plugin
+bench/run.sh all --arm both --reps 3                     # the full claim
+bench/report.py <results-dir>...                         # scoreboard vs goal.json
+bench/rescore.py <results-dir>...                        # re-score after the hidden suites change
 ```
+
+**Running it locally.** Requirements: an authenticated `claude` CLI, Python 3,
+git. No Docker. `--permission-mode bypassPermissions` is refused under root, so
+run as a normal user (in a disposable container as root, set `IS_SANDBOX=1`).
+Work goes to `/tmp/ca-bench/<timestamp>-<label>` unless `--work` is given.
+Rough cost per run on the default model: single-session tasks $0.2–1.5 native;
+`longrun-library` ≈ $7–8 and 40–55 min native, ≈ $14–22 and 2–2.5 h plugin.
+
+**When a session is invalidated** (an account usage limit returns HTTP 429 and
+a $0 session), restore the project to the last valid phase (code to its last
+commit, `.coding-agent/` memory to its recorded sizes in that phase's
+`row.json`), then `bench/run.sh <task> --arm <arm> --work <dir> --resume-from
+phaseNN.md`. Earlier rows are kept and `run.json` records `resumed_from`.
